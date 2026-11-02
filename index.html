@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ironman 27 Training</title>
+  <meta name="description" content="Überblick über mein Ironman-Training: Saisonplan, Umfänge, Disziplinen, Zonen und Aktivitäten.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap">
+      <div class="brand">IRONMAN 27 <span>· Trainings-Cockpit</span></div>
+      <nav class="nav" aria-label="Abschnitte">
+        <a href="#ueberblick">Überblick</a>
+        <a href="#saison">Saisonplan</a>
+        <a href="#umfang">Umfang</a>
+        <a href="#disziplinen">Disziplinen</a>
+        <a href="#rennen">Rennen</a>
+        <a href="#zonen">Zonen</a>
+        <a href="#aktivitaeten">Aktivitäten</a>
+      </nav>
+      <button class="icon-btn" id="themeToggle" type="button" aria-label="Farbschema wechseln" title="Hell / Dunkel"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="display:block"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- HERO -->
+    <section class="hero" id="ueberblick">
+      <div>
+        <p class="eyebrow" id="raceMeta"></p>
+        <h1 id="raceName"></h1>
+        <p class="sub" id="heroSub"></p>
+      </div>
+      <div class="countdown" id="countdown" aria-live="polite"></div>
+    </section>
+
+    <!-- KPIs -->
+    <section>
+      <h2>Die letzten 4 Wochen</h2>
+      <p class="section-sub" id="kpiSub"></p>
+      <div class="grid g4" id="kpis"></div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section>
+      <h2>Wo du gerade stehst</h2>
+      <p class="section-sub">Automatisch aus deinen Strava-Daten abgeleitet – Einschätzungen, keine Messwerte.</p>
+      <div class="grid g2" id="insights"></div>
+    </section>
+
+    <!-- SAISON -->
+    <section id="saison">
+      <h2>Saisonplan bis zum Rennen</h2>
+      <p class="section-sub">Periodisierung rückwärts vom Renntag gerechnet. Stundenangaben sind Richtwerte pro Woche.</p>
+      <div class="card">
+        <div class="timeline" id="timeline"></div>
+        <div class="phase-detail">
+          <div>
+            <div class="mini-title">Aktuelle Phase</div>
+            <div id="currentPhase"></div>
+          </div>
+          <div>
+            <div class="mini-title">Alle Phasen</div>
+            <ul class="phase-list" id="phaseList"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UMFANG -->
+    <section id="umfang">
+      <h2>Wochenumfang</h2>
+      <p class="section-sub">Trainingsstunden pro Woche (Montag–Sonntag), Bewegungszeit laut Strava.</p>
+      <div class="card">
+        <div class="chart-head">
+          <div class="legend" id="volLegend"></div>
+          <div class="controls">
+            <button class="chip" id="toggleOther" type="button" aria-pressed="false">inkl. Kraft &amp; Sonstiges</button>
+            <button class="chip" id="toggleTable" type="button" aria-pressed="false">Tabelle</button>
+          </div>
+        </div>
+        <div class="chart" id="volChart"></div>
+        <div class="table-scroll" id="volTable" hidden></div>
+      </div>
+    </section>
+
+    <!-- DISZIPLINEN -->
+    <section id="disziplinen">
+      <h2>Disziplinen</h2>
+      <p class="section-sub">Alle Einheiten seit 10. August 2026 je Sportart.</p>
+      <div class="grid g3" id="disciplines"></div>
+    </section>
+
+    <!-- RENNEN -->
+    <section id="rennen">
+      <h2>Rennvorbereitung</h2>
+      <p class="section-sub">Längste Einheit seit August im Vergleich zur Ironman-Distanz – und deine geplanten Zielzeiten.</p>
+      <div class="grid g2">
+        <div class="card">
+          <h3>Längste Einheit vs. Renndistanz</h3>
+          <div id="readiness"></div>
+          <p class="muted" style="font-size:13px;margin:8px 0 0">Faustregel: lange Einheiten im Training bis ca. 80–100&nbsp;% (Schwimmen/Rad) bzw. 30–35&nbsp;km (Laufen).</p>
+        </div>
+        <div class="card">
+          <h3>Zielzeiten</h3>
+          <div class="splits" id="splitBar"></div>
+          <div id="splitTable"></div>
+          <p class="muted" style="font-size:13px;margin:8px 0 0">Anpassbar in <code>js/data.js</code> unter <code>goals</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ZONEN -->
+    <section id="zonen">
+      <h2>Trainingszonen &amp; Bestleistungen</h2>
+      <p class="section-sub">Zonen aus Strava. Laufzonen sind von Strava aus einer geschätzten 5-km-Zeit (21:04) abgeleitet.</p>
+      <div class="grid g3" id="zones"></div>
+      <div class="grid g2" style="margin-top:12px" id="bests"></div>
+    </section>
+
+    <!-- AKTIVITÄTEN -->
+    <section id="aktivitaeten">
+      <h2>Aktivitäten</h2>
+      <p class="section-sub" id="actSub"></p>
+      <div class="card">
+        <div class="chart-head">
+          <div class="controls" id="actFilter"></div>
+          <span class="muted" style="font-size:13px" id="actCount"></span>
+        </div>
+        <div class="table-scroll"><table id="actTable"></table></div>
+        <div style="text-align:center;margin-top:12px"><button class="chip" id="actMore" type="button" hidden></button></div>
+      </div>
+    </section>
+
+    <footer>
+      Daten: Strava-Snapshot vom <span id="snap"></span>. Rennen, Zielzeiten und Daten lassen sich in <code>js/data.js</code> anpassen.
+    </footer>
+  </main>
+
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
