@@ -23,7 +23,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 
 | Feld | Bedeutung |
 |------|-----------|
-| `race` | Name, Datum und Ort deines Rennens (**Datum ist aktuell ein Platzhalter: 11.07.2027**) |
+| `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
 | `zones`, `bests` | Trainingszonen und Bestleistungen (aus Strava) |
 | `activities` | Aktivitäten-Snapshot aus Strava (Stand 02.11.2026) |

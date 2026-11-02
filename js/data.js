@@ -18,9 +18,9 @@ window.TRAINING = {
 
   // >>> Hier dein Rennen eintragen <<<
   race: {
-    name: "Ironman 2027",
-    date: "2027-07-11",           // Platzhalter – bitte auf dein Rennen ändern
-    location: "tbd",
+    name: "Ironman Frankfurt 2027",
+    date: "2027-06-27",           // laut Presse (EM Frankfurt), offizielle Bestätigung prüfen
+    location: "Frankfurt am Main · Europameisterschaft",
     swimKm: 3.8, bikeKm: 180, runKm: 42.2,
   },
 
