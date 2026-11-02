@@ -2,11 +2,13 @@
  * Trainingsdaten – Snapshot aus Strava (Stand: 02.11.2026)
  * ---------------------------------------------------------
  * RACE und GOALS kannst du frei anpassen. ACTIVITIES ist ein Export deiner
- * Strava-Aktivitäten seit 10.08.2026. Format pro Eintrag:
+ * Strava-Aktivitäten seit der Anmeldung am 27.06.2026 (ein Jahr vor dem Rennen).
+ * Format pro Eintrag:
  *   [Datum (lokal), Sporttyp, Name, Distanz km, Bewegungszeit s, Höhenmeter, Pace/Info]
  */
 window.TRAINING = {
   snapshotDate: "2026-11-02",
+  commitDate: "2026-06-27",      // Anmeldung / Start der Vorbereitung
 
   athlete: {
     name: "Jan Stadie",
@@ -156,5 +158,42 @@ window.TRAINING = {
     ["2026-08-14T07:57", "Hike", "Grosse Furkahorn 3.150m", 8.91, 10649, 1372],
     ["2026-08-13T16:57", "Ride", "back in business (Furka Pass)", 40.37, 6815, 1001, "21,3 km/h"],
     ["2026-08-12T10:23", "WeightTraining", "Gewichtstraining am Morgen", 0, 4536, 0],
+    ["2026-08-07T21:10", "Yoga", "Yoga in der Nacht", 0, 3066, 0],
+    ["2026-08-04T10:18", "Yoga", "Recovery Dehnen (krank)", 0, 2207, 0],
+    ["2026-08-02T05:10", "Hike", "Satz mit ❌ (krank, Britanniahütte)", 9.00, 10782, 652],
+    ["2026-08-01T15:25", "Hike", "Zum Camping", 1.36, 1146, 36],
+    ["2026-07-31T16:21", "WeightTraining", "Gewichtstraining am Nachmittag", 0, 3633, 0],
+    ["2026-07-30T16:00", "Workout", "Wakeboarden", 0, 2201, 0],
+    ["2026-07-29T09:39", "Ride", "Fahrt am Morgen", 54.02, 6236, 257, "31,2 km/h"],
+    ["2026-07-28T19:34", "WeightTraining", "Gewichtstraining am Abend", 0, 4231, 0],
+    ["2026-07-28T09:53", "Ride", "Social Ride", 46.68, 6349, 530, "26,5 km/h"],
+    ["2026-07-27T12:10", "TrailRun", "Alpstein Traillaufen", 19.93, 12044, 1714, "10:04 /km"],
+    ["2026-07-26T17:01", "WeightTraining", "Gewichtstraining am Nachmittag", 0, 4020, 0],
+    ["2026-07-25T11:26", "Ride", "Groupride", 103.67, 11275, 369, "33,1 km/h"],
+    ["2026-07-24T12:02", "Run", "Mittagslauf", 12.02, 3770, 55, "5:14 /km"],
+    ["2026-07-23T14:40", "Run", "Lauf am Nachmittag", 6.01, 1615, 40, "4:29 /km"],
+    ["2026-07-22T20:04", "WeightTraining", "Gewichtstraining am Abend", 0, 3671, 0],
+    ["2026-07-21T10:15", "WeightTraining", "Gewichtstraining am Morgen", 0, 4284, 0],
+    ["2026-07-20T11:10", "Ride", "Untersee", 66.31, 7586, 290, "31,5 km/h"],
+    ["2026-07-19T11:45", "Run", "Mittagslauf (10-km-PB)", 12.50, 3582, 59, "4:46 /km"],
+    ["2026-07-18T19:48", "WeightTraining", "Gewichtstraining am Abend", 0, 3327, 0],
+    ["2026-07-17T08:41", "Ride", "Bergintervalle", 41.52, 6409, 745, "23,3 km/h"],
+    ["2026-07-16T19:05", "WeightTraining", "Gewichtstraining am Abend", 0, 5545, 0],
+    ["2026-07-16T15:05", "Workout", "Wakeboarden", 0, 1850, 0],
+    ["2026-07-11T06:30", "Ride", "Pragelpass + Klausenpass", 132.92, 22312, 3029, "21,4 km/h"],
+    ["2026-07-10T14:59", "Ride", "Sattelegg-Pass", 44.74, 7320, 1084, "22,0 km/h"],
+    ["2026-07-09T11:38", "WeightTraining", "Gewichtstraining zur Mittagszeit", 0, 5416, 0],
+    ["2026-07-08T12:32", "Run", "Easy Run 2/2", 5.60, 1998, 18, "5:57 /km"],
+    ["2026-07-08T09:38", "Ride", "Trio Tour 1/2", 66.34, 7438, 306, "32,1 km/h"],
+    ["2026-07-07T13:23", "WeightTraining", "Gewichtstraining am Nachmittag", 0, 3550, 0],
+    ["2026-07-06T15:49", "Tennis", "Tennis am Nachmittag", 2.04, 2546, 0],
+    ["2026-07-06T09:17", "Run", "Intervalle", 7.25, 2039, 17, "4:41 /km"],
+    ["2026-07-05T16:48", "Run", "Easy Run 2/2", 6.01, 2085, 27, "5:47 /km"],
+    ["2026-07-05T15:01", "Ride", "Easy Ride 1/2", 40.53, 5302, 358, "27,5 km/h"],
+    ["2026-07-05T09:24", "WeightTraining", "Gewichtstraining am Morgen", 0, 4511, 0],
+    ["2026-07-03T10:08", "Ride", "180 to Roth", 176.54, 20908, 1239, "30,4 km/h"],
+    ["2026-07-02T08:51", "WeightTraining", "Gewichtstraining am Morgen", 0, 4602, 0],
+    ["2026-07-01T10:58", "Ride", "Aerobars testen", 33.05, 3659, 163, "32,5 km/h"],
+    ["2026-06-27T18:55", "WeightTraining", "Gewichtstraining am Abend (Tag 1 nach Anmeldung)", 0, 4522, 0],
   ],
 };

@@ -23,8 +23,8 @@
     strength: { label: "Kraft", color: "var(--other)" },
     other: { label: "Sonstiges", color: "var(--other)" },
   };
-  const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility" };
-  const cat = (sport) => sport === "Swim" ? "swim" : (sport === "Ride" || sport === "VirtualRide") ? "bike" : sport === "Run" ? "run" : sport === "WeightTraining" ? "strength" : "other";
+  const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility", TrailRun: "Trailrun", Tennis: "Tennis", Workout: "Workout" };
+  const cat = (sport) => sport === "Swim" ? "swim" : (sport === "Ride" || sport === "VirtualRide") ? "bike" : (sport === "Run" || sport === "TrailRun") ? "run" : sport === "WeightTraining" ? "strength" : "other";
 
   const acts = D.activities.map(([date, sport, name, km, sec, elev, info]) => ({
     date: parse(date), sport, name, km, sec, elev, info: info || "", cat: cat(sport),
@@ -32,6 +32,7 @@
 
   const snap = parse(D.snapshotDate);
   const snapEnd = addDays(snap, 1);
+  const commit = parse(D.commitDate);
   const race = parse(D.race.date);
   const inRange = (from, to) => acts.filter((a) => a.date >= from && a.date < to);
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
@@ -72,10 +73,15 @@
     const days = Math.max(0, Math.ceil((race - now) / DAY));
     const weeks = Math.floor(days / 7);
     const phase = currentPhase(now);
+    const totalDays = Math.round((race - commit) / DAY);
+    const dayNo = Math.min(totalDays, Math.max(0, Math.floor((now - commit) / DAY) + 1));
+    const pct = Math.round((dayNo / totalDays) * 100);
     $("#countdown").innerHTML = `
       <div><b>${days}</b><small>Tage</small></div>
       <div><b>${weeks}</b><small>Wochen</small></div>
-      <div><b class="phase-name" style="font-size:18px;line-height:32px">${phase ? esc(phase.short) : "–"}</b><small>Phase</small></div>`;
+      <div><b class="phase-name" style="font-size:18px;line-height:32px">${phase ? esc(phase.short) : "–"}</b><small>Phase</small></div>
+      <div class="journey"><div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} · ${pct} %</span><span>Rennen</span></div>
+        <div class="ready-track" role="img" aria-label="${pct} % der Vorbereitung vergangen"><div class="ready-fill" style="width:${pct}%;background:var(--text)"></div></div></div>`;
     $("#snap").textContent = fmtDate(snap);
   }
 
@@ -102,15 +108,16 @@
       [`<i class="swatch" style="background:var(--run)"></i> Laufen`, `${nf(km(cur, "run"))} <small>km · ${n(cur, "run")}×</small>`, delta(km(cur, "run"), km(prev, "run"), "km")],
       ["Krafteinheiten", `${n(cur, "strength")} <small>× in 4 Wo</small>`, delta(n(cur, "strength"), n(prev, "strength"), "Einheiten")],
       ["FTP", `${D.zones.ftp} <small>W · ${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg</small>`, `bei ${D.athlete.weightKg} kg Körpergewicht`],
-      ["Aktivitäts-Streak", `${D.athlete.streakWeeks} <small>Wochen</small>`, `längster Lauf seit Aug.: ${nf(longestRun, 1)} km`],
+      ["Aktivitäts-Streak", `${D.athlete.streakWeeks} <small>Wochen</small>`, `seit Anmeldung ${Math.floor((snap - commit) / DAY / 7)} Wochen dabei`],
     ];
     $("#kpis").innerHTML = tiles.map(([l, v, d]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="delta">${d}</div></div>`).join("");
   }
 
   /* ---------- Phasen ---------- */
-  const planStart = parse("2026-09-14");
+  const planStart = commit;
   const PHASES = [
-    { name: "Grundlage 1", short: "Grundlage 1", from: null, to: 28, hours: "8–11 h", focus: ["Schwimmtechnik (3×/Woche, Drills, Wasserlage)", "Viel lockere Zone 2 auf Rad & Lauf", "2–3× Krafttraining (Beine, Rumpf)", "FTP- und Laufbasis stabilisieren"] },
+    { name: "Einstieg & Sommer", short: "Einstieg", from: null, to: 42, hours: "6–10 h", focus: ["Anmeldung Ironman Frankfurt ✔", "Lange Ausfahrten & Alpenpässe", "Krafttraining etablieren", "Laufbasis aufbauen"] },
+    { name: "Grundlage 1", short: "Grundlage 1", from: 42, to: 28, hours: "8–11 h", focus: ["Schwimmtechnik (3×/Woche, Drills, Wasserlage)", "Viel lockere Zone 2 auf Rad & Lauf", "2–3× Krafttraining (Beine, Rumpf)", "FTP- und Laufbasis stabilisieren"] },
     { name: "Grundlage 2", short: "Grundlage 2", from: 28, to: 20, hours: "10–13 h", focus: ["Schwimmumfang auf 8–10 km/Woche", "Sweet-Spot-Intervalle auf dem Rad", "Langer Lauf bis 20–24 km", "Kraft auf 2× reduzieren, Wartung"] },
     { name: "Aufbau 1", short: "Aufbau 1", from: 20, to: 12, hours: "12–15 h", focus: ["Schwellenarbeit in allen drei Disziplinen", "Lange Ausfahrten 4–5 h, Bergtraining", "Erste Koppeleinheiten (Rad → Lauf)", "Rennernährung testen"] },
     { name: "Aufbau 2 – rennspezifisch", short: "Aufbau 2", from: 12, to: 5, hours: "14–18 h", focus: ["Ironman-Renntempo (65–75 % FTP)", "Langer Lauf bis 30–32 km", "Freiwasserschwimmen im Neo", "Generalprobe / Mitteldistanz"] },
@@ -290,7 +297,7 @@
     const bikeWeekly = weeks.map((w) => ({ d: w.start, v: sum(ofCat(inRange(w.start, addDays(w.start, 7)), "bike"), (a) => a.km) }));
     // Laufen
     const runKm = sum(runs, (a) => a.km), runSec = sum(runs, (a) => a.sec), runElev = sum(runs, (a) => a.elev);
-    const runPts = runs.filter((a) => a.km >= 4).map((a) => ({ d: a.date, v: a.sec / a.km, a })).reverse();
+    const runPts = runs.filter((a) => a.km >= 4 && a.sport === "Run").map((a) => ({ d: a.date, v: a.sec / a.km, a })).reverse();
     const longestRun = Math.max(...runs.map((a) => a.km));
 
     $("#disciplines").innerHTML = `
@@ -397,14 +404,17 @@
     const paces = swims.map((a) => a.sec / (a.km * 10));
     const avgSwim = sum(swims, (a) => a.km) / swims.length;
     const longestBike = Math.max(...ofCat(acts, "bike").map((a) => a.km));
-    const longestRun = Math.max(...ofCat(acts, "run").map((a) => a.km));
+    const longestRun = Math.max(...acts.filter((a) => a.sport === "Run").map((a) => a.km));
+    const trail = acts.filter((a) => a.sport === "TrailRun").sort((a, b) => b.km - a.km)[0];
+    const firstSwim = ofCat(acts, "swim").reduce((m, a) => (a.date < m ? a.date : m), snapEnd);
+    const passes = ofCat(acts, "bike").filter((a) => a.elev >= 1000).length;
     const str = ofCat(acts, "strength").length;
     const last3 = inRange(addDays(snapEnd, -21), snapEnd);
     const tri3 = sum(last3.filter((a) => ["swim", "bike", "run"].includes(a.cat)), (a) => a.sec) / 3600 / 3;
     const items = [
-      ["warn", "Baustelle", "Schwimmen ist der größte Hebel", `Ø ${nf(avgSwim, 1)} km pro Einheit, Pace schwankt zwischen ${mmss(Math.min(...paces))} und ${mmss(Math.max(...paces))} /100m. Für 3,8 km im Rennen: regelmäßig 3× pro Woche, Technik vor Umfang, Einheiten schrittweise Richtung 3 km.`],
-      ["good", "Stärke", "Rad-Basis ist da", `Längste Fahrt seit August: ${nf(longestBike, 1)} km – bereits über Renndistanz. FTP ${D.zones.ftp} W (${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg). Für dein Ziel „schneller am Berg“: Sweet-Spot- und Bergintervalle im Winter auf Zwift.`],
-      ["good", "Im Plan", "Laufen solide", `Längster Lauf ${nf(longestRun, 1)} km, lockere Läufe meist um 5:30–6:00 /km (Zone 2 laut Strava: ${mmss(runPaceZ2[0])}–${mmss(runPaceZ2[1])} /km). Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
+      ["warn", "Baustelle", "Schwimmen ist der größte Hebel", `Erste Schwimmeinheit erst am ${fmtDate(firstSwim, { day: "2-digit", month: "2-digit" })} – seitdem Ø ${nf(avgSwim, 1)} km pro Einheit, Pace schwankt zwischen ${mmss(Math.min(...paces))} und ${mmss(Math.max(...paces))} /100m. Für 3,8 km im Rennen: regelmäßig 3× pro Woche, Technik vor Umfang, Einheiten schrittweise Richtung 3 km.`],
+      ["good", "Stärke", "Rad-Basis ist da", `Längste Fahrt seit der Anmeldung: ${nf(longestBike, 1)} km – bereits über Renndistanz, dazu ${passes} Ausfahrten mit über 1.000 Hm. FTP ${D.zones.ftp} W (${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg). Für dein Ziel „schneller am Berg“: Sweet-Spot- und Bergintervalle im Winter auf Zwift.`],
+      ["good", "Im Plan", "Laufen solide", `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe meist um 5:30–6:00 /km (Zone 2 laut Strava: ${mmss(runPaceZ2[0])}–${mmss(runPaceZ2[1])} /km). Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
       ["good", "Stärke", "Krafttraining konsequent", `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.`],
       [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
       ["good", "Fokus", "Zone 2 verbessern", `Dein Strava-Fokus. Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm, Rad-Zone 2: ${D.zones.power[1][0]}–${D.zones.power[1][1]} W. Ca. 80 % der Trainingszeit locker halten.`],

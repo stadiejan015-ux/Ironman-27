@@ -24,8 +24,9 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | Feld | Bedeutung |
 |------|-----------|
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
+| `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
 | `zones`, `bests` | Trainingszonen und Bestleistungen (aus Strava) |
-| `activities` | Aktivitäten-Snapshot aus Strava (Stand 02.11.2026) |
+| `activities` | Aktivitäten-Snapshot aus Strava ab der Anmeldung am 27.06.2026 (Stand 02.11.2026) |
 
 Die Saisonphasen und ihre Wochenstunden sind in `js/app.js` (`PHASES`) definiert.

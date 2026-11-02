@@ -71,8 +71,11 @@ a { color: inherit; }
 h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.05; margin: 0 0 10px; letter-spacing: -.02em; }
 .hero p.sub { margin: 0; color: var(--text-2); max-width: 56ch; }
 .countdown { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.countdown div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; box-shadow: var(--shadow); }
-.countdown b { display: block; font-size: 32px; line-height: 1; letter-spacing: -.02em; }
+.countdown > div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; text-align: center; box-shadow: var(--shadow); }
+.countdown > div > b { display: block; font-size: 32px; line-height: 1; letter-spacing: -.02em; }
+.countdown .journey { grid-column: 1 / -1; text-align: left; padding: 12px 14px; }
+.journey-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-3); margin-bottom: 8px; }
+.journey-head b { display: inline; font-size: 12px; color: var(--text); letter-spacing: 0; }
 .countdown small { color: var(--text-3); font-size: 12px; }
 
 /* Sections */
