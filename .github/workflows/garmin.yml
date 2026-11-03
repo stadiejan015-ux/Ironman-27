@@ -1,0 +1,60 @@
+name: Garmin-Update
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # alle 3 Stunden
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Wie viele Tage rückwirkend holen"
+        default: "3"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: garmin-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Garmin-Login-Cache wiederherstellen
+        uses: actions/cache@v4
+        with:
+          path: ~/.garminconnect
+          key: garmin-tokens-${{ github.run_id }}
+          restore-keys: garmin-tokens-
+
+      - name: Abhängigkeiten installieren
+        run: pip install --quiet "garminconnect>=0.2.25"
+
+      - name: Garmin-Daten holen
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
+        run: python scripts/update_garmin.py --days "${{ github.event.inputs.days || '3' }}"
+
+      - name: Änderungen hochladen
+        run: |
+          git config user.name "garmin-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/garmin-data.js
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen."
+            exit 0
+          fi
+          git commit -m "Garmin-Update $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 5))
+          done
+          exit 1

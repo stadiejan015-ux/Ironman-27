@@ -108,7 +108,7 @@
       [`<i class="swatch" style="background:var(--bike)"></i> Rad`, `${nf(km(cur, "bike"))} <small>km · ${n(cur, "bike")}×</small>`, delta(km(cur, "bike"), km(prev, "bike"), "km")],
       [`<i class="swatch" style="background:var(--run)"></i> Laufen`, `${nf(km(cur, "run"))} <small>km · ${n(cur, "run")}×</small>`, delta(km(cur, "run"), km(prev, "run"), "km")],
       ["Krafteinheiten", `${n(cur, "strength")} <small>× in 4 Wo</small>`, delta(n(cur, "strength"), n(prev, "strength"), "Einheiten")],
-      ["FTP", `${D.zones.ftp} <small>W · ${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg</small>`, `bei ${D.athlete.weightKg} kg Körpergewicht`],
+      ["FTP", `${D.zones.ftp} <small>W · ${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg</small>`, `bei ${nf(D.athlete.weightKg, 1)} kg Körpergewicht${latestWeight ? " (Garmin)" : ""}`],
       ["Aktivitäts-Streak", `${D.athlete.streakWeeks} <small>Wochen</small>`, `seit Anmeldung ${Math.floor((snap - commit) / DAY / 7)} Wochen dabei`],
     ];
     $("#kpis").innerHTML = tiles.map(([l, v, d]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="delta">${d}</div></div>`).join("");
@@ -250,7 +250,7 @@
     }
     s += `<path d="${points.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
     points.forEach((p, i) => {
-      s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="4" fill="${color}" stroke="var(--surface)" stroke-width="2"/>`;
+      if (points.length <= 30 || i === points.length - 1) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="4" fill="${color}" stroke="var(--surface)" stroke-width="2"/>`;
       s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="12" fill="transparent"/>`;
     });
     s += `<text x="${m.l}" y="${H - 4}">${fmtDate(points[0].d, { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(points[points.length - 1].d, { day: "2-digit", month: "2-digit" })}</text></svg>`;
@@ -443,8 +443,180 @@
     more.textContent = `Alle ${list.length} anzeigen`;
   }
 
+
+  /* ---------- Garmin: Erholung & Form ---------- */
+  const G = window.GARMIN || { days: [] };
+  const gDays = (G.days || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const gLast = (key) => { for (let i = gDays.length - 1; i >= 0; i--) if (gDays[i][key] != null) return gDays[i]; return null; };
+  const gAvg = (key, n, skipLast = false) => {
+    const vals = gDays.slice(skipLast ? -n - 1 : -n, skipLast ? -1 : undefined).map((d) => d[key]).filter((v) => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  };
+  const latestWeight = gLast("weight");
+  if (latestWeight) D.athlete.weightKg = latestWeight.weight;
+
+  const STATUS_DE = { PRODUCTIVE: "Produktiv", MAINTAINING: "Erhaltend", RECOVERY: "Erholung", UNPRODUCTIVE: "Unproduktiv", DETRAINING: "Leistungsabbau", OVERREACHING: "Überlastung", PEAKING: "Höchstform", STRAINED: "Strapaziert", NO_STATUS: "Kein Status" };
+  const statusDe = (s) => { if (!s) return null; const k = String(s).replace(/_\d+$/, ""); return STATUS_DE[k] || k; };
+  const HRV_DE = { BALANCED: "Ausgeglichen", UNBALANCED: "Unausgeglichen", LOW: "Niedrig", POOR: "Schlecht" };
+
+  function readiness() {
+    const today = gDays[gDays.length - 1];
+    if (!today) return null;
+    const f = [];
+    const add = (label, value, state, score) => f.push({ label, value, state, score });
+    if (today.sleepScore != null) {
+      const v = today.sleepScore;
+      add("Sleep Score", `${v}${today.sleepH ? ` · ${nf(today.sleepH, 1)} h` : ""}`, v >= 80 ? "good" : v >= 60 ? "ok" : "bad", v);
+    }
+    if (today.hrv != null || today.hrvStatus) {
+      const st = today.hrvStatus;
+      let score = st === "BALANCED" ? 85 : st === "UNBALANCED" ? 55 : st ? 30 : null;
+      if (score == null && today.hrvWeekly) { const r = today.hrv / today.hrvWeekly; score = Math.max(0, Math.min(100, (r - 0.7) / 0.3 * 100)); }
+      add("HRV", `${today.hrv ?? "–"} ms${st ? " · " + (HRV_DE[st] || st) : ""}`, score >= 70 ? "good" : score >= 45 ? "ok" : "bad", score);
+    }
+    const bb = today.bbHigh ?? today.bbNow;
+    if (bb != null) add("Body Battery", `${bb}${today.bbNow != null && today.bbHigh != null ? ` (jetzt ${today.bbNow})` : ""}`, bb >= 70 ? "good" : bb >= 40 ? "ok" : "bad", bb);
+    if (today.rhr != null) {
+      const base = gAvg("rhr", 7, true);
+      const diff = base != null ? today.rhr - base : 0;
+      add("Ruhepuls", `${today.rhr} bpm${base != null ? ` (Ø ${nf(base)})` : ""}`, diff <= 2 ? "good" : diff <= 5 ? "ok" : "bad", diff <= 2 ? 90 : diff <= 5 ? 60 : 30);
+    }
+    const prev = gDays[gDays.length - 2];
+    const stress = today.stressAvg ?? prev?.stressAvg;
+    if (stress != null) add("Stress Ø", `${stress}`, stress <= 30 ? "good" : stress <= 50 ? "ok" : "bad", 100 - stress);
+    const scores = f.map((x) => x.score).filter((v) => v != null);
+    let R = today.readiness ?? (scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null);
+    if (R == null) return null;
+    let level = R >= 70 ? 0 : R >= 50 ? 1 : R >= 33 ? 2 : 3;
+    const notes = [];
+    if (today.sleepScore != null && today.sleepScore < 50 && level < 2) { level = 2; notes.push("sehr schlechter Schlaf"); }
+    const ratio = today.loadRatio ?? gLast("loadRatio")?.loadRatio;
+    if (ratio != null && ratio > 1.5 && level < 3) { level++; notes.push(`Belastung stark gestiegen (Verhältnis ${nf(ratio, 2)})`); }
+    return { R, level, factors: f, notes, source: today.readiness != null ? "Garmin Trainingsbereitschaft" : "aus Schlaf, HRV, Body Battery, Ruhepuls & Stress berechnet", date: parse(today.date) };
+  }
+
+  /* ---------- Tagesvorschlag ---------- */
+  const PHASE_SCALE = { "Einstieg": 0.9, "Grundlage 1": 1, "Grundlage 2": 1.15, "Aufbau 1": 1.3, "Aufbau 2": 1.5, "Peak": 1.6, "Taper": 0.6 };
+  // Wochenvorlage (Mo–So). hard = intensive Einheit, easy = locker, rest = Ruhetag
+  const WEEK = [
+    { sport: "strength", title: "Kraft & Mobility", min: 50, type: "easy", detail: "Beine & Rumpf, danach 15 min Dehnen. Kein Ausdauertraining." },
+    { sport: "bike", title: "Rad-Intervalle", min: 75, type: "hard", detail: "15 min einfahren, 3 × 12 min Sweet Spot (88–93 % FTP ≈ {ss} W), 5 min Pause, ausfahren." },
+    { sport: "swim", title: "Schwimmen Technik + lockerer Lauf", min: 85, type: "easy", detail: "45 min Schwimmen: Drills (Abschlag, Catch-up), 8 × 50 m sauber. Danach 40 min Lauf in Zone 2 ({z2})." },
+    { sport: "bike", title: "Rad Grundlage", min: 90, type: "easy", detail: "Ruhig in Zone 2 ({p2} W), Trittfrequenz 85–95. Optional 30 min Kraft." },
+    { sport: "swim", title: "Schwimmen Ausdauer", min: 50, type: "hard", detail: "Einschwimmen 300 m, 6 × 200 m zügig (20 s Pause), 200 m locker." },
+    { sport: "bike", title: "Lange Ausfahrt", min: 150, type: "easy", detail: "Zone 2 ({p2} W), gern hügelig – Ziel „schneller am Berg“: Anstiege gleichmäßig in Zone 3. Verpflegung üben." },
+    { sport: "run", title: "Langer Lauf", min: 75, type: "easy", detail: "Gleichmäßig in Zone 2 ({z2}), letzte 10 min etwas zügiger." },
+  ];
+  const fillDetail = (t) => t
+    .replace("{ss}", `${Math.round(D.zones.ftp * 0.88)}–${Math.round(D.zones.ftp * 0.93)}`)
+    .replace("{p2}", `${D.zones.power[1][0]}–${D.zones.power[1][1]}`)
+    .replace("{z2}", `${mmss(1000 / D.zones.run[1][1])}–${mmss(1000 / D.zones.run[1][0])} /km`);
+  const roundMin = (m) => Math.max(20, Math.round(m / 5) * 5);
+  const fmtMin = (m) => (m >= 90 ? `${hm(m * 60)} h` : `${m} min`);
+
+  function suggestion(now, rd) {
+    const phase = currentPhase(now);
+    const scale = PHASE_SCALE[phase?.short] ?? 1;
+    const base = WEEK[(now.getDay() + 6) % 7];
+    let s = { ...base, min: roundMin(base.min * (base.sport === "strength" ? 1 : scale)), detail: fillDetail(base.detail), changed: null };
+    const level = rd ? rd.level : 0;
+    if (level === 1 && s.type === "hard") {
+      s = { ...s, title: s.title.replace("Intervalle", "locker").replace("Ausdauer", "locker"), type: "easy", min: roundMin(s.min * 0.8),
+        detail: s.sport === "swim" ? "Lockeres Schwimmen mit Technikfokus, keine harten Serien." : `Gleiche Sportart, aber nur Zone 2 (${D.zones.power[1][0]}–${D.zones.power[1][1]} W) statt Intervallen.`,
+        changed: "Intensität raus, etwas kürzer" };
+    } else if (level === 1) {
+      s = { ...s, min: roundMin(s.min * 0.85), changed: "etwas kürzer" };
+    } else if (level === 2) {
+      s = { sport: s.sport === "run" ? "bike" : s.sport === "strength" ? "other" : s.sport, title: s.sport === "swim" ? "Lockeres Techniktraining" : s.sport === "strength" ? "Mobility statt Kraft" : "Lockere Regenerationseinheit",
+        min: s.sport === "strength" ? 25 : 40, type: "easy",
+        detail: s.sport === "swim" ? "30–40 min ruhig, nur Technik und Wasserlage." : s.sport === "strength" ? "20–25 min Dehnen, Faszienrolle, ruhige Atmung." : `40 min ganz locker in Zone 1 (unter ${D.zones.hr[0][1]} bpm), lieber Rad als Laufen.`,
+        changed: "deutlich entschärft" };
+    } else if (level === 3) {
+      s = { sport: "other", title: "Ruhetag", min: 20, type: "rest", detail: "Kein Training. Spaziergang, 20 min Mobility, früh schlafen, viel trinken.", changed: "Erholung hat Vorrang" };
+    }
+    s.phase = phase;
+    return s;
+  }
+
+  const LEVELS = [
+    { label: "Bereit", cls: "good", text: "Plan wie vorgesehen." },
+    { label: "Moderat", cls: "warn", text: "Intensität reduzieren." },
+    { label: "Eingeschränkt", cls: "warn", text: "Nur locker trainieren." },
+    { label: "Erholung", cls: "bad", text: "Heute regenerieren." },
+  ];
+
+  function today() {
+    const now = new Date();
+    const rd = readiness();
+    const s = suggestion(now, rd);
+    const done = acts.filter((a) => a.date.toDateString() === now.toDateString());
+    const color = CATS[s.sport]?.color || "var(--other)";
+    const lv = rd ? LEVELS[rd.level] : null;
+    const isOld = rd && (now - rd.date) / DAY > 1.5;
+    $("#today").innerHTML = `
+      <div class="card today-plan">
+        <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })}</div>
+        <h3 style="font-size:20px;margin:4px 0 2px"><i class="swatch" style="background:${color}"></i>${esc(s.title)}</h3>
+        <div class="muted" style="font-size:14px;margin-bottom:10px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)} · ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? ` · Phase ${esc(s.phase.short)}` : ""}${s.changed ? ` · <b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
+        <p style="margin:0">${esc(s.detail)}</p>
+        ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="done-list">${done.map((a) => `<li><i class="swatch" style="background:${CATS[a.cat].color}"></i>${esc(a.name)} · ${hm(a.sec)} h</li>`).join("")}</ul>` : ""}
+      </div>
+      <div class="card today-form">
+        <div class="mini-title" style="margin-top:0">Form heute</div>
+        ${rd ? `
+          <div class="form-score"><b>${rd.R}</b><span class="badge ${lv.cls}">${lv.label}</span></div>
+          <div class="muted" style="font-size:13px;margin:2px 0 10px">${lv.text}${rd.notes.length ? " Grund: " + esc(rd.notes.join(", ")) + "." : ""}</div>
+          <ul class="factor-list">${rd.factors.map((x) => `<li><span class="dot ${x.state}" aria-hidden="true"></span><span>${x.label}</span><b>${esc(x.value)}</b><span class="sr-only">${x.state === "good" ? "gut" : x.state === "ok" ? "mittel" : "schlecht"}</span></li>`).join("")}</ul>
+          <div class="muted" style="font-size:12px;margin-top:8px">${esc(rd.source)} · Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
+        : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
+      </div>`;
+  }
+
+  function recovery() {
+    const el = $("#recovery");
+    if (!gDays.length) { $("#recoverySection").hidden = true; return; }
+    const last = (k) => gLast(k)?.[k];
+    const avg7 = (k) => gAvg(k, 7);
+    const tile = (label, value, sub) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${sub || "&nbsp;"}</div></div>`;
+    const v = (x, d = 0, unit = "") => (x == null ? "–" : `${nf(x, d)}${unit ? ` <small>${unit}</small>` : ""}`);
+    const a = (k, d = 0, unit = "") => (avg7(k) == null ? "" : `Ø 7 Tage: ${nf(avg7(k), d)}${unit}`);
+    const st = gLast("trainingStatus");
+    const tiles = [
+      tile("Sleep Score", v(last("sleepScore")), a("sleepScore")),
+      tile("Schlafdauer", v(last("sleepH"), 1, "h"), a("sleepH", 1, " h")),
+      tile("HRV (Nacht)", v(last("hrv"), 0, "ms"), gLast("hrvStatus") ? `Status: ${HRV_DE[last("hrvStatus")] || last("hrvStatus")}` : a("hrv", 0, " ms")),
+      tile("Ruhepuls", v(last("rhr"), 0, "bpm"), a("rhr", 0, " bpm")),
+      tile("Body Battery", v(last("bbHigh"), 0, "max"), last("bbNow") != null ? `aktuell ${last("bbNow")}` : ""),
+      tile("Stress Ø", v(last("stressAvg")), a("stressAvg")),
+      tile("Trainingsbereitschaft", v(last("readiness")), last("recoveryH") != null ? `Erholungszeit ${nf(last("recoveryH"))} h` : ""),
+      tile("Trainingsstatus", st ? esc(statusDe(st.trainingStatus)) : "–", last("acuteLoad") != null ? `Belastung akut ${nf(last("acuteLoad"))} / chronisch ${nf(last("chronicLoad") || 0)}` : ""),
+      tile("VO2max Laufen", v(last("vo2run"), 1), ""),
+      tile("VO2max Rad", v(last("vo2bike"), 1), ""),
+      tile("Gewicht", v(last("weight"), 1, "kg"), last("bodyFat") != null ? `Körperfett ${nf(last("bodyFat"), 1)} %` : ""),
+      tile("Schritte", v(last("steps")), a("steps")),
+    ];
+    const charts = [
+      ["sleepScore", "Sleep Score", (x) => nf(x)],
+      ["hrv", "HRV (ms)", (x) => nf(x)],
+      ["rhr", "Ruhepuls (bpm)", (x) => nf(x)],
+      ["bbHigh", "Body Battery (Tageshoch)", (x) => nf(x)],
+      ["vo2run", "VO2max Laufen", (x) => nf(x, 1)],
+      ["weight", "Gewicht (kg)", (x) => nf(x, 1)],
+    ].map(([k, label, fmt]) => ({ k, label, fmt, pts: gDays.slice(-60).filter((d) => d[k] != null).map((d) => ({ d: parse(d.date), v: d[k], raw: d })) }))
+      .filter((c) => c.pts.length >= 2);
+    el.innerHTML = `<div class="grid g4">${tiles.join("")}</div>` +
+      (charts.length ? `<div class="grid g3" style="margin-top:12px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div>` : "");
+    charts.forEach((c, i) => {
+      const box = $(`#gchart${i}`);
+      box.innerHTML = paceChart(c.pts, { fmt: c.fmt, color: "var(--recovery)", invert: false, unitLabel: c.label });
+      attachPointTips(box, c.pts, "var(--recovery)", (p) => `<div class="t-title">${fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" })}</div>${tRow("var(--recovery)", c.label, c.fmt(p.v))}`);
+    });
+    $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Verläufe: letzte 60 Tage.`;
+  }
+
   /* ---------- Init ---------- */
   $("#actMore").addEventListener("click", () => { showAll = true; activities(); });
+  today(); recovery();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); zones(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); }, 150); });
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
