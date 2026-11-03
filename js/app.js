@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  const D = window.TRAINING;
+  const S = window.STRAVA || {};
+  const D = Object.assign({}, S, window.TRAINING, { athlete: Object.assign({}, window.TRAINING.athlete, S.athlete) });
   const $ = (s) => document.querySelector(s);
   const DAY = 86400000;
 

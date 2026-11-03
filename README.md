@@ -17,6 +17,12 @@ Eine statische Website, die einen strukturierten Überblick über mein Ironman-T
 Kein Build-Schritt nötig: `index.html` im Browser öffnen. Für GitHub Pages:
 *Settings → Pages → Deploy from branch* und den Branch/Root-Ordner auswählen.
 
+## Automatische Aktualisierung
+
+Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden jeden Abend
+von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](scripts/UPDATE.md),
+Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):
@@ -26,7 +32,5 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
-| `zones`, `bests` | Trainingszonen und Bestleistungen (aus Strava) |
-| `activities` | Aktivitäten-Snapshot aus Strava ab der Anmeldung am 27.06.2026 (Stand 02.11.2026) |
 
 Die Saisonphasen und ihre Wochenstunden sind in `js/app.js` (`PHASES`) definiert.
