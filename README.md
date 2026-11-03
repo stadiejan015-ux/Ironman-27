@@ -34,6 +34,16 @@ Einrichtung (einmalig): Im Repo unter *Settings → Secrets and variables → Ac
 `GARMIN_EMAIL` und `GARMIN_PASSWORD` anlegen, dann unter *Actions → Garmin-Update → Run workflow* einmal starten.
 Hinweis: Der Zugang nutzt die inoffizielle Bibliothek `garminconnect`; Zwei-Faktor-Anmeldung wird dabei nicht unterstützt.
 
+## Rennprognose
+
+[`js/prediction.js`](js/prediction.js) berechnet „Wenn heute Renntag wäre“ (reine Funktion `predictRace(data, config)`):
+Schwimmen über CSS-Test bzw. Median-Pace der letzten Wochen, Rad über ein Physikmodell
+(FTP × IF, CdA, Rollwiderstand, 1.600 Hm), Laufen über Riegel aus der 10-km-Bestzeit mit
+Ironman-Faktor und Aufschlag für fehlende lange Läufe. Alle Parameter stehen in `js/data.js`
+unter `prediction`. Tests: `node tests/prediction.test.js`.
+Bei jedem Sync speichert [`scripts/save_prediction.js`](scripts/save_prediction.js) die Prognose
+in `data/prediction-history.json` (Verlaufslinie auf der Seite).
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):
@@ -43,5 +53,6 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
+| `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 
 Die Saisonphasen und ihre Wochenstunden sind in `js/app.js` (`PHASES`) definiert.

@@ -43,18 +43,34 @@ jobs:
           GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
         run: python scripts/update_garmin.py --days "${{ github.event.inputs.days || '3' }}"
 
+      - name: Rennprognose speichern
+        run: node scripts/save_prediction.js
+
       - name: Änderungen hochladen
         run: |
           git config user.name "garmin-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/garmin-data.js
+          git add js/garmin-data.js data/prediction-history.json
           if git diff --cached --quiet; then
             echo "Keine Änderungen."
             exit 0
           fi
           git commit -m "Garmin-Update $(date -u +%Y-%m-%d)"
           for i in 1 2 3 4; do
-            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            git fetch origin main
+            if git rebase origin/main; then
+              git push origin HEAD:main && exit 0
+            else
+              # Konflikt (meist im Prognose-Verlauf): neueste Daten übernehmen,
+              # eigene Garmin-Daten behalten und Prognose neu berechnen.
+              git rebase --abort
+              cp js/garmin-data.js /tmp/garmin-data.js
+              git reset --hard origin/main
+              cp /tmp/garmin-data.js js/garmin-data.js
+              node scripts/save_prediction.js
+              git add js/garmin-data.js data/prediction-history.json
+              git commit -m "Garmin-Update $(date -u +%Y-%m-%d)" || exit 0
+            fi
             sleep $((i * 5))
           done
           exit 1

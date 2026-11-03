@@ -362,18 +362,125 @@
       return `<div class="ready-row"><span>${l}</span><div class="ready-track" role="img" aria-label="${l}: ${Math.round((best / goal) * 100)} %"><div class="ready-fill" style="width:${pct}%;background:var(--${k})"></div></div><span class="num">${nf(best, 1)} / ${nf(goal, 1)} km · <b>${Math.round((best / goal) * 100)} %</b></span></div>`;
     }).join("");
 
-    const g = D.goals;
-    const parts = [
-      ["swim", "Schwimmen", toSec(g.swim), "var(--swim)", `${mmss(toSec(g.swim) / (D.race.swimKm * 10))} /100m`],
-      ["t1", "T1", toSec(g.t1), "var(--other)", "Wechsel"],
-      ["bike", "Rad", toSec(g.bike), "var(--bike)", `${nf(D.race.bikeKm / (toSec(g.bike) / 3600), 1)} km/h`],
-      ["t2", "T2", toSec(g.t2), "var(--other)", "Wechsel"],
-      ["run", "Laufen", toSec(g.run), "var(--run)", `${mmss(toSec(g.run) / D.race.runKm)} /km`],
+    predictionCard();
+  }
+
+  /* ---------- Ziel vs. Prognose ---------- */
+  const fmtDelta = (d) => { const a = Math.abs(Math.round(d)); return (d > 0 ? "+" : d < 0 ? "−" : "±") + (a >= 3600 ? hms(a) : mmss(a)); };
+  const CONF = { hoch: "good", mittel: "neutral", niedrig: "warn" };
+  let PRED = null;
+
+  function predictionCard() {
+    const card = $("#predCard");
+    if (typeof window.predictRace !== "function" || !window.TRAINING.prediction) { card.hidden = true; return; }
+    const p = PRED = window.predictRace({ strava: S, garmin: window.GARMIN, asOf: S.snapshotDate }, window.TRAINING.prediction);
+    const g = D.goals, swimM = D.race.swimKm * 1000, bikeKm = D.race.bikeKm, runKm = window.TRAINING.prediction.run.distanceKm;
+    const legs = [
+      { key: "swim", label: "Schwimmen", color: "var(--swim)", goal: toSec(g.swim), pred: p.swim, unit: (t) => `${mmss(t / (swimM / 100))} /100 m` },
+      { key: "t1", label: "T1", color: "var(--other)", goal: toSec(g.t1), pred: p.t1, unit: () => "Wechsel" },
+      { key: "bike", label: "Rad", color: "var(--bike)", goal: toSec(g.bike), pred: p.bike, unit: (t) => `${nf(bikeKm / (t / 3600), 1)} km/h` },
+      { key: "t2", label: "T2", color: "var(--other)", goal: toSec(g.t2), pred: p.t2, unit: () => "Wechsel" },
+      { key: "run", label: "Laufen", color: "var(--run)", goal: toSec(g.run), pred: p.run, unit: (t) => `${mmss(t / runKm)} /km` },
     ];
-    const total = sum(parts, (p) => p[2]);
-    $("#splitBar").innerHTML = parts.map((p) => `<div style="flex:${p[2]};background:${p[3]}" title="${p[1]} ${hms(p[2])}"></div>`).join("");
-    $("#splitTable").innerHTML = `<table><tbody>${parts.map((p) => `<tr><td><i class="swatch" style="background:${p[3]}"></i> ${p[1]}</td><td class="num">${hms(p[2])}</td><td class="num muted">${p[4]}</td></tr>`).join("")}
-      <tr><td><b>Gesamt</b></td><td class="num"><b>${hms(total)}</b></td><td></td></tr></tbody></table>`;
+    const goalTotal = sum(legs, (l) => l.goal);
+    $("#predAsOf").textContent = `Wenn heute Renntag wäre · Stand ${fmtDate(parse(p.asOf))}`;
+
+    // Zwei gestapelte Balken auf derselben Zeitskala
+    const max = Math.max(goalTotal, p.total.conservative, p.subTarget) * 1.03;
+    const pct = (t) => (t / max) * 100;
+    const bar = (label, total, key, range) => `
+      <div class="pbar-row">
+        <div class="pbar-label">${label}<b>${hm(total)}</b></div>
+        <div class="pbar-track">
+          <div class="pbar" style="width:${pct(total)}%">${legs.map((l) => { const t = key === "goal" ? l.goal : l.pred.realistic; return `<div class="pseg" data-k="${l.key}" data-t="${t}" style="flex:${t};background:${l.color}"></div>`; }).join("")}</div>
+          ${range ? `<div class="prange" style="left:${pct(range[0])}%;width:${pct(range[1] - range[0])}%" title="Spanne ${hm(range[0])}–${hm(range[1])}"></div>` : ""}
+        </div>
+      </div>`;
+    const ticks = [];
+    for (let h = 0; h * 3600 <= max; h += 2) if (Math.abs(h * 3600 - p.subTarget) > 1800) ticks.push(`<span style="left:${pct(h * 3600)}%">${h} h</span>`);
+    $("#predBars").innerHTML = `
+      <div class="pbars">
+        ${bar("Ziel", goalTotal, "goal")}
+        ${bar("Prognose", p.total.realistic, "pred", [p.total.optimistic, p.total.conservative])}
+        <div class="pbar-axis"><div class="pbar-label"></div><div class="pbar-ticks">${ticks.join("")}<span class="sub-mark" style="left:${pct(p.subTarget)}%">Sub-12</span></div></div>
+        <div class="sub-line" style="--x:${pct(p.subTarget)}"></div>
+      </div>
+      <div class="legend" style="margin:6px 0 4px">${legs.filter((l) => l.key !== "t2").map((l) => `<span><i class="swatch" style="background:${l.color}"></i>${l.key === "t1" ? "Wechsel" : l.label}</span>`).join("")}<span><i class="swatch" style="background:var(--text-3);height:3px;border-radius:2px"></i>Spanne der Prognose</span></div>`;
+    $("#predBars").querySelectorAll(".pseg").forEach((el) => {
+      const l = legs.find((x) => x.key === el.dataset.k);
+      el.addEventListener("mousemove", (ev) => showTip(`${tRow(l.color, l.label, hms(+el.dataset.t))}`, ev));
+      el.addEventListener("mouseleave", hideTip);
+    });
+
+    // Tabelle Disziplin · Ziel · Prognose · Δ
+    const deltaCell = (pred, goal) => `<td class="num delta ${pred <= goal ? "good" : "warn"}" data-label="Δ">${fmtDelta(pred - goal)}</td>`;
+    const rows = legs.map((l) => {
+      const r = l.pred, isT = l.key === "t1" || l.key === "t2";
+      const main = `<tr class="${isT ? "t-row-small" : ""}">
+        <td><span class="disc"><i class="swatch" style="background:${l.color}"></i>${l.label}</span>${isT ? "" : `<span class="badge ${CONF[r.confidence]}">Vertrauen ${r.confidence}</span>`}</td>
+        <td class="num" data-label="Ziel">${hms(l.goal)}${isT ? "" : `<div class="sub">${l.unit(l.goal)}</div>`}</td>
+        <td class="num" data-label="Prognose"><b>${hms(r.realistic)}</b>${isT ? "" : `<div class="sub">${l.unit(r.realistic)}</div><div class="sub">Spanne ${hm(r.optimistic)}–${hm(r.conservative)}</div>`}</td>
+        ${deltaCell(r.realistic, l.goal)}
+      </tr>`;
+      const calc = isT ? "" : `<tr class="calc-row"><td colspan="4"><details><summary>Wie berechnet?</summary><ul>${r.inputs.map((i) => `<li>${esc(i)}</li>`).join("")}</ul></details></td></tr>`;
+      return main + calc;
+    }).join("");
+    const gap = p.subGap;
+    const subChip = gap <= 0
+      ? `<span class="badge good">✓ Sub-12${gap < -60 ? ` · ${Math.floor(-gap / 60)} min Puffer` : ""}</span>`
+      : `<span class="badge warn">noch ${Math.ceil(gap / 60)} min bis Sub-12</span>`;
+    $("#predTable").innerHTML = `<thead><tr><th>Disziplin</th><th class="num">Ziel</th><th class="num">Prognose</th><th class="num">Δ</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr>
+        <td><b>Gesamt</b> ${subChip}</td>
+        <td class="num" data-label="Ziel"><b>${hms(goalTotal)}</b>${goalTotal <= p.subTarget ? `<div class="sub">Ziel ist Sub-12</div>` : ""}</td>
+        <td class="num" data-label="Prognose"><b>${hms(p.total.realistic)}</b><div class="sub">Spanne ${hm(p.total.optimistic)}–${hm(p.total.conservative)}</div></td>
+        ${deltaCell(p.total.realistic, goalTotal)}
+      </tr></tfoot>`;
+    const notes = [];
+    if (p.bike.note) notes.push(`⚠️ ${esc(p.bike.note)}`);
+    p.warnings.forEach((w) => notes.push(`⚠️ ${esc(w)}`));
+    notes.push("Δ: grün = Prognose schneller als oder gleich dem Ziel, orange = langsamer. Spanne = optimistisch bis konservativ. Parameter anpassbar in <code>js/data.js</code> unter <code>prediction</code>.");
+    $("#predNotes").innerHTML = notes.map((n) => `<div>${n}</div>`).join("");
+  }
+
+  /* ---------- Prognose-Verlauf (data/prediction-history.json) ---------- */
+  function predictionHistory() {
+    const box = $("#predHistory");
+    const goalTotal = ["swim", "t1", "bike", "t2", "run"].reduce((a, k) => a + toSec(D.goals[k]), 0);
+    fetch(`data/prediction-history.json?v=${window.__v || Date.now()}`)
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then((hist) => {
+        const pts = (Array.isArray(hist) ? hist : hist.entries || []).filter((e) => e.total).map((e) => ({ d: parse(e.date), v: e.total, e }));
+        if (pts.length < 2) {
+          box.innerHTML = `<p class="muted" style="margin:0">Der Verlauf startet mit dem ${pts[0] ? fmtDate(pts[0].d) : "nächsten Sync"} (Prognose ${pts[0] ? hm(pts[0].v) : "–"} h). Ab dem zweiten Tag siehst du hier, wie sich die Prognose entwickelt.</p>`;
+          return;
+        }
+        box.innerHTML = historyChart(pts, goalTotal, PRED ? PRED.subTarget : 43200);
+        attachPointTips(box, pts, "var(--recovery)", (p) => `<div class="t-title">${fmtDate(p.d)}</div>${tRow("var(--recovery)", "Prognose", hms(p.v))}<div class="muted">Schwimmen ${hm(p.e.swim)} · Rad ${hm(p.e.bike)} · Laufen ${hm(p.e.run)}</div>`);
+      })
+      .catch(() => { box.innerHTML = `<p class="muted" style="margin:0">Verlauf nicht verfügbar (nur auf der veröffentlichten Seite).</p>`; });
+  }
+
+  function historyChart(points, goal, sub) {
+    const W = 360, H = 170, m = { t: 12, r: 8, b: 22, l: 44 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const vals = points.map((p) => p.v).concat([goal, sub]);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.15 || 600; lo -= pad; hi += pad;
+    const t0 = points[0].d.getTime(), t1 = points[points.length - 1].d.getTime();
+    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0 || 1)) * iw;
+    const y = (v) => m.t + ((v - lo) / (hi - lo)) * ih; // schneller = oben
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf der Gesamtprognose">`;
+    for (let i = 0; i <= 3; i++) { const v = lo + ((hi - lo) / 3) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${hm(v)}</text>`; }
+    [[sub, "Sub-12"], [goal, "Ziel"]].forEach(([v, label]) => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--text-3)" stroke-dasharray="4 3"/><text x="${W - m.r}" y="${y(v) - 4}" text-anchor="end">${label}</text>`; });
+    s += `<path d="${points.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="var(--recovery)" stroke-width="2" stroke-linejoin="round"/>`;
+    points.forEach((p, i) => {
+      if (points.length <= 30 || i === points.length - 1) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="4" fill="var(--recovery)" stroke="var(--surface)" stroke-width="2"/>`;
+      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="12" fill="transparent"/>`;
+    });
+    s += `<text x="${m.l}" y="${H - 4}">${fmtDate(points[0].d, { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(points[points.length - 1].d, { day: "2-digit", month: "2-digit" })}</text></svg>`;
+    return s;
   }
 
   /* ---------- Zonen & Bestleistungen ---------- */
@@ -617,7 +724,7 @@
   /* ---------- Init ---------- */
   $("#actMore").addEventListener("click", () => { showAll = true; activities(); });
   today(); recovery();
-  hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); zones(); activities();
+  hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zones(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); }, 150); });
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
   $("#toggleTable").addEventListener("click", (e) => {

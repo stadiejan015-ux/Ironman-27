@@ -14,8 +14,14 @@ sie auch jederzeit von Hand in einer Claude-Session anstoßen.
      `start_local`, `summary` reichen).
    - `profile.json`: `{"athlete": …, "zones": …, "streak": …, "bests": …}`.
 4. `python3 scripts/update_strava.py --activities acts.json --profile profile.json --date <heute>`
-5. Nur `js/strava-data.js` committen (`Strava-Update <Datum>`) und auf `main` pushen.
-   GitHub Pages veröffentlicht die Seite danach automatisch.
+5. Rennprognose speichern: `node scripts/save_prediction.js`
+6. Nur `js/strava-data.js` und `data/prediction-history.json` committen
+   (`Strava-Update <Datum>`) und auf `main` pushen. GitHub Pages veröffentlicht
+   die Seite danach automatisch.
+   Wird der Push abgelehnt: `git pull --rebase origin main`. Bei einem Konflikt
+   in `data/prediction-history.json` die Version von `main` nehmen
+   (`git checkout --theirs …` bzw. Rebase abbrechen, neu aufsetzen) und
+   `node scripts/save_prediction.js` erneut ausführen.
 
 Das Skript erkennt bereits vorhandene Einheiten (Startzeit + Sportart) und
 ersetzt sie, sodass sich überlappende Zeiträume nicht doppeln.
