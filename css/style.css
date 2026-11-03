@@ -157,6 +157,53 @@ td.num, th.num { text-align: right; }
 tbody tr:hover { background: var(--surface-2); }
 .zone-bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; }
 
+/* Ziel vs. Prognose */
+.span-2 { grid-column: 1 / -1; }
+.pbars { position: relative; margin: 10px 0 2px; }
+.pbar-row, .pbar-axis { display: grid; grid-template-columns: 92px 1fr; gap: 10px; align-items: center; }
+.pbar-row { margin-bottom: 8px; }
+.pbar-label { font-size: 13px; color: var(--text-2); line-height: 1.2; }
+.pbar-label b { display: block; color: var(--text); font-size: 16px; }
+.pbar-track { position: relative; height: 30px; }
+.pbar { display: flex; gap: 2px; height: 22px; }
+.pseg { min-width: 2px; }
+.pseg:first-child { border-radius: 4px 0 0 4px; } .pseg:last-child { border-radius: 0 4px 4px 0; }
+.prange { position: absolute; top: 26px; height: 3px; background: var(--text-3); border-radius: 2px; }
+.pbar-ticks { position: relative; height: 16px; font-size: 11px; color: var(--text-3); }
+.pbar-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.pbar-ticks .sub-mark { color: var(--text); font-weight: 600; top: 0; }
+.sub-line { position: absolute; top: -4px; bottom: 16px; left: calc(92px + 10px + (100% - 102px) * var(--x) / 100); border-left: 2px dashed var(--text-2); pointer-events: none; }
+.pred-table td, .pred-table th { white-space: normal; vertical-align: top; }
+.pred-table .disc { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; margin-right: 6px; }
+.pred-table .badge { font-size: 11px; padding: 1px 7px; display: inline-block; margin-top: 2px; }
+.pred-table .sub { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+.pred-table .delta { font-weight: 700; white-space: nowrap; }
+.pred-table .delta.good { color: var(--good); } .pred-table .delta.warn { color: var(--warn); }
+.pred-table .t-row-small td { color: var(--text-2); padding-top: 4px; padding-bottom: 4px; }
+.pred-table .calc-row td { padding-top: 0; border-bottom: 1px solid var(--border); }
+.pred-table tr:has(+ .calc-row) td { border-bottom: 0; }
+.pred-table details summary { cursor: pointer; font-size: 13px; color: var(--text-2); padding: 2px 0 4px; }
+.pred-table details ul { margin: 2px 0 6px; padding-left: 18px; font-size: 13px; color: var(--text-2); }
+.pred-table tfoot td { border-top: 2px solid var(--text); border-bottom: 0; }
+.badge.neutral { color: var(--text-2); }
+@media (max-width: 520px) {
+  .pbar-row, .pbar-axis { grid-template-columns: 64px 1fr; }
+  .sub-line { left: calc(64px + 10px + (100% - 74px) * var(--x) / 100); }
+  /* Tabelle untereinander: Disziplin oben, darunter Ziel · Prognose · Δ */
+  .pred-table thead { display: none; }
+  .pred-table tr { display: grid; grid-template-columns: 1fr 1fr auto; column-gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .pred-table tr:has(+ .calc-row) { border-bottom: 0; padding-bottom: 0; }
+  .pred-table td { border: 0; padding: 2px 0; }
+  .pred-table tr > td:first-child, .pred-table .calc-row td { grid-column: 1 / -1; }
+  .pred-table td.num { text-align: left; }
+  .pred-table td.delta { text-align: right; }
+  .pred-table td[data-label]::before { content: attr(data-label); display: block; font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+  .pred-table .t-row-small td[data-label]::before { display: none; }
+  .pred-table .calc-row { padding-top: 0; }
+  .pred-table tfoot tr { border-top: 2px solid var(--text); border-bottom: 0; }
+  .pred-table tfoot td { border-top: 0; }
+}
+
 /* Heute */
 .today-grid { grid-template-columns: 1.5fr 1fr; }
 .form-score { display: flex; align-items: center; gap: 12px; }

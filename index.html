@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ironman 27 Training</title>
   <meta name="description" content="Überblick über mein Ironman-Training: Saisonplan, Umfänge, Disziplinen, Zonen und Aktivitäten.">
-  <link rel="stylesheet" href="css/style.css">
+  <meta http-equiv="Cache-Control" content="no-cache">
+  <script>
+    /* Immer die neueste Version laden (Daten ändern sich mehrmals täglich). */
+    window.__v = Date.now();
+    document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__v + '">');
+  </script>
+  <noscript><link rel="stylesheet" href="css/style.css"></noscript>
 </head>
 <body>
   <header class="topbar">
@@ -112,18 +118,25 @@
     <!-- RENNEN -->
     <section id="rennen">
       <h2>Rennvorbereitung</h2>
-      <p class="section-sub">Längste Einheit seit der Anmeldung im Vergleich zur Ironman-Distanz – und deine geplanten Zielzeiten.</p>
+      <p class="section-sub">Deine Zielzeiten im Vergleich zur Prognose „Wenn heute Renntag wäre“ – und die längsten Einheiten im Vergleich zur Ironman-Distanz.</p>
       <div class="grid g2">
+        <div class="card span-2" id="predCard">
+          <div class="chart-head">
+            <h3 style="margin:0">Ziel vs. Prognose</h3>
+            <span class="muted" style="font-size:13px" id="predAsOf"></span>
+          </div>
+          <div id="predBars"></div>
+          <div class="table-scroll"><table class="pred-table" id="predTable"></table></div>
+          <div id="predNotes" class="muted" style="font-size:13px;margin-top:10px"></div>
+        </div>
         <div class="card">
           <h3>Längste Einheit vs. Renndistanz</h3>
           <div id="readiness"></div>
           <p class="muted" style="font-size:13px;margin:8px 0 0">Faustregel: lange Einheiten im Training bis ca. 80–100&nbsp;% (Schwimmen/Rad) bzw. 30–35&nbsp;km (Laufen).</p>
         </div>
-        <div class="card">
-          <h3>Zielzeiten</h3>
-          <div class="splits" id="splitBar"></div>
-          <div id="splitTable"></div>
-          <p class="muted" style="font-size:13px;margin:8px 0 0">Anpassbar in <code>js/data.js</code> unter <code>goals</code>.</p>
+        <div class="card" id="predHistoryCard">
+          <h3>Prognose-Verlauf</h3>
+          <div class="chart" id="predHistory"><p class="muted" style="margin:0">Wird geladen …</p></div>
         </div>
       </div>
     </section>
@@ -156,9 +169,13 @@
   </main>
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
-  <script src="js/data.js"></script>
-  <script src="js/strava-data.js"></script>
-  <script src="js/garmin-data.js"></script>
-  <script src="js/app.js"></script>
+  <script>
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/app.js"].forEach(function (f) {
+      var s = document.createElement("script");
+      s.src = f + "?v=" + window.__v;
+      s.async = false; // Reihenfolge beibehalten
+      document.body.appendChild(s);
+    });
+  </script>
 </body>
 </html>
