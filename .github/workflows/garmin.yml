@@ -34,7 +34,7 @@ jobs:
           restore-keys: garmin-tokens-
 
       - name: Abhängigkeiten installieren
-        run: pip install --quiet "garminconnect>=0.2.25"
+        run: pip install --quiet "garminconnect>=0.3.20,<0.4"
 
       - name: Garmin-Daten holen
         env:
