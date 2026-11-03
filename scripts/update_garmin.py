@@ -168,28 +168,20 @@ def merge(*parts):
 def login():
     from garminconnect import Garmin  # erst hier importieren, damit Parser ohne Bibliothek testbar sind
 
-    tokens = os.environ.get("GARMIN_TOKENS", "").strip()
     email, password = os.environ.get("GARMIN_EMAIL"), os.environ.get("GARMIN_PASSWORD")
-    attempts = []
-    if TOKEN_DIR.exists():
-        attempts.append(("Token-Cache", str(TOKEN_DIR)))
-    if tokens:
-        attempts.append(("GARMIN_TOKENS", tokens))
-    for label, store in attempts:
-        try:
-            g = Garmin()
-            g.login(store)
-            print(f"Angemeldet über {label}")
-            return g
-        except Exception as e:
-            print(f"Anmeldung über {label} fehlgeschlagen: {type(e).__name__}", file=sys.stderr)
-    if not (email and password):
-        sys.exit("Keine gültigen Tokens und GARMIN_EMAIL/GARMIN_PASSWORD fehlen.")
-    g = Garmin(email=email, password=password)
-    g.login()
-    print("Angemeldet mit E-Mail/Passwort")
+    tokens = os.environ.get("GARMIN_TOKENS", "").strip()
     TOKEN_DIR.mkdir(parents=True, exist_ok=True)
-    g.garth.dump(str(TOKEN_DIR))
+    g = Garmin(email=email, password=password)
+    # login() lädt gespeicherte Tokens aus TOKEN_DIR, meldet sich sonst mit
+    # E-Mail/Passwort an und speichert die neuen Tokens wieder in TOKEN_DIR.
+    has_cache = any(TOKEN_DIR.iterdir())
+    g.login(tokens if (tokens and not has_cache) else str(TOKEN_DIR))
+    if tokens and not has_cache:
+        try:
+            g.client.dump(str(TOKEN_DIR))
+        except Exception:
+            pass
+    print("Angemeldet" + (" (Token-Cache)" if has_cache else ""))
     return g
 
 
