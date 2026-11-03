@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ironman 27 Training</title>
   <meta name="description" content="Überblick über mein Ironman-Training: Saisonplan, Umfänge, Disziplinen, Zonen und Aktivitäten.">
-  <link rel="stylesheet" href="css/style.css">
+  <meta http-equiv="Cache-Control" content="no-cache">
+  <script>
+    /* Immer die neueste Version laden (Daten ändern sich mehrmals täglich). */
+    window.__v = Date.now();
+    document.write('<link rel="stylesheet" href="css/style.css?v=' + window.__v + '">');
+  </script>
+  <noscript><link rel="stylesheet" href="css/style.css"></noscript>
 </head>
 <body>
   <header class="topbar">
@@ -156,9 +162,13 @@
   </main>
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
-  <script src="js/data.js"></script>
-  <script src="js/strava-data.js"></script>
-  <script src="js/garmin-data.js"></script>
-  <script src="js/app.js"></script>
+  <script>
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/app.js"].forEach(function (f) {
+      var s = document.createElement("script");
+      s.src = f + "?v=" + window.__v;
+      s.async = false; // Reihenfolge beibehalten
+      document.body.appendChild(s);
+    });
+  </script>
 </body>
 </html>
