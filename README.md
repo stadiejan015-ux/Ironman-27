@@ -23,6 +23,17 @@ Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden j
 von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](scripts/UPDATE.md),
 Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
 
+## Garmin (Erholung & Form, Tagesvorschlag)
+
+Die GitHub Action [`.github/workflows/garmin.yml`](.github/workflows/garmin.yml) holt alle 3 Stunden
+Schlaf, Sleep Score, HRV, Ruhepuls, Stress, Body Battery, Trainingsbereitschaft, Trainingsstatus/-belastung,
+VO2max und Gewicht aus Garmin Connect ([`scripts/update_garmin.py`](scripts/update_garmin.py)) und schreibt
+sie nach `js/garmin-data.js`. Daraus berechnet die Seite die Form des Tages und passt den Trainingsvorschlag an.
+
+Einrichtung (einmalig): Im Repo unter *Settings → Secrets and variables → Actions → New repository secret*
+`GARMIN_EMAIL` und `GARMIN_PASSWORD` anlegen, dann unter *Actions → Garmin-Update → Run workflow* einmal starten.
+Hinweis: Der Zugang nutzt die inoffizielle Bibliothek `garminconnect`; Zwei-Faktor-Anmeldung wird dabei nicht unterstützt.
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):

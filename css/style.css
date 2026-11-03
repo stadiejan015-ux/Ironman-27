@@ -13,6 +13,7 @@
   --bike: #eb6834;
   --run: #1baf7a;
   --other: #a8a69f;
+  --recovery: #6250d6;
   --good: #0f7b3e;
   --warn: #a35f00;
   --bad: #b3261e;
@@ -24,7 +25,7 @@
     color-scheme: dark;
     --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
     --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #f0efec;
-    --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64;
+    --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64; --recovery: #9085e9;
     --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
     --shadow: none;
   }
@@ -33,7 +34,7 @@
   color-scheme: dark;
   --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
   --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #f0efec;
-  --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64;
+  --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64; --recovery: #9085e9;
   --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
   --shadow: none;
 }
@@ -155,6 +156,17 @@ td.num, th.num { text-align: right; }
 .table-scroll { overflow-x: auto; }
 tbody tr:hover { background: var(--surface-2); }
 .zone-bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; }
+
+/* Heute */
+.today-grid { grid-template-columns: 1.5fr 1fr; }
+.form-score { display: flex; align-items: center; gap: 12px; }
+.form-score b { font-size: 44px; line-height: 1; letter-spacing: -.02em; }
+.factor-list, .done-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 14px; }
+.factor-list li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; }
+.done-list li { display: flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.good { background: var(--good); } .dot.ok { background: var(--warn); } .dot.bad { background: var(--bad); }
+@media (max-width: 900px) { .today-grid { grid-template-columns: 1fr; } }
 
 /* Insights */
 .insight { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
