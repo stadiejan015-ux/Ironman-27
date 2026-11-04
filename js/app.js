@@ -48,7 +48,8 @@
   const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG, acts.filter((a) => a.cat !== "strength")) : [];
   // Für den Flex-Modus: Ausdauer aus Strava, Kraft aus den zusammengeführten Einheiten
   const flexActs = GYM ? acts.filter((a) => a.cat !== "strength").concat(GYM_SESS.map((x) => ({
-    date: new Date(x.start), cat: "strength", sec: x.sec, name: x.split || [x.name, x.desc, x.alt].filter(Boolean).join(" "),
+    date: new Date(x.start), cat: "strength", sport: "WeightTraining", sec: x.sec, title: x.alt || x.name,
+    name: x.split || [x.name, x.desc, x.alt].filter(Boolean).join(" "),
   }))) : acts;
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
   const ofCat = (arr, c) => arr.filter((a) => a.cat === c);
@@ -1054,6 +1055,8 @@
     return `ca. ${mmss(med - 10)}–${mmss(med + 20)} /km`;
   }
 
+  const standLine = `<p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>`;
+
   function flexPlan(now, rd) {
     const eq = loadEquipment();
     const sg = FX.suggestFlex({ now, acts: flexActs, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
@@ -1074,7 +1077,8 @@
         ${sg.notes.length ? `<p class="muted" style="font-size:13px;margin:10px 0 0">${sg.notes.map(esc).join(" · ")}</p>` : ""}
         <div class="mini-title">Wochen-Minimum</div>
         ${minList(sg.week)}
-        <p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>
+        <div id="sinceBox"></div>
+        ${standLine}
       </div>`;
   }
 
@@ -1096,6 +1100,8 @@
         <div class="muted" style="font-size:14px;margin-bottom:10px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)} · ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? ` · Phase ${esc(s.phase.short)}` : ""}${s.changed ? ` · <b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
         <p style="margin:0">${esc(s.detail)}</p>
         ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="done-list">${done.map((a) => `<li><i class="swatch" style="background:${CATS[a.cat].color}"></i>${esc(a.name)} · ${hm(a.sec)} h</li>`).join("")}</ul>` : ""}
+        <div id="sinceBox"></div>
+        ${standLine}
       </div>`;
     $("#today").innerHTML = planCard + `
       <div class="card today-form">
@@ -1111,6 +1117,42 @@
       const cur = loadEquipment(), k = b.dataset.eq;
       const next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
       saveEquipment(next.length ? next : cur); today();
+    }));
+    renderSince(now);
+  }
+
+  /* ---------- Zuletzt gemacht (Flex.sinceLast) ---------- */
+  let sinceSel = null;
+  const SINCE_DOT = { good: "good", warn: "ok", bad: "bad", na: "na", info: "na" };
+  const SINCE_STATE = { good: "im grünen Bereich", warn: "bald wieder dran", bad: "lange her", na: "nicht verfügbar", info: "nur Info im Flex-Zeitraum" };
+  function renderSince(now) {
+    const box = $("#sinceBox");
+    if (!box || !FX || !FX.sinceLast) return;
+    const items = FX.sinceLast({
+      now, acts: flexActs, cfg: window.TRAINING.sinceLast || {}, splitCfg: FCFG,
+      flexActive: FLEX.active, equipment: FLEX.active ? loadEquipment() : null,
+    });
+    const sel = items.find((x) => x.key === sinceSel);
+    const detail = (x) => {
+      if (!x.last) return `<b>${esc(x.label)}</b> · seit der Anmeldung (${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "numeric" })}) noch keine Einheit${x.minMinutes ? ` ab ${fmtMin(x.minMinutes)}` : ""}.`;
+      const a = x.last;
+      return `<b>${esc(x.label)}</b> · zuletzt ${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}: ${esc(a.title || a.name || "")}${a.sec ? ` · ${a.sec >= 3600 ? hm(a.sec) + " h" : Math.round(a.sec / 60) + " min"}` : ""}${x.minMinutes ? ` <span class="muted">(zählt ab ${fmtMin(x.minMinutes)})</span>` : ""}`;
+    };
+    box.innerHTML = `
+      <div class="mini-title">Zuletzt gemacht</div>
+      <div class="since-grid">${items.map((x) => `
+        <button type="button" class="since-tile ${x.state}" data-since="${x.key}" aria-expanded="${sinceSel === x.key}"
+          aria-label="${esc(`${x.label}: ${x.text} – ${SINCE_STATE[x.state]}`)}">
+          <span class="since-label"><span class="dot ${SINCE_DOT[x.state]}" aria-hidden="true"></span>${esc(x.label)}</span>
+          <b>${esc(x.text)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}
+        </button>`).join("")}
+      </div>
+      ${sel ? `<p class="since-detail" aria-live="polite">${detail(sel)}</p>` : ""}`;
+    box.querySelectorAll("[data-since]").forEach((b) => b.addEventListener("click", () => {
+      sinceSel = sinceSel === b.dataset.since ? null : b.dataset.since;
+      renderSince(now);
+      const again = box.querySelector(`[data-since="${b.dataset.since}"]`);
+      if (again) again.focus({ preventScroll: true });
     }));
   }
 

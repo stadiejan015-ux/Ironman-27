@@ -7,6 +7,8 @@
  *   nextSplit(sessions, cfg)                → nächster Split der Rotation
  *   weekMinimum(acts, weekStart, cfg)       → Stand des Wochen-Minimums
  *   suggestFlex({ now, acts, equipment, level, cfg, zones, paceHint }) → Tagesvorschlag
+ *   sinceLast({ now, acts, cfg, splitCfg, flexActive, equipment }) → „Zuletzt gemacht“-Kacheln
+ *   lastWhere(acts, pred, now)              → letzte passende Einheit + Tage seitdem (gemeinsam genutzt)
  * acts: [{ date: Date, sport, name, sec, cat }]  (cat: swim | bike | run | strength | other)
  * Läuft im Browser (window.Flex) und in Node (require("./js/flex.js")).
  */
@@ -51,6 +53,56 @@
     return best;
   }
 
+  /* ---------- Zuletzt gemacht ---------- */
+  // Kalendertage zwischen zwei Zeitpunkten (lokales Datum, robust bei Monatswechsel und Zeitumstellung)
+  const daysBetween = (a, b) => Math.round((parseDay(ymd(b)) - parseDay(ymd(a))) / DAY);
+  // Letzte Einheit bis einschließlich heute, auf die pred passt → { act, days } | null
+  function lastWhere(acts, pred, now) {
+    let last = null;
+    for (const a of acts) if (pred(a) && daysBetween(a.date, now) >= 0 && (!last || a.date > last.date)) last = a;
+    return last ? { act: last, days: daysBetween(last.date, now) } : null;
+  }
+  const agoText = (days) => (days == null ? "noch nie" : days === 0 ? "heute" : days === 1 ? "gestern" : `vor ${days} Tagen`);
+
+  // Startwerte (Tage: grün bis / gelb bis, danach rot); in js/data.js unter sinceLast anpassbar
+  const SINCE_DEFAULTS = {
+    swim: { label: "Schwimmen", green: 7, yellow: 14 },
+    bike: { label: "Rad", green: 10, yellow: 21 },
+    run: { label: "Laufen", green: 4, yellow: 10 },
+    longRun: { label: "Langer Lauf", green: 14, yellow: 28, minMinutes: 75 },
+    longRide: { label: "Lange Fahrt", green: 21, yellow: 42, minMinutes: 150 },
+    legs: { label: "Legs", green: 5, yellow: 9 },
+  };
+  // Was zählt und welche Ausstattung (Flex) dafür nötig ist
+  const SINCE_RULES = {
+    swim: { cat: "swim", needs: ["pool"] },
+    bike: { cat: "bike", needs: ["bike"] },
+    run: { cat: "run", needs: ["treadmill", "runOutside"] },
+    longRun: { cat: "run", long: true, needs: ["treadmill", "runOutside"] },
+    longRide: { cat: "bike", long: true, needs: ["bike"] },
+    legs: { split: "Legs", needs: ["gym"] },
+  };
+
+  /*  sinceLast({ now, acts, cfg, splitCfg, flexActive, equipment }) →
+   *    [{ key, label, days, text, state, note, last, minMinutes }]
+   *  state: good | warn | bad | na (Ausstattung fehlt, Flex) | info (lange Einheit im Flex, ohne Ampel) */
+  function sinceLast({ now, acts = [], cfg = {}, splitCfg, flexActive = false, equipment = null }) {
+    const eq = new Set(equipment || []);
+    const sessions = gymSessions(acts, splitCfg);
+    return Object.keys(SINCE_DEFAULTS).map((key) => {
+      const c = { ...SINCE_DEFAULTS[key], ...(cfg[key] || {}) }, r = SINCE_RULES[key];
+      const minSec = r.long ? (c.minMinutes || 0) * 60 : 0;
+      const hit = r.split
+        ? lastWhere(sessions, (s) => s.split === r.split, now)
+        : lastWhere(acts, (a) => a.cat === r.cat && (a.sec || 0) >= minSec, now);
+      const days = hit ? hit.days : null;
+      let state = days == null ? "bad" : days <= c.green ? "good" : days <= c.yellow ? "warn" : "bad", note = "";
+      if (flexActive && r.long) { state = "info"; note = "Info · Flex"; }
+      else if (flexActive && equipment && !r.needs.some((k) => eq.has(k))) { state = "na"; note = "nicht verfügbar"; }
+      return { key, label: c.label, days, text: agoText(days), state, note, last: hit ? hit.act : null, minMinutes: r.long ? c.minMinutes : null };
+    });
+  }
+
   function gymSessions(acts, cfg) {
     return acts.filter((a) => a.cat === "strength")
       .map((a) => ({ ...a, split: splitOf(`${a.name || ""} ${a.description || ""}`, cfg) }))
@@ -93,8 +145,8 @@
     const next = nextSplit(sessions, cfg);
     const today = ymd(now);
     const gymToday = sessions.filter((s) => ymd(s.date) === today);
-    const lastLegs = [...sessions].reverse().find((s) => s.split === "Legs");
-    const legHours = lastLegs ? (now - lastLegs.date) / 3600000 : Infinity;
+    const lastLegs = lastWhere(sessions, (s) => s.split === "Legs", now);
+    const legHours = lastLegs ? (now - lastLegs.act.date) / 3600000 : Infinity;
     const afterLegs = legHours <= (cfg.legDayHours ?? 48);
     const week = weekMinimum(acts, now, cfg);
     const z2 = zones && zones[1] ? `${zones[1][0]}–${zones[1][1]} bpm` : "Zone 2";
@@ -156,5 +208,5 @@
     return { gym, endurance, week, next, afterLegs, notes };
   }
 
-  return { flexState, splitOf, gymSessions, nextSplit, weekMinimum, suggestFlex, mondayOf, EQUIPMENT };
+  return { flexState, splitOf, gymSessions, nextSplit, weekMinimum, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
 });

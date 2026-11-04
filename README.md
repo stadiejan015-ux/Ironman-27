@@ -74,6 +74,14 @@ speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym
 Beinpresse zählen nur am selben Ort. Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
 Tests: `node tests/gym.test.js`.
 
+## Zuletzt gemacht
+
+Unter dem Wochen-Minimum in „Heute“: wie lange Schwimmen, Rad, Laufen, Langer Lauf (≥ 75 min),
+Lange Fahrt (≥ 2,5 h) und Legs her sind, mit Ampel nach den Schwellen in `sinceLast` (`js/data.js`).
+Im Flex-Modus wird eine Sportart ohne passende Ausstattung grau („nicht verfügbar“) statt rot, lange
+Einheiten sind dort nur Info. Berechnung: `sinceLast()` in [`js/flex.js`](js/flex.js), dieselbe
+`lastWhere()`-Logik nutzt auch der Leg-Day-Check im Tagesvorschlag. Tests: `node tests/flex.test.js`.
+
 ## Kalender
 
 Die letzten 10 Wochen als Raster Mo–So (neueste oben, [`js/calendar.js`](js/calendar.js)): Farbe nach
@@ -93,6 +101,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
 | `gym` | Hauptübung je Split, Aliase, Übungen mit Orts-Vergleich |
 | `flex` | Flex-Zeitraum, Wochen-Minimum, Split-Rotation und -Erkennung |
+| `sinceLast` | Ampel-Schwellen (Tage) und Mindestdauern für „Zuletzt gemacht“ |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 
