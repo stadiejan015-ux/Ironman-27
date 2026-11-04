@@ -1,10 +1,12 @@
 /* Automatisch erzeugt von scripts/update_strava.py – nicht von Hand bearbeiten. */
 window.STRAVA = {
-  "snapshotDate": "2026-11-03",
+  "snapshotDate": "2026-11-04",
   "athlete": {"weightKg": 73, "focus": "Build – Zone 2 verbessern und schneller am berg werden", "streakWeeks": 65},
   "zones": {"ftp": 286, "hr": [[0, 134], [135, 155], [156, 175], [176, 200], [201, null]], "power": [[0, 157], [158, 215], [216, 257], [258, 300], [301, 343], [344, 429], [430, null]], "run": [[0, 2.843], [2.843, 3.303], [3.303, 3.679], [3.679, 3.93], [3.93, 4.181], [4.181, null]]},
   "bests": {"run": [["1 Meile", 380, "2026-04-02"], ["5 km", 1288, "2026-03-27"], ["10 km", 2945, "2026-07-19"], ["Halbmarathon", 9805, "2026-03-07"]], "bike": [["5 s", "646 W", "2024-12-25"], ["1 min", "336 W", "2024-12-25"], ["5 min", "281 W", "2025-07-22"], ["20 min", "240 W", "2026-04-14"], ["1 h", "157 W", "2026-03-31"], ["Längste Fahrt", "206 km", "2023-09-05"], ["Größter Anstieg", "1.861 m", "2025-08-15"]]},
   "activities": [
+    ["2026-11-04T16:53", "WeightTraining", "Pull", 0.0, 4436, 0],
+    ["2026-11-04T08:52", "Run", "Laufband", 5.2, 1852, 0, "5:56 /km"],
     ["2026-11-03T18:55", "Run", "Laufband", 5.1, 1500, 0, "4:54 /km"],
     ["2026-11-03T08:45", "WeightTraining", "Push", 0.0, 4297, 0],
     ["2026-11-02T10:35", "WeightTraining", "Leg Day", 0.0, 5911, 0],
