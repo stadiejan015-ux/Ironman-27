@@ -23,6 +23,7 @@
         <a href="#erholung">Erholung</a>
         <a href="#zone2">Zone 2</a>
         <a href="#gym">Gym</a>
+        <a href="#kalender">Kalender</a>
         <a href="#saison">Saisonplan</a>
         <a href="#umfang">Umfang</a>
         <a href="#disziplinen">Disziplinen</a>
@@ -136,6 +137,16 @@
       <div class="card" style="margin-top:12px" id="gymSplit"></div>
     </section>
 
+    <!-- KALENDER -->
+    <section id="kalender">
+      <h2>Kalender</h2>
+      <p class="section-sub">Die letzten 10 Wochen – Farbe nach Sportart, kräftiger bei längerer Gesamtdauer. Tippe auf einen Tag für die Details.</p>
+      <div class="card">
+        <div class="calendar" id="calendar"></div>
+        <div class="legend" id="calLegend" style="margin-top:10px"></div>
+      </div>
+    </section>
+
     <!-- SAISON -->
     <section id="saison">
       <h2>Saisonplan bis zum Rennen</h2>
@@ -234,7 +245,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/app.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/app.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten

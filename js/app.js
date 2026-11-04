@@ -24,7 +24,7 @@
     swim: { label: "Schwimmen", color: "var(--swim)" },
     bike: { label: "Rad", color: "var(--bike)" },
     run: { label: "Laufen", color: "var(--run)" },
-    strength: { label: "Kraft", color: "var(--other)" },
+    strength: { label: "Kraft", color: "var(--strength)" },
     other: { label: "Sonstiges", color: "var(--other)" },
   };
   const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility", TrailRun: "Trailrun", Tennis: "Tennis", Workout: "Workout" };
@@ -811,6 +811,62 @@
     attachPointTips(box, pts, "var(--recovery)", (p) => `<div class="t-title">${fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" })} · ${esc(p.e.place)}</div>${tRow(placeColor(p.e.place), `${p.e.sets > 1 ? p.e.sets + "×" : ""}${p.e.reps}×${nf(p.e.weight, p.e.weight % 1 ? 1 : 0)} kg`, `1RM ${nf(p.v, 1)} kg`)}${p.e.pr ? `<div style="color:var(--good);font-weight:600">PR</div>` : ""}`);
   }
 
+
+  /* ---------- Trainingskalender (js/calendar.js) ---------- */
+  const WD_LONG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  const LV_MIX = [0, 50, 74, 100];
+  let calSel = null;
+  const calColor = (cat, lv) => `color-mix(in srgb, ${(CATS[cat] || CATS.other).color} ${LV_MIX[lv] || 100}%, var(--surface))`;
+  const itemLabel = (it) => (it.cat === "strength" ? `Kraft${it.split ? " · " + it.split : ""}` : SPORT_LABEL[it.sport] || CATS[it.cat].label);
+  const durTxt = (sec) => (sec >= 3600 ? `${hm(sec)} h` : `${Math.round(sec / 60)} min`);
+
+  function calendarSection() {
+    const box = $("#calendar");
+    if (!window.Calendar) { $("#kalender").hidden = true; return; }
+    const cal = window.Calendar.buildCalendar({
+      acts, today: new Date(), weeks: 10, isFlex: FX ? inFlex : null,
+      gymSessions: GYM_SESS.map((x) => ({ ...x, name: x.alt || x.name })),   // Strava-Name, wenn der Garmin-Titel nur „Krafttraining“ ist
+    });
+    const cell = (d, wi, di) => {
+      const label = `${WD_LONG[d.weekday]}, ${fmtDate(parse(d.date), { day: "2-digit", month: "2-digit" })}${d.isToday ? " (heute)" : ""}: `
+        + (d.items.length ? d.items.map((it) => `${itemLabel(it)}, ${durTxt(it.sec)}`).join("; ") : d.future ? "noch offen" : "Ruhetag");
+      const perCat = {};
+      d.items.forEach((it) => { perCat[it.cat] = (perCat[it.cat] || 0) + it.sec; });
+      const stripes = d.cats.map((c) => `<i style="flex:${Math.max(perCat[c], 1)};background:${calColor(c, d.level)}"></i>`).join("");
+      const cls = ["cal-cell", d.items.length ? "has" : "rest", d.isToday ? "today" : "", d.future ? "future" : "", calSel === d.date ? "sel" : ""].join(" ");
+      return `<button type="button" class="${cls}" data-w="${wi}" data-d="${di}" aria-label="${esc(label)}" aria-pressed="${calSel === d.date}">
+        ${stripes ? `<span class="cal-stripes">${stripes}</span>` : ""}${d.split ? `<b class="cal-split">${d.split}</b>` : ""}${d.more ? `<b class="cal-more" title="weitere Sportarten">+</b>` : ""}</button>`;
+    };
+    const detail = (d) => {
+      const head = `<b>${WD_LONG[d.weekday]}, ${fmtDate(parse(d.date), { day: "2-digit", month: "2-digit", year: "numeric" })}</b>${d.items.length ? ` · ${durTxt(d.totalSec)} · ${d.items.length} ${d.items.length === 1 ? "Einheit" : "Einheiten"}` : ""}`;
+      if (!d.items.length) return `<div class="cal-detail" role="region" aria-live="polite">${head}<p class="muted" style="margin:4px 0 0">${d.future ? "Noch keine Einheiten." : "Ruhetag."}</p></div>`;
+      return `<div class="cal-detail" role="region" aria-live="polite">${head}<ul>${d.items.map((it) => {
+        const lift = it.cat === "strength" && it.exercise
+          ? ` · ${esc(it.exercise)}${it.entry ? ` ${it.entry.sets > 1 ? it.entry.sets + "×" : ""}${it.entry.reps}×${nf(it.entry.weight, it.entry.weight % 1 ? 1 : 0)} kg${it.entry.place ? " @" + esc(it.entry.place) : ""}` : ""}` : "";
+        return `<li><i class="swatch" style="background:${(CATS[it.cat] || CATS.other).color}"></i><span><b>${esc(itemLabel(it))}</b> · ${esc(it.name || "")}${lift}</span><span class="muted">${durTxt(it.sec)}</span></li>`;
+      }).join("")}</ul></div>`;
+    };
+    const head = `<div class="cal-row cal-head" aria-hidden="true"><span></span>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((x) => `<span>${x}</span>`).join("")}<span></span></div>`;
+    const rows = cal.weeks.map((w, wi) => {
+      const selDay = w.days.find((d) => d.date === calSel);
+      return `<div class="cal-row${w.flex ? " flex" : ""}">
+        <div class="cal-label">${fmtDate(parse(w.monday), { day: "2-digit", month: "2-digit" })}${w.flex ? ` <span class="cal-flex">Flex</span>` : ""}</div>
+        ${w.days.map((d, di) => cell(d, wi, di)).join("")}
+        <div class="cal-sum">${w.count ? `${nf(w.totalSec / 3600, 1)} h · ${w.count}×` : "–"}</div>
+      </div>${selDay ? detail(selDay) : ""}`;
+    }).join("");
+    box.innerHTML = head + rows;
+    box.querySelectorAll(".cal-cell").forEach((b) => b.addEventListener("click", () => {
+      const d = cal.weeks[+b.dataset.w].days[+b.dataset.d];
+      calSel = calSel === d.date ? null : d.date;
+      calendarSection();
+      const again = box.querySelector(`.cal-cell[data-w="${b.dataset.w}"][data-d="${b.dataset.d}"]`);
+      if (again) again.focus({ preventScroll: true });
+    }));
+    $("#calLegend").innerHTML = ["swim", "bike", "run", "strength", "other"].map((c) => `<span><i class="swatch" style="background:${CATS[c].color}"></i>${c === "other" ? "Sonstiges (Klettern, Wandern …)" : CATS[c].label}</span>`).join("")
+      + `<span class="cal-lv"><i style="background:${calColor("other", 1)}"></i><i style="background:${calColor("other", 2)}"></i><i style="background:${calColor("other", 3)}"></i> &lt; 45 · 45–90 · &gt; 90 min</span><span><b>Pu</b> Push · <b>Pl</b> Pull · <b>L</b> Legs</span>`;
+  }
+
   /* ---------- Zonen & Bestleistungen ---------- */
   function zones() {
     const z = D.zones;
@@ -1009,7 +1065,7 @@
         <div class="equip" role="group" aria-label="Ausstattung vor Ort">${chips}</div>
         <div class="flex-sug">
           <div><span class="mini-title" style="margin:0">Gym</span>
-            <h3 style="font-size:20px;margin:2px 0"><i class="swatch" style="background:var(--other)"></i>${esc(sg.gym.title)}</h3>
+            <h3 style="font-size:20px;margin:2px 0"><i class="swatch" style="background:var(--strength)"></i>${esc(sg.gym.title)}</h3>
             <p class="muted" style="margin:0;font-size:14px">${esc(sg.gym.detail)}</p></div>
           <div><span class="mini-title" style="margin:0">Ausdauer · optional${e && e.forMinimum ? " · fürs Wochen-Minimum" : ""}</span>
             ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)} · ${e.minutes} min</h3>
@@ -1105,10 +1161,13 @@
   // Im Flex-Zeitraum steht „Gym“ direkt nach „Heute“ (auch in der Navigation)
   if (FLEX.active) {
     $("#heute").after($("#gym"));
+    $("#gym").after($("#kalender"));
     const link = document.querySelector('.nav a[href="#gym"]'), heuteLink = document.querySelector('.nav a[href="#heute"]');
+    const calLink = document.querySelector('.nav a[href="#kalender"]');
     if (link && heuteLink) heuteLink.after(link);
+    if (calLink && link) link.after(calLink);
   }
-  today(); recovery(); gymSection();
+  today(); recovery(); gymSection(); calendarSection();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); zones(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
