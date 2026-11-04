@@ -1067,14 +1067,14 @@
           <div><span class="mini-title" style="margin:0">Gym</span>
             <h3 style="font-size:20px;margin:2px 0"><i class="swatch" style="background:var(--strength)"></i>${esc(sg.gym.title)}</h3>
             <p class="muted" style="margin:0;font-size:14px">${esc(sg.gym.detail)}</p></div>
-          <div><span class="mini-title" style="margin:0">Ausdauer · optional${e && e.forMinimum ? " · fürs Wochen-Minimum" : ""}</span>
+          <div><span class="mini-title" style="margin:0">Ausdauer${e && e.done ? "" : " · optional"}${e && e.forMinimum ? " · fürs Wochen-Minimum" : ""}</span>
             ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)} · ${e.minutes} min</h3>
             <p class="muted" style="margin:0;font-size:14px">${esc(e.detail)}</p>` : `<p class="muted" style="margin:2px 0 0;font-size:14px">${rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt."}</p>`}</div>
         </div>
         ${sg.notes.length ? `<p class="muted" style="font-size:13px;margin:10px 0 0">${sg.notes.map(esc).join(" · ")}</p>` : ""}
         <div class="mini-title">Wochen-Minimum</div>
         ${minList(sg.week)}
-        <p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – Einheiten von heute erscheinen nach dem abendlichen Update.</p>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>
       </div>`;
   }
 

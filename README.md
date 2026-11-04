@@ -19,7 +19,7 @@ Kein Build-Schritt nötig: `index.html` im Browser öffnen. Für GitHub Pages:
 
 ## Automatische Aktualisierung
 
-Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden jeden Abend
+Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden mittags und abends
 von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](scripts/UPDATE.md),
 Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
 

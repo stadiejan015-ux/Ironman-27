@@ -70,6 +70,26 @@ test("Vorschlag: nach Leg Day kein harter Lauf, Schwimmen bevorzugt wenn es fehl
   assert.match(r.endurance.detail, /Laufband darf die Pace deutlich langsamer sein/);
 });
 
+test("Vorschlag: Ausdauer von heute wird als erledigt erkannt", () => {
+  const now = d("2026-11-04T20:00");
+  const acts = [act("2026-11-03T18:55", "run", "Laufband", 25), act("2026-11-04T08:52", "run", "Laufband", 31), act("2026-11-04T16:53", "strength", "Pull")];
+  const s = F.suggestFlex({ now, acts, equipment: ["gym", "treadmill"], level: 0, cfg, zones });
+  assert.equal(s.endurance.done, true);
+  assert.equal(s.endurance.title, "Laufen erledigt");
+  assert.equal(s.endurance.minutes, 31);
+  assert.equal(s.endurance.forMinimum, false);
+  assert.match(s.endurance.detail, /Wochen-Minimum \(1\/2\) – noch 1×/);
+  assert.equal(s.gym.done, true);
+  // zu kurz fürs Minimum, aber trotzdem erledigt
+  const short = F.suggestFlex({ now: d("2026-11-03T20:00"), acts, equipment: ["treadmill"], level: 0, cfg, zones });
+  assert.equal(short.endurance.done, true);
+  assert.match(short.endurance.detail, /erst ab 30 min/);
+  // ohne Ausdauer heute weiterhin ein Vorschlag
+  const none = F.suggestFlex({ now: d("2026-11-05T08:00"), acts, equipment: ["treadmill"], level: 0, cfg, zones });
+  assert.equal(none.endurance.done, undefined);
+  assert.equal(none.endurance.type, "treadmill");
+});
+
 test("Vorschlag: Hitze-Hinweis, Garmin-Bereitschaft und fehlendes Gym", () => {
   const s = F.suggestFlex({ now: d("2026-11-10T08:00"), acts: [], equipment: ["gym", "runOutside", "heat"], level: 0, cfg, zones, paceHint: "ca. 6:00–6:30 /km" });
   assert.match(s.endurance.detail, /Bei Hitze darf die Pace deutlich langsamer sein/);
