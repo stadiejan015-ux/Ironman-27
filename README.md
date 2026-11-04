@@ -44,6 +44,15 @@ unter `prediction`. Tests: `node tests/prediction.test.js`.
 Bei jedem Sync speichert [`scripts/save_prediction.js`](scripts/save_prediction.js) die Prognose
 in `data/prediction-history.json` (Verlaufslinie auf der Seite).
 
+## Zone-2-Entwicklung
+
+[`js/z2.js`](js/z2.js) wertet die Strava-Streams jeder Lauf- und Radeinheit aus (reine Funktionen):
+Pace bei 140–148 bpm, Watt bei 135–145 bpm (nur echte Watt), Entkopplung (Pa:HR / Pw:HR) langer
+ruhiger Einheiten und Zeit pro HF-Zone. Das abendliche Update lädt die Streams neuer Einheiten,
+[`scripts/process_streams.js`](scripts/process_streams.js) speichert daraus **nur die Kennzahlen** in
+`data/z2-metrics.json` – rohe Streams kommen nie ins Repo. Eigene HF-Zonen und alle Grenzen stehen in
+`js/data.js` unter `zones` und `z2`. Tests: `node tests/z2.test.js`.
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):
@@ -53,6 +62,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
+| `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 
 Die Saisonphasen und ihre Wochenstunden sind in `js/app.js` (`PHASES`) definiert.
