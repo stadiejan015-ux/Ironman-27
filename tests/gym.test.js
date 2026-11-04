@@ -73,4 +73,15 @@ test("Split-Zählung pro Zeitraum", () => {
   assert.deepEqual(G.splitCounts(sessions, "2026-11-02", "2026-11-08"), { Push: 1, Pull: 1, Legs: 1, ohne: 1, total: 4 });
 });
 
+test("Garmin-„Krafttraining“, das in Strava Klettern ist, zählt nicht als Gym", () => {
+  const sessions = G.gymSessions(
+    [{ start: "2026-10-18T11:04", name: "Krafttraining" }, { start: "2026-11-02T10:35", name: "Krafttraining" }],
+    [{ date: new Date("2026-11-02T10:35"), name: "Leg Day" }],
+    undefined,
+    [{ date: new Date("2026-10-18T11:04"), name: "Klettern Kalymnos" }],
+  );
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0].split, "Legs");   // Garmin-Titel unbrauchbar → Strava-Name „Leg Day“
+});
+
 console.log(`\n${n} Tests bestanden.`);
