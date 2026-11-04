@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ironman 27 Training</title>
   <meta name="robots" content="noindex, nofollow, noarchive">
-  <meta name="description" content="Überblick über mein Ironman-Training: Saisonplan, Umfänge, Disziplinen, Zonen und Aktivitäten.">
+  <meta name="description" content="Überblick über mein Ironman-Training: Saisonplan, Umfänge, Disziplinen und Aktivitäten.">
   <meta http-equiv="Cache-Control" content="no-cache">
   <script>
     /* Immer die neueste Version laden (Daten ändern sich mehrmals täglich). */
@@ -28,7 +28,6 @@
         <a href="#umfang">Umfang</a>
         <a href="#disziplinen">Disziplinen</a>
         <a href="#rennen">Rennen</a>
-        <a href="#zonen">Zonen</a>
         <a href="#aktivitaeten">Aktivitäten</a>
       </nav>
       <button class="icon-btn" id="themeToggle" type="button" aria-label="Farbschema wechseln" title="Hell / Dunkel"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="display:block"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
@@ -216,14 +215,6 @@
       </div>
     </section>
 
-    <!-- ZONEN -->
-    <section id="zonen">
-      <h2>Trainingszonen &amp; Bestleistungen</h2>
-      <p class="section-sub">Zonen aus Strava. Laufzonen sind von Strava aus einer geschätzten 5-km-Zeit (21:04) abgeleitet.</p>
-      <div class="grid g3" id="zones"></div>
-      <div class="grid g2" style="margin-top:12px" id="bests"></div>
-    </section>
-
     <!-- AKTIVITÄTEN -->
     <section id="aktivitaeten">
       <h2>Aktivitäten</h2>
@@ -234,7 +225,7 @@
           <span class="muted" style="font-size:13px" id="actCount"></span>
         </div>
         <div class="table-scroll"><table id="actTable"></table></div>
-        <div style="text-align:center;margin-top:12px"><button class="chip" id="actMore" type="button" hidden></button></div>
+        <div style="text-align:center;margin-top:12px"><button class="chip" id="actMore" type="button" aria-controls="actTable" aria-expanded="false" hidden></button></div>
       </div>
     </section>
 

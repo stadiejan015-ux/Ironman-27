@@ -9,8 +9,7 @@ Eine statische Website, die einen strukturierten Überblick über mein Ironman-T
 - **Wochenumfang** – gestapelte Stunden Schwimmen/Rad/Laufen (optional inkl. Kraft & Sonstiges, Tabellenansicht)
 - **Disziplinen** – Kennzahlen, Pace-Verlauf und Wochenkilometer
 - **Rennvorbereitung** – längste Einheit vs. Renndistanz und Zielzeiten
-- **Zonen & Bestleistungen** – HF-, Leistungs- und Pace-Zonen aus Strava
-- **Aktivitäten** – filterbare Liste aller Einheiten
+- **Aktivitäten** – filterbare Liste, die neuesten 10 sichtbar, alle per Knopf aufklappbar
 
 ## Ansehen
 

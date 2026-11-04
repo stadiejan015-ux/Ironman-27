@@ -868,29 +868,6 @@
       + `<span class="cal-lv"><i style="background:${calColor("other", 1)}"></i><i style="background:${calColor("other", 2)}"></i><i style="background:${calColor("other", 3)}"></i> &lt; 45 · 45–90 · &gt; 90 min</span><span><b>Pu</b> Push · <b>Pl</b> Pull · <b>L</b> Legs</span>`;
   }
 
-  /* ---------- Zonen & Bestleistungen ---------- */
-  function zones() {
-    const z = D.zones;
-    const hrNames = ["Regeneration", "Grundlage", "Tempo", "Schwelle", "Anaerob"];
-    const pNames = ["Aktive Erholung", "Ausdauer", "Tempo", "Schwelle", "VO2max", "Anaerob", "Neuromuskulär"];
-    const rNames = ["Aktive Erholung", "Ausdauer", "Tempo", "Schwelle", "VO2max", "Anaerob"];
-    const shade = (i, n) => `color-mix(in srgb, var(--text) ${Math.round(15 + (i / (n - 1)) * 70)}%, transparent)`;
-    const table = (title, rows, head) => `<div class="card"><h3>${title}</h3><table><thead><tr><th>Zone</th><th>${head}</th><th></th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
-    const hrRows = z.hr.map(([a, b], i) => `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 6}px;background:${shade(i, 5)}"></span> Z${i + 1}</td><td>${hrNames[i]}</td><td class="num">${b == null ? "≥ " + a : i === 0 ? "< " + z.hr[1][0] : a + "–" + b} bpm</td></tr>`);
-    const pRows = z.power.map(([a, b], i) => `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 5}px;background:${shade(i, 7)}"></span> Z${i + 1}</td><td>${pNames[i]}</td><td class="num">${b == null ? "≥ " + a : a + "–" + b} W</td></tr>`);
-    const rRows = z.run.map(([a, b], i) => {
-      const slow = a ? 1000 / a : null, fast = b ? 1000 / b : null;
-      const txt = !a ? `> ${mmss(fast)}` : !b ? `< ${mmss(slow)}` : `${mmss(fast)}–${mmss(slow)}`;
-      return `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 6}px;background:${shade(i, 6)}"></span> Z${i + 1}</td><td>${rNames[i]}</td><td class="num">${txt} /km</td></tr>`;
-    });
-    $("#zones").innerHTML = table(`Herzfrequenz${z.maxHr ? ` · Max ${z.maxHr}` : ""}`, hrRows, "Bereich") + table(`Leistung (FTP ${z.ftp} W)`, pRows, "Bereich") + table("Lauf-Pace", rRows, "Bereich");
-
-    const b = D.bests;
-    $("#bests").innerHTML = `
-      <div class="card"><h3><i class="swatch" style="background:var(--run)"></i>Lauf-Bestzeiten</h3><table><tbody>${b.run.map(([l, s, d]) => `<tr><td>${l}</td><td class="num"><b>${s >= 3600 ? hms(s) : mmss(s)}</b></td><td class="num muted">${fmtDate(parse(d))}</td></tr>`).join("")}</tbody></table></div>
-      <div class="card"><h3><i class="swatch" style="background:var(--bike)"></i>Rad-Bestwerte</h3><table><tbody>${b.bike.map(([l, v, d]) => `<tr><td>${l}</td><td class="num"><b>${v}</b></td><td class="num muted">${fmtDate(parse(d))}</td></tr>`).join("")}</tbody></table></div>`;
-  }
-
   /* ---------- Insights ---------- */
   function insights() {
     const swims = ofCat(acts, "swim").filter((a) => a.km >= 0.9);
@@ -919,22 +896,24 @@
 
   /* ---------- Aktivitäten ---------- */
   let filter = "all", showAll = false;
+  const ACT_LIMIT = 10;
   function activities() {
     const filters = [["all", "Alle"], ["swim", "Schwimmen"], ["bike", "Rad"], ["run", "Laufen"], ["strength", "Kraft"], ["other", "Sonstiges"]];
     $("#actFilter").innerHTML = filters.map(([k, l]) => `<button class="chip" type="button" data-f="${k}" aria-pressed="${k === filter}">${l}</button>`).join("");
     $("#actFilter").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; showAll = false; activities(); }));
     const list = filter === "all" ? acts : acts.filter((a) => a.cat === filter);
     $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.`;
-    $("#actCount").textContent = `${list.length} Einträge`;
+    $("#actCount").textContent = list.length > ACT_LIMIT && !showAll ? `${ACT_LIMIT} von ${list.length}` : `${list.length} Einträge`;
     $("#actTable").innerHTML = `<thead><tr><th>Datum</th><th>Sport</th><th>Name</th><th class="num">Distanz</th><th class="num">Zeit</th><th class="num">Hm</th><th class="num">Pace / Tempo</th></tr></thead><tbody>` +
-      list.slice(0, showAll ? list.length : 25).map((a) => `<tr><td>${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}</td>
+      list.slice(0, showAll ? list.length : ACT_LIMIT).map((a) => `<tr><td>${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}</td>
         <td><i class="swatch" style="background:${CATS[a.cat].color}"></i> ${SPORT_LABEL[a.sport] || a.sport}</td>
         <td>${esc(a.name)}</td>
         <td class="num">${a.km ? (a.cat === "swim" ? nf(a.km * 1000) + " m" : nf(a.km, 1) + " km") : "–"}</td>
         <td class="num">${hm(a.sec)}</td><td class="num">${a.elev || "–"}</td><td class="num">${esc(a.info) || "–"}</td></tr>`).join("") + `</tbody>`;
     const more = $("#actMore");
-    more.hidden = showAll || list.length <= 25;
-    more.textContent = `Alle ${list.length} anzeigen`;
+    more.hidden = list.length <= ACT_LIMIT;
+    more.textContent = showAll ? "Weniger anzeigen" : `Alle ${list.length} anzeigen`;
+    more.setAttribute("aria-expanded", String(showAll));
   }
 
 
@@ -1199,7 +1178,10 @@
   }
 
   /* ---------- Init ---------- */
-  $("#actMore").addEventListener("click", () => { showAll = true; activities(); });
+  $("#actMore").addEventListener("click", () => {
+    showAll = !showAll; activities();
+    if (!showAll) $("#aktivitaeten").scrollIntoView({ block: "start" });   // beim Zuklappen nicht im Leeren landen
+  });
   // Im Flex-Zeitraum steht „Gym“ direkt nach „Heute“ (auch in der Navigation)
   if (FLEX.active) {
     $("#heute").after($("#gym"));
@@ -1210,7 +1192,7 @@
     if (calLink && link) link.after(calLink);
   }
   today(); recovery(); gymSection(); calendarSection();
-  hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); zones(); activities();
+  hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);
