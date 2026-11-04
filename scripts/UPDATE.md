@@ -1,6 +1,6 @@
 # Tägliches Strava-Update
 
-Diese Schritte führt die geplante Claude-Aufgabe jeden Abend aus. Man kann
+Diese Schritte führt die geplante Claude-Aufgabe zweimal täglich (mittags und abends) aus. Man kann
 sie auch jederzeit von Hand in einer Claude-Session anstoßen.
 
 1. Letzten Stand lesen: `snapshotDate` in `js/strava-data.js`.

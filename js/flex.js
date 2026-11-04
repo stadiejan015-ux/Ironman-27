@@ -108,9 +108,24 @@
     else if (gymToday.length) gym = { title: `${gymToday[gymToday.length - 1].split || "Gym"} erledigt`, detail: `Als Nächstes dran: ${next.split}.`, done: true };
     else gym = { title: next.split, detail: level === 2 ? "Leichter Tag: Technik, 1 Satz weniger, nicht ans Limit." : `Rotation ${((cfg.rotation) || ["Push", "Pull", "Legs"]).join(" → ")}${next.basis ? ` · zuletzt ${next.basis.split}` : ""}.` };
 
-    // Ausdauer – bevorzugt, was beim Minimum fehlt
+    // Ausdauer – heute schon erledigt? Sonst bevorzugt, was beim Minimum fehlt
     let endurance = null;
-    if (level < 3) {
+    const minMin = ((cfg && cfg.minimum) || {}).enduranceMinMinutes ?? 30;
+    const enduToday = acts.filter((a) => ["swim", "bike", "run"].includes(a.cat) && ymd(a.date) === today);
+    if (enduToday.length) {
+      const main = enduToday.reduce((x, y) => (y.sec > x.sec ? y : x));
+      const total = Math.round(enduToday.reduce((s, a) => s + a.sec, 0) / 60);
+      const counts = enduToday.some((a) => a.sec >= minMin * 60);
+      const it = week.items.find((x) => x.key === "endurance");
+      const label = { swim: "Schwimmen", bike: "Radfahren", run: "Laufen" }[main.cat];
+      endurance = {
+        type: main.cat, title: `${label} erledigt`, minutes: total, done: true, forMinimum: false,
+        detail: `${enduToday.map((a) => a.name).filter(Boolean).join(", ") || label}. `
+          + (!counts ? `Zählt erst ab ${minMin} min fürs Wochen-Minimum.`
+            : it && !it.ok ? `Zählt fürs Wochen-Minimum (${it.have}/${it.need}) – noch ${it.need - it.have}× an einem anderen Tag.`
+              : "Ausdauer-Minimum für diese Woche erfüllt."),
+      };
+    } else if (level < 3) {
       const needSwim = week.missing.includes("swim"), needEndu = week.missing.includes("endurance");
       const opts = [];
       if (eq.has("pool")) opts.push("swim");
