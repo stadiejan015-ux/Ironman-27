@@ -36,7 +36,7 @@ window.TRAINING = {
     splitKeywords: {
       Push: ["push", "brust", "chest", "bankdrücken", "bench"],
       Pull: ["pull", "rücken", "back", "latzug", "lat pulldown", "lat"],
-      Legs: ["legs", "leg day", "leg", "beine", "beinpresse", "leg press"],
+      Legs: ["legs", "leg day", "legday", "leg", "beine", "beinpresse", "leg press"],
     },
   },
 
@@ -49,7 +49,7 @@ window.TRAINING = {
       "Latzug": ["latzug", "lat pulldown", "pulldown", "lat"],
       "Beinpresse": ["beinpresse", "leg press"],
     },
-    splitKeywords: { Push: ["push"], Pull: ["pull"], Legs: ["leg day", "legs", "leg", "beine"] },
+    splitKeywords: { Push: ["push"], Pull: ["pull"], Legs: ["leg day", "legday", "legs", "leg", "beine"] },
     perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PRs nur am selben Gym-Ort vergleichen
   },
 

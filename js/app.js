@@ -30,8 +30,8 @@
   const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility", TrailRun: "Trailrun", Tennis: "Tennis", Workout: "Workout" };
   const cat = (sport) => sport === "Swim" ? "swim" : (sport === "Ride" || sport === "VirtualRide") ? "bike" : (sport === "Run" || sport === "TrailRun") ? "run" : sport === "WeightTraining" ? "strength" : "other";
 
-  const acts = D.activities.map(([date, sport, name, km, sec, elev, info]) => ({
-    date: parse(date), sport, name, km, sec, elev, info: info || "", cat: cat(sport),
+  const acts = D.activities.map(([date, sport, name, km, sec, elev, info, desc]) => ({
+    date: parse(date), sport, name, km, sec, elev, info: info || "", desc: desc || "", cat: cat(sport),
   })).sort((a, b) => b.date - a.date);
 
   const snap = parse(D.snapshotDate);

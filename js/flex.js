@@ -21,7 +21,7 @@
   const DEFAULT_SPLITS = {
     Push: ["push", "brust", "chest", "bankdrücken", "bench"],
     Pull: ["pull", "rücken", "back", "latzug", "lat pulldown"],
-    Legs: ["legs", "leg day", "leg", "beine", "beinpresse", "leg press", "squat"],
+    Legs: ["legs", "leg day", "legday", "leg", "beine", "beinpresse", "leg press", "squat"],
   };
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const parseDay = (s) => { const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };

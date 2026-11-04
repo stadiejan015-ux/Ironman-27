@@ -55,6 +55,20 @@ def commit_date():
     return m.group(1) if m else "1970-01-01"
 
 
+# Nur gym-relevante Zeilen aus Beschreibungen speichern (das Repo ist öffentlich –
+# z. B. Namen von Trainingspartnern sollen nicht übernommen werden).
+GYM_LINE = re.compile(
+    r"\b(push|pull|legs?|leg day|legday|beine?|bankdr\w*|bench|lat|latzug|pulldown|beinpresse|leg press)\b"
+    r"|\d+\s*[x×*]\s*\d+|@\s*\w", re.I)
+
+
+def gym_desc(desc):
+    lines = [re.sub(r"\s*\b(mit|with)\b.*$", "", ln, flags=re.I).strip()   # „mit Max“ o. Ä. weglassen
+             for ln in re.split(r"[\r\n]+", desc or "") if GYM_LINE.search(ln)]
+    lines = [ln for ln in lines if ln]
+    return " · ".join(lines)[:160]
+
+
 def de_num(x, d=1):
     return f"{x:.{d}f}".replace(".", ",")
 
@@ -74,8 +88,11 @@ def convert_activity(a):
     elif sport in RIDE_LIKE and s.get("avg_speed"):
         info = f"{de_num(float(s['avg_speed']))} km/h"
     row = [start, sport, a.get("name", "").strip(), round(km, 2), sec, elev]
-    if info:
+    desc = gym_desc(a.get("description")) if sport == "WeightTraining" else ""
+    if info or desc:
         row.append(info)
+    if desc:
+        row.append(desc)   # Index 7: gym-relevanter Teil der Beschreibung
     return row
 
 

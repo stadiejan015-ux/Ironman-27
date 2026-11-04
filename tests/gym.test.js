@@ -84,4 +84,14 @@ test("Garmin-„Krafttraining“, das in Strava Klettern ist, zählt nicht als G
   assert.equal(sessions[0].split, "Legs");   // Garmin-Titel unbrauchbar → Strava-Name „Leg Day“
 });
 
+test("Strava-Beschreibung wird geprüft (Titel ohne Split, „Push“ in der Beschreibung)", () => {
+  const sessions = G.gymSessions(
+    [{ start: "2026-10-30T15:00", name: "Krafttraining" }],
+    [{ date: new Date("2026-10-30T15:00"), name: "Maxed out Abu Dhabi Gym", desc: "Push" },
+     { date: new Date("2026-10-26T10:15"), name: "Gewichtstraining am Morgen", desc: "Push · Bankdrücken 6x95" }],
+  );
+  assert.deepEqual(sessions.map((x) => x.split), ["Push", "Push"]);
+  assert.equal(sessions[0].parsed.weight, 95);
+});
+
 console.log(`\n${n} Tests bestanden.`);

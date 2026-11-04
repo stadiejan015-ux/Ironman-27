@@ -28,7 +28,7 @@
     splitKeywords: {
       Push: ["push"],
       Pull: ["pull"],
-      Legs: ["leg day", "legs", "leg", "beine"],
+      Legs: ["leg day", "legday", "legs", "leg", "beine"],
     },
     perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PR nur am selben Ort vergleichen
     unknownPlace: "unbekannt",
@@ -93,13 +93,13 @@
     for (const s of stravaActs || []) {
       const t = toMin(s.date);
       const twin = out.find((g) => Math.abs(g.t - t) <= 10);
-      if (twin) { if (!parseOne(twin.name, c) && !parseOne(twin.desc, c)) twin.alt = s.name; continue; }
+      if (twin) { if (!parseOne(twin.name, c) && !parseOne(twin.desc, c)) { twin.alt = s.name; twin.altDesc = s.desc || ""; } continue; }
       const d = s.date instanceof Date ? s.date : new Date(s.date);
       const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-      out.push({ start: iso, t, name: s.name, desc: "", sec: s.sec || 0, source: "Strava" });
+      out.push({ start: iso, t, name: s.name, desc: s.desc || "", sec: s.sec || 0, source: "Strava" });
     }
     return out.sort((a, b) => a.t - b.t).map((s) => {
-      const p = parseGymTitle(s.name, s.desc, c) || (s.alt ? parseGymTitle(s.alt, "", c) : null);
+      const p = parseGymTitle(s.name, s.desc, c) || (s.alt != null ? parseGymTitle(s.alt, s.altDesc, c) : null);
       return { ...s, parsed: p, split: p ? p.split : null };
     });
   }
