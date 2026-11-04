@@ -1,7 +1,10 @@
 (function () {
   "use strict";
   const S = window.STRAVA || {};
-  const D = Object.assign({}, S, window.TRAINING, { athlete: Object.assign({}, window.TRAINING.athlete, S.athlete) });
+  const D = Object.assign({}, S, window.TRAINING, {
+    athlete: Object.assign({}, window.TRAINING.athlete, S.athlete),
+    zones: Object.assign({}, S.zones, window.TRAINING.zones), // eigene HF-Zonen haben Vorrang
+  });
   const $ = (s) => document.querySelector(s);
   const DAY = 86400000;
 
@@ -483,6 +486,195 @@
     return s;
   }
 
+
+  /* ---------- Zone-2-Entwicklung (data/z2-metrics.json, js/z2.js) ---------- */
+  const ZCOL = ["28%", "46%", "64%", "82%", "100%"].map((p) => `color-mix(in srgb, var(--recovery) ${p}, var(--surface))`);
+  const STATUS_COL = { good: "var(--good)", warn: "var(--warn)", bad: "var(--bad)" };
+  const STATUS_TXT = { good: "grün", warn: "gelb", bad: "rot" };
+  const SRC_TXT = { strap: "Brustgurt", wrist: "Uhr (optisch)", unknown: "Pulsmesser unbekannt" };
+  let Z2DATA = null, HRSRC = null, zoneFilter = "all";
+
+  function zone2() {
+    const cfg = window.TRAINING.z2, Z = window.Z2;
+    if (!cfg || !Z) { $("#zone2").hidden = true; return; }
+    const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
+      .then(([db, src]) => { Z2DATA = db; HRSRC = src; renderZone2(); })
+      .catch(() => {
+        $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
+        const ins = $("#z2Insight p"); if (ins) ins.textContent = "Noch keine Zone-2-Auswertung verfügbar.";
+      });
+  }
+
+  function renderZone2() {
+    const cfg = window.TRAINING.z2, Z = window.Z2, hrZ = D.zones.hr;
+    const all = Z2DATA.activities.filter((r) => r.kind);
+    // Pulsmesser je Einheit: #gurt/#uhr-Markierung vor Garmin-Sensorliste (Start ±3 min)
+    const srcs = (HRSRC && HRSRC.activities) || [];
+    const mins = (iso) => Date.parse(String(iso).slice(0, 16) + ":00Z") / 60000;
+    for (const r of all) {
+      if (r.hrTag) { r.hrSrc = r.hrTag; r.hrSrcFrom = "Markierung"; continue; }
+      const t = mins(r.date);
+      const m = srcs.find((x) => Math.abs(mins(x.start) - t) <= 3 && (r.kind === "run") === /run/.test(x.type));
+      r.hrSrc = m ? m.source : "unknown"; r.hrSrcFrom = m ? "Garmin" : null;
+    }
+    const strapOnly = (cfg.hrSource || {}).mode === "strapOnly";
+    const recs = strapOnly ? all.filter((r) => r.hrSrc === "strap") : all;
+    const lastDate = all.reduce((m, r) => (r.date > m ? r.date : m), "").slice(0, 10);
+    const asOf = [S.snapshotDate, lastDate].sort().pop();
+    const runBand = cfg.run.hrBand, rideBand = cfg.ride.hrBand;
+    const runMid = Math.round((runBand[0] + runBand[1]) / 2), rideMid = Math.round((rideBand[0] + rideBand[1]) / 2);
+    const pace = Z.paceSeries(recs), wIn = Z.wattSeries(recs, true), wOut = Z.wattSeries(recs, false);
+    const decRuns = Z.decouplingSeries(recs, "run");
+    const kP = Z.kpi(pace, asOf, cfg.windowDays, cfg.minPoints), kW = Z.kpi(wIn, asOf, cfg.windowDays, cfg.minPoints);
+    const lastOf = (pts) => pts.slice().sort((a, b) => a.date.localeCompare(b.date)).pop();
+    const tile = (label, value, sub, badge) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${badge || ""}${sub}</div></div>`;
+    const few = (n, what) => `noch zu wenig Daten (${n} ${n === 1 ? what[0] : what[1]} in 4 Wochen, mind. ${cfg.minPoints})`;
+
+    // Kachel 1: Pace @ HF
+    const lp = lastOf(pace);
+    const t1 = kP.enough
+      ? tile(`Pace @ ${runMid} bpm`, `${mmss(kP.value)} <small>/km</small>`, kP.delta != null ? `${kP.delta < 0 ? "▼" : kP.delta > 0 ? "▲" : "±"} ${mmss(Math.abs(kP.delta))} ${kP.delta <= 0 ? "schneller" : "langsamer"} als die 4 Wochen davor` : `Median aus ${kP.n} Läufen`)
+      : tile(`Pace @ ${runMid} bpm`, "–", `${few(kP.n, ["Lauf", "Läufe"])}${lp ? ` · zuletzt ${mmss(lp.v)} /km am ${fmtDate(parse(lp.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
+    // Kachel 2: Watt @ HF (Indoor)
+    const lw = lastOf(wIn);
+    const t2 = kW.enough
+      ? tile(`Watt @ ${rideMid} bpm (Indoor)`, `${nf(kW.value)} <small>W</small>`, kW.delta != null ? `${kW.delta > 0 ? "▲ +" : kW.delta < 0 ? "▼ −" : "± "}${nf(Math.abs(kW.delta))} W zu den 4 Wochen davor` : `Median aus ${kW.n} Fahrten`)
+      : tile(`Watt @ ${rideMid} bpm (Indoor)`, "–", `${few(kW.n, ["Fahrt", "Fahrten"])}${lw ? ` · zuletzt ${lw.v} W am ${fmtDate(parse(lw.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
+    // Kachel 3: Ø Entkopplung lange Läufe
+    const since = parse(asOf).getTime() - cfg.longRunWindowDays * DAY;
+    const decRecent = decRuns.filter((p) => parse(p.date).getTime() > since);
+    let t3;
+    if (decRecent.length) {
+      const avg = decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length, st = Z.ampel(avg, cfg.decoupling.thresholds);
+      t3 = tile("Ø Entkopplung lange Läufe", `${nf(avg, 1)} <small>%</small>`, `${decRecent.length} Lauf${decRecent.length > 1 ? "e" : ""} ≥ 60 min, letzte 8 Wochen`, `<span class="badge ${st}" style="margin-right:6px">${st === "good" ? "✓ unter 5 %" : st === "warn" ? "5–10 %" : "über 10 %"}</span>`);
+    } else t3 = tile("Ø Entkopplung lange Läufe", "–", "noch keine ruhigen Läufe ≥ 60 min in den letzten 8 Wochen");
+    // Kachel 4: Anteil Z1–2
+    const sh = Z.zoneShare(all, asOf, cfg.windowDays, [0, 1]), sh3 = Z.zoneShare(all, asOf, cfg.windowDays, [2]);
+    const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3: ${Math.round((sh3 ? sh3.share : 0) * 100)} % · Z4–5: ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} % · ${hm(sh.totalSec)} h Lauf & Rad · Richtwert ~80 %`)
+      : tile("Anteil Z1–2 (4 Wochen)", "–", "keine Einheiten mit Herzfrequenz");
+    $("#z2Tiles").innerHTML = t1 + t2 + t3 + t4;
+
+    // Chart 1: Pace @ HF
+    const toPts = (arr, kind) => arr.map((p) => ({ d: parse(p.date), v: p.v, rec: p.rec, kind,
+      hollow: kind === "run" ? p.rec.hrSrc !== "strap" : kind === "outdoor", gap: kind === "run" && !!(p.rec.pace && p.rec.pace.gap) }));
+    const roll = (arr) => Z.rollingMedian(arr, cfg.windowDays).map((p) => ({ d: parse(p.date), v: p.v }));
+    const tipRec = (p, valTxt) => `<div class="t-title">${esc(p.rec.name)}</div>${tRow("var(--recovery)", fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" }), valTxt)}<div class="muted">${nf(p.rec.km, 1)} km · ${hm(p.rec.sec)} h${p.rec.pace ? ` · ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? ` · ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}</div><div class="muted">${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? " · steigungsbereinigt (GAP)" : ""}</div>`;
+    trendChart($("#z2Pace"), toPts(pace, "run"), pace.length >= cfg.minPoints ? [{ pts: roll(pace) }] : [], {
+      invert: true, fmt: mmss, label: `Pace @ ${runMid} bpm`, minPoints: cfg.minPoints,
+      tip: (p) => tipRec(p, `${mmss(p.v)} /km`),
+    });
+    // Chart 2: Watt @ HF
+    trendChart($("#z2Watts"), toPts(wIn, "indoor").concat(toPts(wOut, "outdoor")),
+      [wIn.length >= cfg.minPoints ? { pts: roll(wIn) } : null, wOut.length >= cfg.minPoints ? { pts: roll(wOut), dash: true } : null].filter(Boolean), {
+        invert: false, fmt: (v) => nf(v), label: `Watt @ ${rideMid} bpm`, minPoints: cfg.minPoints,
+        tip: (p) => tipRec(p, `${p.v} W · ${p.kind === "indoor" ? "Indoor" : "Outdoor"}`),
+      });
+    // Chart 3: Entkopplung
+    decouplingChart($("#z2Dec"), Z.decouplingSeries(recs), cfg.decoupling.thresholds);
+    // Chart 4: Zonenverteilung
+    $("#z2ZoneLegend").innerHTML = hrZ.map((z, i) => `<span><i class="swatch" style="background:${ZCOL[i]}"></i>Z${i + 1} ${i === 0 ? "< " + hrZ[1][0] : z[1] == null ? "≥ " + z[0] : z[0] + "–" + z[1]}</span>`).join("");
+    zoneChart();
+
+    // Text der Karte „Zone 2 verbessern“
+    const ins = $("#z2Insight p");
+    if (ins) ins.innerHTML = Z.summary(recs, asOf, cfg, hrZ).map(esc).join(" · ") + ` · <a href="#zone2">Details</a>`;
+    $("#z2Asof").textContent = `${all.length} Läufe & Fahrten seit ${fmtDate(parse(all[0].date))} · Stand ${fmtDate(parse(asOf))}${strapOnly ? " · nur Brustgurt-Einheiten gewertet" : ""}`;
+    const withHr = all.filter((r) => r.hasHr), cnt = (k) => withHr.filter((r) => r.hrSrc === k).length;
+    $("#z2SrcStats").innerHTML = `<b>Pulsmesser erkannt:</b> ${cnt("strap")} × Brustgurt, ${cnt("wrist")} × Uhr, ${cnt("unknown")} × unbekannt (von ${withHr.length} Einheiten mit HF). ${HRSRC && HRSRC.updated ? `Garmin-Sensordaten Stand ${new Date(HRSRC.updated).toLocaleDateString("de-DE")}.` : "Noch keine Garmin-Sensordaten – der nächste Garmin-Lauf holt sie."}`;
+  }
+
+  // Einzelwerte als blasse Punkte, gleitender Median als Linie
+  function trendChart(box, pts, lines, o) {
+    if (pts.length < 1) { box.innerHTML = `<p class="muted" style="margin:0">Noch keine gewerteten Einheiten.</p>`; return; }
+    const W = Math.max(300, Math.round(box.clientWidth || 520)), H = W < 500 ? 190 : 210, m = { t: 12, r: 10, b: 24, l: 46 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const vals = pts.map((p) => p.v);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = (hi - lo) * 0.2 || Math.max(5, hi * 0.03); lo -= pad; hi += pad;
+    let t0 = Math.min(...pts.map((p) => p.d.getTime())), t1 = Math.max(...pts.map((p) => p.d.getTime()));
+    if (t1 - t0 < 14 * DAY) { t0 -= 7 * DAY; t1 += 7 * DAY; }
+    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0)) * iw;
+    const y = (v) => (o.invert ? m.t + ((v - lo) / (hi - lo)) * ih : m.t + ih - ((v - lo) / (hi - lo)) * ih);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)} über die Zeit">`;
+    for (let i = 0; i <= 3; i++) { const v = lo + ((hi - lo) / 3) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${o.fmt(v)}</text>`; }
+    lines.forEach((l) => { const ps = l.pts.filter((p) => p.v != null); if (ps.length > 1) s += `<path d="${ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="var(--recovery)" stroke-width="2" ${l.dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`; });
+    pts.forEach((p, i) => {
+      const cx = x(p.d), cy = y(p.v);
+      const look = p.hollow ? `fill="var(--surface)" stroke="var(--recovery)" stroke-width="2" opacity=".75"` : `fill="var(--recovery)" opacity=".45"`;
+      s += p.gap ? `<path d="M${cx},${cy - 6.5}L${cx + 6.5},${cy}L${cx},${cy + 6.5}L${cx - 6.5},${cy}Z" ${look}/>` : `<circle cx="${cx}" cy="${cy}" r="${p.hollow ? 4.5 : 5}" ${look}/>`;
+      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="13" fill="transparent"/>`;
+    });
+    s += `<text x="${m.l}" y="${H - 6}">${fmtDate(new Date(t0), { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 6}" text-anchor="end">${fmtDate(new Date(t1), { day: "2-digit", month: "2-digit" })}</text></svg>`;
+    const note = pts.length < o.minPoints ? `<p class="muted" style="font-size:12px;margin:4px 0 0">Noch zu wenig Daten für einen Trend (${pts.length} von mind. ${o.minPoints} Werten).</p>` : "";
+    box.innerHTML = s + note;
+    attachPointTips(box, pts, "var(--recovery)", o.tip);
+  }
+
+  function decouplingChart(box, list, thr) {
+    if (!list.length) { box.innerHTML = `<p class="muted" style="margin:0">Noch keine ruhigen langen Einheiten (Lauf ≥ 60 min, Rad ≥ 90 min mit echten Watt, ≥ 80 % in Z1–2).</p>`; return; }
+    const items = list.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const W = Math.max(300, Math.round(box.clientWidth || 520)), H = W < 500 ? 190 : 210, m = { t: 14, r: 10, b: 26, l: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const lo = Math.min(0, ...items.map((p) => p.v)) - 1, hi = Math.max(thr[1] + 2, ...items.map((p) => p.v)) + 1;
+    const y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    const band = iw / Math.max(items.length, 6), bw = Math.min(36, band * 0.6);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Entkopplung pro langer Einheit">`;
+    [0, thr[0], thr[1]].forEach((v) => { s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${v} %</text>`; });
+    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(thr[0])}" y2="${y(thr[0])}" stroke="var(--text-2)" stroke-dasharray="5 4"/>`;
+    items.forEach((p, i) => {
+      const st = window.Z2.ampel(p.v, thr), cx = m.l + band * i + band / 2;
+      const top = Math.min(y(p.v), y(0)), h = Math.max(2, Math.abs(y(p.v) - y(0)));
+      s += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${STATUS_COL[st]}"/>`;
+      s += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${fmtDate(parse(p.date), { day: "2-digit", month: "2-digit" })}</text>`;
+      s += `<rect class="hit" data-i="${i}" x="${cx - band / 2}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
+    });
+    box.innerHTML = s + "</svg>";
+    box.querySelectorAll(".hit").forEach((el) => {
+      const p = items[+el.dataset.i], r = p.rec, st = window.Z2.ampel(p.v, thr);
+      const html = `<div class="t-title">${esc(r.name)}</div>${tRow(STATUS_COL[st], fmtDate(parse(p.date), { weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit" }), `${nf(p.v, 1)} % (${STATUS_TXT[st]})`)}<div class="muted">${r.kind === "run" ? "Lauf" : "Rad"} · ${hm(r.sec)} h · ${nf(r.km, 1)} km · Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? ` · VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? " · GAP" : ""}</div><div class="muted">${SRC_TXT[r.hrSrc] || SRC_TXT.unknown}</div>`;
+      const show = (ev) => showTip(html, ev);
+      el.addEventListener("mousemove", show); el.addEventListener("click", show); el.addEventListener("mouseleave", hideTip);
+    });
+  }
+
+  function zoneChart() {
+    const box = $("#z2Zones"), Z = window.Z2;
+    const recs = Z2DATA.activities.filter((r) => r.kind);
+    const weeksZ = Z.weeklyZones(recs, zoneFilter === "all" ? null : zoneFilter).slice(-16);
+    $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", c.dataset.f === zoneFilter));
+    if (!weeksZ.length) { box.innerHTML = `<p class="muted">Keine Daten.</p>`; return; }
+    const W = Math.max(300, Math.round(box.clientWidth || 900)), H = W < 600 ? 220 : 260, m = { t: 12, r: 8, b: 28, l: 36 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const tot = weeksZ.map((w) => w.sec.reduce((a, b) => a + b, 0) / 3600);
+    const { max, step } = niceScale(Math.max(...tot) * 1.05);
+    const y = (v) => m.t + ih - (v / max) * ih;
+    const band = iw / weeksZ.length, bw = Math.min(40, band * 0.62);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Zeit pro Herzfrequenzzone und Woche">`;
+    for (let v = 0; v <= max + 1e-9; v += step) s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)} h</text>`;
+    weeksZ.forEach((w, i) => {
+      const x = m.l + band * i + (band - bw) / 2;
+      let acc = 0;
+      const segs = w.sec.map((sec, z) => ({ z, h: sec / 3600 })).filter((g) => g.h > 0);
+      segs.forEach((g, j) => {
+        const y0 = y(acc), y1 = y(acc + g.h), gap = j > 0 ? 2 : 0, hgt = Math.max(0, y0 - y1 - gap);
+        s += j === segs.length - 1 ? `<path d="${roundedTopRect(x, y1, bw, hgt, 4)}" fill="${ZCOL[g.z]}"/>` : `<rect x="${x}" y="${y1}" width="${bw}" height="${hgt}" fill="${ZCOL[g.z]}"/>`;
+        acc += g.h;
+      });
+      const every = Math.ceil(44 / band);
+      if ((weeksZ.length - 1 - i) % every === 0) s += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle">${fmtDate(parse(w.week), { day: "2-digit", month: "2-digit" })}</text>`;
+      s += `<rect class="hit" data-i="${i}" x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
+    });
+    box.innerHTML = s + "</svg>";
+    box.querySelectorAll(".hit").forEach((el) => {
+      const w = weeksZ[+el.dataset.i], total = w.sec.reduce((a, b) => a + b, 0);
+      const html = `<div class="t-title">Woche ab ${fmtDate(parse(w.week))}</div>` + w.sec.map((sec, z) => tRow(ZCOL[z], `Z${z + 1}`, `${hm(sec)} h · ${total ? Math.round((sec / total) * 100) : 0} %`)).join("") + `<div class="t-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px"><span>Summe</span><span>${hm(total)} h</span></div>`;
+      const show = (ev) => { el.setAttribute("fill", "rgba(127,127,127,.08)"); showTip(html, ev); };
+      el.addEventListener("mousemove", show); el.addEventListener("click", show);
+      el.addEventListener("mouseleave", () => { el.setAttribute("fill", "transparent"); hideTip(); });
+    });
+  }
+
   /* ---------- Zonen & Bestleistungen ---------- */
   function zones() {
     const z = D.zones;
@@ -491,14 +683,14 @@
     const rNames = ["Aktive Erholung", "Ausdauer", "Tempo", "Schwelle", "VO2max", "Anaerob"];
     const shade = (i, n) => `color-mix(in srgb, var(--text) ${Math.round(15 + (i / (n - 1)) * 70)}%, transparent)`;
     const table = (title, rows, head) => `<div class="card"><h3>${title}</h3><table><thead><tr><th>Zone</th><th>${head}</th><th></th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
-    const hrRows = z.hr.map(([a, b], i) => `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 6}px;background:${shade(i, 5)}"></span> Z${i + 1}</td><td>${hrNames[i]}</td><td class="num">${b == null ? "≥ " + a : a + "–" + b} bpm</td></tr>`);
+    const hrRows = z.hr.map(([a, b], i) => `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 6}px;background:${shade(i, 5)}"></span> Z${i + 1}</td><td>${hrNames[i]}</td><td class="num">${b == null ? "≥ " + a : i === 0 ? "< " + z.hr[1][0] : a + "–" + b} bpm</td></tr>`);
     const pRows = z.power.map(([a, b], i) => `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 5}px;background:${shade(i, 7)}"></span> Z${i + 1}</td><td>${pNames[i]}</td><td class="num">${b == null ? "≥ " + a : a + "–" + b} W</td></tr>`);
     const rRows = z.run.map(([a, b], i) => {
       const slow = a ? 1000 / a : null, fast = b ? 1000 / b : null;
       const txt = !a ? `> ${mmss(fast)}` : !b ? `< ${mmss(slow)}` : `${mmss(fast)}–${mmss(slow)}`;
       return `<tr${i === 1 ? ' style="font-weight:600"' : ""}><td><span class="zone-bar" style="width:${8 + i * 6}px;background:${shade(i, 6)}"></span> Z${i + 1}</td><td>${rNames[i]}</td><td class="num">${txt} /km</td></tr>`;
     });
-    $("#zones").innerHTML = table("Herzfrequenz", hrRows, "Bereich") + table(`Leistung (FTP ${z.ftp} W)`, pRows, "Bereich") + table("Lauf-Pace", rRows, "Bereich");
+    $("#zones").innerHTML = table(`Herzfrequenz${z.maxHr ? ` · Max ${z.maxHr}` : ""}`, hrRows, "Bereich") + table(`Leistung (FTP ${z.ftp} W)`, pRows, "Bereich") + table("Lauf-Pace", rRows, "Bereich");
 
     const b = D.bests;
     $("#bests").innerHTML = `
@@ -525,9 +717,9 @@
       ["good", "Im Plan", "Laufen solide", `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe meist um 5:30–6:00 /km (Zone 2 laut Strava: ${mmss(runPaceZ2[0])}–${mmss(runPaceZ2[1])} /km). Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
       ["good", "Stärke", "Krafttraining konsequent", `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.`],
       [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
-      ["good", "Fokus", "Zone 2 verbessern", `Dein Strava-Fokus. Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm, Rad-Zone 2: ${D.zones.power[1][0]}–${D.zones.power[1][1]} W. Ca. 80 % der Trainingszeit locker halten.`],
+      ["good", "Fokus", "Zone 2 verbessern", `Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm. Die Entwicklung wird aus deinen Läufen und Fahrten berechnet …`, "z2Insight"],
     ];
-    $("#insights").innerHTML = items.map(([cls, badge, title, text]) => `<div class="card insight"><span class="badge ${cls}">${badge}</span><div><b>${title}</b><p>${text}</p></div></div>`).join("");
+    $("#insights").innerHTML = items.map(([cls, badge, title, text, id]) => `<div class="card insight"${id ? ` id="${id}"` : ""}><span class="badge ${cls}">${badge}</span><div><b>${title}</b><p>${text}</p></div></div>`).join("");
   }
 
   /* ---------- Aktivitäten ---------- */
@@ -636,7 +828,7 @@
     } else if (level === 2) {
       s = { sport: s.sport === "run" ? "bike" : s.sport === "strength" ? "other" : s.sport, title: s.sport === "swim" ? "Lockeres Techniktraining" : s.sport === "strength" ? "Mobility statt Kraft" : "Lockere Regenerationseinheit",
         min: s.sport === "strength" ? 25 : 40, type: "easy",
-        detail: s.sport === "swim" ? "30–40 min ruhig, nur Technik und Wasserlage." : s.sport === "strength" ? "20–25 min Dehnen, Faszienrolle, ruhige Atmung." : `40 min ganz locker in Zone 1 (unter ${D.zones.hr[0][1]} bpm), lieber Rad als Laufen.`,
+        detail: s.sport === "swim" ? "30–40 min ruhig, nur Technik und Wasserlage." : s.sport === "strength" ? "20–25 min Dehnen, Faszienrolle, ruhige Atmung." : `40 min ganz locker in Zone 1 (unter ${D.zones.hr[1][0]} bpm), lieber Rad als Laufen.`,
         changed: "deutlich entschärft" };
     } else if (level === 3) {
       s = { sport: "other", title: "Ruhetag", min: 20, type: "rest", detail: "Kein Training. Spaziergang, 20 min Mobility, früh schlafen, viel trinken.", changed: "Erholung hat Vorrang" };
@@ -724,8 +916,9 @@
   /* ---------- Init ---------- */
   $("#actMore").addEventListener("click", () => { showAll = true; activities(); });
   today(); recovery();
-  hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zones(); activities();
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); }, 150); });
+  hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); zones(); activities();
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); }, 150); });
+  $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
   $("#toggleTable").addEventListener("click", (e) => {
     const on = e.currentTarget.getAttribute("aria-pressed") !== "true";

@@ -204,6 +204,10 @@ tbody tr:hover { background: var(--surface-2); }
   .pred-table tfoot td { border-top: 0; }
 }
 
+/* Zone 2 */
+details.how summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font-size: 14px; display: grid; gap: 4px; }
+
 /* Heute */
 .today-grid { grid-template-columns: 1.5fr 1fr; }
 .form-score { display: flex; align-items: center; gap: 12px; }

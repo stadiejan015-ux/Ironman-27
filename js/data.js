@@ -20,6 +20,50 @@ window.TRAINING = {
     swimKm: 3.8, bikeKm: 180, runKm: 42.2,
   },
 
+  // Eigene Herzfrequenz-Zonen (ersetzen die Strava-Standardzonen auf der ganzen Seite).
+  // [min, max] in bpm, max null = offen. Z1 < 130 · Z2 130–152 · Z3 153–175 · Z4 176–200 · Z5 ≥ 201
+  zones: {
+    hr: [[0, 129], [130, 152], [153, 175], [176, 200], [201, null]],
+    maxHr: 209,
+  },
+
+  // Zone-2-Entwicklung (js/z2.js, scripts/process_streams.js)
+  z2: {
+    warmupSec: 600,            // erste 10 min verwerfen
+    smoothSec: 60,             // gleitendes Mittel für HF, Tempo, Watt
+    maxGapSec: 10,             // längere Lücken zählen nur bis 10 s
+    run: {
+      hrBand: [140, 148],      // Pace @ HF
+      gradeRange: [-2, 2],     // % Steigung
+      minBandSec: 480,         // mind. 8 min im Band
+      maxElevPerKm: 10,        // hügeliger → nicht gewertet
+      maxHighShare: 0.10,      // > 10 % der Zeit ≥ Z4 → Intervall-Lauf
+      minSpeed: 1.5,           // m/s, Gehen/Stehen ignorieren
+      // Hügelige Läufe (10–25 Hm/km) mit steigungsbereinigter Pace (GAP, Minetti-Modell) werten
+      gap: { enabled: true, maxElevPerKm: 25, gradeRange: [-6, 6] },
+    },
+    ride: {
+      hrBand: [135, 145],      // Watt @ HF (nur echte Watt)
+      gradeRange: [-2, 2],
+      minBandSec: 480,
+      maxHighShare: 0.10,
+    },
+    decoupling: {
+      runMinSec: 3600, rideMinSec: 5400,  // ab 60 bzw. 90 min
+      minZ12Share: 0.80,                  // ≥ 80 % in Z1–Z2 nach dem Aufwärmen
+      maxVi: 1.10,                        // Rad: Variabilitätsindex
+      thresholds: [5, 10],                // < 5 % grün, 5–10 % gelb, > 10 % rot
+    },
+    // Pulsmesser: Brustgurt-Erkennung über Garmin (data/hr-sources.json) oder #gurt / #uhr
+    // im Strava-Titel bzw. in der Beschreibung. mode "mark" = Uhr-Werte markieren,
+    // "strapOnly" = für Pace/Watt @ HF und Entkopplung nur Brustgurt-Einheiten werten.
+    hrSource: { mode: "mark" },
+    zonesIncludeWarmup: true,  // Zonenverteilung inkl. Aufwärmen (echte Trainingszeit)
+    windowDays: 28,            // Kacheln: letzte 4 Wochen vs. 4 Wochen davor
+    minPoints: 3,              // darunter „noch zu wenig Daten“
+    longRunWindowDays: 56,     // Ø Entkopplung der langen Läufe: letzte 8 Wochen
+  },
+
   // Zielzeiten (frei anpassbar, h:mm:ss)
   goals: {
     swim: "1:25:00", t1: "0:06:00", bike: "5:15:00", t2: "0:04:00", run: "4:50:00",
