@@ -20,6 +20,26 @@ window.TRAINING = {
     swimKm: 3.8, bikeKm: 180, runKm: 42.2,
   },
 
+  // Flex-Modus: flexibles Training auf Reisen, Schwerpunkt Gym, Ausdauer zur Erhaltung.
+  // Ist active false oder das Datum nach until, verhält sich die Seite wie bisher.
+  flex: {
+    active: true,
+    from: "2026-11-02",
+    until: "2027-01-10",
+    label: "Gym-Block & Reisen",
+    minimum: { gym: 4, endurance: 2, enduranceMinMinutes: 30, swim: 1 },   // pro Woche (Mo–So)
+    rotation: ["Push", "Pull", "Legs"],
+    legDayHours: 48,            // so lange nach Leg Day kein harter Lauf
+    reentryDays: 14,            // Hinweis zum Wiedereinstieg vor dem Ende
+    defaultEquipment: ["gym", "treadmill", "runOutside"],
+    // Erkennung des Splits im Titel/der Beschreibung (Groß-/Kleinschreibung egal)
+    splitKeywords: {
+      Push: ["push", "brust", "chest", "bankdrücken", "bench"],
+      Pull: ["pull", "rücken", "back", "latzug", "lat pulldown", "lat"],
+      Legs: ["legs", "leg day", "leg", "beine", "beinpresse", "leg press"],
+    },
+  },
+
   // Eigene Herzfrequenz-Zonen (ersetzen die Strava-Standardzonen auf der ganzen Seite).
   // [min, max] in bpm, max null = offen. Z1 < 130 · Z2 130–152 · Z3 153–175 · Z4 176–200 · Z5 ≥ 201
   zones: {

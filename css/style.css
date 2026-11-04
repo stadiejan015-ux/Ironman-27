@@ -208,6 +208,24 @@ tbody tr:hover { background: var(--surface-2); }
 details.how summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font-size: 14px; display: grid; gap: 4px; }
 
+/* Flex-Modus */
+.flex-banner { margin-top: 16px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); color: var(--text-2); font-size: 14px; border: 1px dashed var(--border); }
+.flex-banner b { color: var(--text); }
+.flex-reentry { margin-top: 6px; color: var(--text); font-size: 13px; }
+.equip { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.flex-sug { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 600px) { .flex-sug { grid-template-columns: 1fr; } }
+.min-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; font-size: 14px; }
+.min-list li { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; color: var(--text-2); }
+.min-list li.ok { color: var(--text); }
+.min-list .tick { font-weight: 700; color: var(--text-3); }
+.min-list li.ok .tick { color: var(--good); }
+.neutral-delta { color: var(--text-3); }
+.flex-span { position: absolute; top: -4px; bottom: -4px; border-radius: 8px; border: 2px dashed var(--text-2); background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--text) 10%, transparent) 6px 8px); pointer-events: none; }
+.flex-span span { position: absolute; bottom: -18px; left: 4px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+.phase-list li.flex-li { outline-style: dashed; }
+.chart text.min-ok { fill: var(--good); font-weight: 700; font-size: 13px; }
+
 /* Heute */
 .today-grid { grid-template-columns: 1.5fr 1fr; }
 .form-score { display: flex; align-items: center; gap: 12px; }

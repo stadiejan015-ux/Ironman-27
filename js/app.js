@@ -39,6 +39,10 @@
   const commit = parse(D.commitDate);
   const race = parse(D.race.date);
   const inRange = (from, to) => acts.filter((a) => a.date >= from && a.date < to);
+  // Flex-Modus (js/flex.js): bei active=false oder nach "until" verhält sich alles wie bisher
+  const FX = window.Flex, FCFG = window.TRAINING.flex || {};
+  const FLEX = FX ? FX.flexState(FCFG, new Date()) : { active: false };
+  const inFlex = (d) => !!(FX && FX.flexState(FCFG, d).active);
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
   const ofCat = (arr, c) => arr.filter((a) => a.cat === c);
 
@@ -76,7 +80,7 @@
     const now = new Date();
     const days = Math.max(0, Math.ceil((race - now) / DAY));
     const weeks = Math.floor(days / 7);
-    const phase = currentPhase(now);
+    const phase = FLEX.active ? { short: "Flex" } : currentPhase(now);
     const totalDays = Math.round((race - commit) / DAY);
     const dayNo = Math.min(totalDays, Math.max(0, Math.floor((now - commit) / DAY) + 1));
     const pct = Math.round((dayNo / totalDays) * 100);
@@ -87,6 +91,13 @@
       <div class="journey"><div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} · ${pct} %</span><span>Rennen</span></div>
         <div class="ready-track" role="img" aria-label="${pct} % der Vorbereitung vergangen"><div class="ready-fill" style="width:${pct}%;background:var(--text)"></div></div></div>`;
     $("#snap").textContent = fmtDate(snap);
+    const banner = $("#flexBanner");
+    if (FLEX.active) {
+      const until = fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" });
+      banner.hidden = false;
+      banner.innerHTML = `<b>Flex-Phase bis ${until}</b> · ${esc(FLEX.label)} · danach strukturiertes Training` +
+        (FLEX.reentry ? `<div class="flex-reentry">Noch ${FLEX.daysLeft} ${FLEX.daysLeft === 1 ? "Tag" : "Tage"}: Wiedereinstieg vorbereiten – Ausdauer wieder auf 3–4 Einheiten pro Woche steigern, je eine längere lockere Rad- und Laufeinheit einbauen und Gym auf 2–3× reduzieren.</div>` : "");
+    }
   }
 
   /* ---------- KPIs ---------- */
@@ -96,6 +107,7 @@
     $("#kpiSub").textContent = `${fmtDate(from)} – ${fmtDate(snap)}, verglichen mit den 4 Wochen davor.`;
     const delta = (a, b, unit, d = 0) => {
       const diff = a - b; if (Math.abs(diff) < 0.05) return "± 0 zur Vorperiode";
+      if (FLEX.active && diff < 0) return `<span class="neutral-delta">−${nf(Math.abs(diff), d)} ${unit} · Flex-Phase, kein Soll</span>`;
       return `${diff > 0 ? "▲ +" : "▼ −"}${nf(Math.abs(diff), d)} ${unit} zur Vorperiode`;
     };
     const triCats = ["swim", "bike", "run"];
@@ -116,6 +128,9 @@
     ];
     $("#kpis").innerHTML = tiles.map(([l, v, d]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="delta">${d}</div></div>`).join("");
   }
+
+  // Häkchenliste fürs Wochen-Minimum
+  const minList = (wk) => `<ul class="min-list">${wk.items.map((x) => `<li class="${x.ok ? "ok" : ""}"><span class="tick" aria-hidden="true">${x.ok ? "✓" : "○"}</span><span>${esc(x.label)}</span><b>${x.have}/${x.need}</b><span class="sr-only">${x.ok ? "erfüllt" : "offen"}</span></li>`).join("")}</ul>`;
 
   /* ---------- Phasen ---------- */
   const planStart = commit;
@@ -143,13 +158,29 @@
       const state = now >= p.end ? "done" : now >= p.start ? "current" : "";
       return `<div class="phase ${state}" style="flex:0 0 calc(${w}% - 3px)" title="${esc(p.name)}"><b>${esc(p.short)}</b><span>${p.hours}</span></div>`;
     }).join("");
+    if (FX && FCFG.active && FCFG.until) {
+      const fs = FCFG.from ? parse(FCFG.from) : now, fe = addDays(parse(FCFG.until), 1);
+      const span = document.createElement("div");
+      span.className = "flex-span"; span.title = `${FCFG.label || "Flex"}: ${fmtDate(fs)} – ${fmtDate(parse(FCFG.until))}`;
+      span.style.left = Math.max(0, ((fs - planStart) / total) * 100) + "%";
+      span.style.width = Math.max(1, ((fe - fs) / total) * 100) + "%";
+      span.innerHTML = "<span>Flex</span>";
+      tl.appendChild(span);
+    }
     if (now > planStart && now < race) {
       const m = document.createElement("div");
       m.className = "today-marker"; m.style.left = ((now - planStart) / total) * 100 + "%";
       tl.appendChild(m);
     }
     const cp = currentPhase(now);
-    if (cp) {
+    if (FLEX.active) {
+      const wk = FX.weekMinimum(acts, now, FCFG), after = currentPhase(addDays(FLEX.until, 1));
+      $("#currentPhase").innerHTML = `<div class="card" style="box-shadow:none;background:var(--surface-2);border:0">
+        <h3 style="margin-bottom:2px">Flex · ${esc(FLEX.label)}</h3>
+        <div class="muted" style="font-size:13px;margin-bottom:10px">${FLEX.from ? fmtDate(FLEX.from) + " – " : "bis "}${fmtDate(FLEX.until)} · noch ${FLEX.daysLeft} Tage${after ? ` · danach ${esc(after.name)}` : ""}</div>
+        <div class="mini-title" style="margin-top:0">Wochen-Minimum (diese Woche)</div>
+        ${minList(wk)}</div>`;
+    } else if (cp) {
       const left = Math.ceil((cp.end - now) / DAY / 7);
       $("#currentPhase").innerHTML = `<div class="card" style="box-shadow:none;background:var(--surface-2);border:0">
         <h3 style="margin-bottom:2px">${esc(cp.name)}</h3>
@@ -158,7 +189,7 @@
     } else {
       $("#currentPhase").innerHTML = `<p class="muted">Außerhalb des Plans.</p>`;
     }
-    $("#phaseList").innerHTML = PHASES.map((p) => `<li class="${p === cp ? "current" : ""}">
+    $("#phaseList").innerHTML = (FLEX.active ? `<li class="current flex-li"><b>Flex</b><span class="dates">${FLEX.from ? fmtDate(FLEX.from, { day: "2-digit", month: "short" }) + " – " : "bis "}${fmtDate(FLEX.until, { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">Minimum</span></li>` : "") + PHASES.map((p) => `<li class="${p === cp && !FLEX.active ? "current" : ""}">
       <b>${esc(p.short)}</b><span class="dates">${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">${p.hours}</span></li>`).join("");
   }
 
@@ -168,9 +199,11 @@
   for (let w = firstWeek; w <= snap; w = addDays(w, 7)) {
     const list = inRange(w, addDays(w, 7));
     const h = (c) => sum(ofCat(list, c), (a) => a.sec) / 3600;
-    weeks.push({ start: w, swim: h("swim"), bike: h("bike"), run: h("run"), extra: h("strength") + h("other") });
+    const flexWeek = inFlex(addDays(w, 3)) || inFlex(w) || inFlex(addDays(w, 6));
+    weeks.push({ start: w, swim: h("swim"), bike: h("bike"), run: h("run"), extra: h("strength") + h("other"),
+      flex: flexWeek, min: flexWeek && FX ? FX.weekMinimum(acts, w, FCFG) : null });
   }
-  let showOther = false;
+  let showOther = FLEX.active; // im Flex-Zeitraum Kraft standardmäßig mit anzeigen
 
   function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); const f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
   function niceScale(v, ticks = 4) { const step = niceStep((v || 1) / ticks); return { max: Math.ceil((v || 1) / step) * step, step }; }
@@ -186,7 +219,8 @@
     $("#volLegend").innerHTML = keys.map((k) => `<span><i class="swatch" style="background:${colors[k]}"></i>${labels[k]}</span>`).join("");
 
     const el = $("#volChart");
-    const W = Math.max(300, Math.round(el.clientWidth || 1000)), H = W < 600 ? 230 : 300, m = { t: 12, r: 8, b: 30, l: 34 };
+    const anyFlex = weeks.some((w) => w.flex);
+    const W = Math.max(300, Math.round(el.clientWidth || 1000)), H = (W < 600 ? 230 : 300) + (anyFlex ? 16 : 0), m = { t: anyFlex ? 22 : 12, r: 8, b: anyFlex ? 46 : 30, l: 34 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const totals = weeks.map((w) => keys.reduce((s, k) => s + w[k], 0));
     const { max, step } = niceScale(Math.max(...totals) * 1.05);
@@ -197,10 +231,16 @@
       const yy = y(v);
       svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/><text x="${m.l - 6}" y="${yy + 4}" text-anchor="end">${nf(v)} h</text>`;
     }
+    const fIdx = weeks.map((w, i) => (w.flex ? i : -1)).filter((i) => i >= 0);
+    if (fIdx.length) {
+      const x0 = m.l + band * fIdx[0], x1 = m.l + band * (fIdx[fIdx.length - 1] + 1);
+      svg += `<rect x="${x0}" y="${m.t - 16}" width="${x1 - x0}" height="${ih + 16}" fill="var(--surface-2)" rx="6"/><text x="${x0 + 6}" y="${m.t - 4}">Flex</text>`;
+    }
     weeks.forEach((w, i) => {
       const x = m.l + band * i + (band - bw) / 2;
       let acc = 0;
       const segs = keys.filter((k) => w[k] > 0);
+      if (w.flex) svg += `<g opacity=".45">`;
       segs.forEach((k, j) => {
         const y0 = y(acc), y1 = y(acc + w[k]);
         const top = j === segs.length - 1;
@@ -210,6 +250,10 @@
         else svg += `<rect x="${x}" y="${y1}" width="${bw}" height="${hgt}" fill="${colors[k]}"/>`;
         acc += w[k];
       });
+      if (w.flex) {
+        svg += `</g>`;
+        svg += w.min.ok ? `<text x="${x + bw / 2}" y="${H - 28}" text-anchor="middle" class="min-ok">✓</text>` : `<text x="${x + bw / 2}" y="${H - 28}" text-anchor="middle">${w.min.items.filter((it) => it.ok).length}/3</text>`;
+      }
       const lbl = fmtDate(w.start, { day: "2-digit", month: "2-digit" });
       const every = Math.ceil(44 / band);
       if ((weeks.length - 1 - i) % every === 0) svg += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle">${lbl}</text>`;
@@ -221,7 +265,8 @@
       const w = weeks[+r.dataset.i];
       const html = () => `<div class="t-title">Woche ab ${fmtDate(w.start)}</div>` +
         keys.map((k) => tRow(colors[k], labels[k], hm(w[k] * 3600) + " h")).join("") +
-        `<div class="t-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px"><span>Summe</span><span>${hm(keys.reduce((s, k) => s + w[k], 0) * 3600)} h</span></div>`;
+        `<div class="t-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px"><span>Summe</span><span>${hm(keys.reduce((s, k) => s + w[k], 0) * 3600)} h</span></div>` +
+        (w.min ? `<div class="t-title" style="margin-top:6px">Wochen-Minimum (Flex)</div>` + w.min.items.map((it) => `<div class="t-row"><span>${it.ok ? "✓" : "○"} ${esc(it.label)}</span><span>${it.have}/${it.need}</span></div>`).join("") : "");
       r.addEventListener("mousemove", (ev) => { r.setAttribute("fill", "rgba(127,127,127,.08)"); showTip(html(), ev); });
       r.addEventListener("mouseleave", () => { r.setAttribute("fill", "transparent"); hideTip(); });
     });
@@ -499,7 +544,7 @@
     if (!cfg || !Z) { $("#zone2").hidden = true; return; }
     const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
-      .then(([db, src]) => { Z2DATA = db; HRSRC = src; renderZone2(); })
+      .then(([db, src]) => { Z2DATA = db; HRSRC = src; renderZone2(); if (FLEX.active) today(); })
       .catch(() => {
         $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
         const ins = $("#z2Insight p"); if (ins) ins.textContent = "Noch keine Zone-2-Auswertung verfügbar.";
@@ -718,7 +763,9 @@
       ["good", "Stärke", "Rad-Basis ist da", `Längste Fahrt seit der Anmeldung: ${nf(longestBike, 1)} km – bereits über Renndistanz, dazu ${passes} Ausfahrten mit über 1.000 Hm. FTP ${D.zones.ftp} W (${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg). Für dein Ziel „schneller am Berg“: Sweet-Spot- und Bergintervalle im Winter auf Zwift.`],
       ["good", "Im Plan", "Laufen solide", `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe meist um 5:30–6:00 /km (Zone 2 laut Strava: ${mmss(runPaceZ2[0])}–${mmss(runPaceZ2[1])} /km). Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
       ["good", "Stärke", "Krafttraining konsequent", `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.`],
-      [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
+      FLEX.active
+        ? ["neutral", "Flex", FLEX.label, `Bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })} zählt das Wochen-Minimum statt eines Umfangsziels: Schwerpunkt Gym, Ausdauer zur Erhaltung. In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche.`]
+        : [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
       ["good", "Fokus", "Zone 2 verbessern", `Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm. Die Entwicklung wird aus deinen Läufen und Fahrten berechnet …`, "z2Insight"],
     ];
     $("#insights").innerHTML = items.map(([cls, badge, title, text, id]) => `<div class="card insight"${id ? ` id="${id}"` : ""}><span class="badge ${cls}">${badge}</span><div><b>${title}</b><p>${text}</p></div></div>`).join("");
@@ -846,6 +893,46 @@
     { label: "Erholung", cls: "bad", text: "Heute regenerieren." },
   ];
 
+  /* ---------- Flex: Ausstattung & Tagesvorschlag ---------- */
+  const EQ_KEY = "ironman.flexEquipment";
+  function loadEquipment() {
+    try { const v = JSON.parse(localStorage.getItem(EQ_KEY) || "null"); if (Array.isArray(v) && v.length) return v; } catch (e) { /* ignore */ }
+    return (FCFG.defaultEquipment || ["gym", "treadmill", "runOutside"]).slice();
+  }
+  function saveEquipment(list) { try { localStorage.setItem(EQ_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ } }
+  // Grobe Pace aus den letzten gewerteten Zone-2-Läufen (data/z2-metrics.json), falls geladen
+  function paceHint() {
+    if (!Z2DATA) return null;
+    const vals = Z2DATA.activities.filter((r) => r.pace).slice(-5).map((r) => r.pace.sec).sort((a, b) => a - b);
+    if (!vals.length) return null;
+    const med = vals[Math.floor(vals.length / 2)];
+    return `ca. ${mmss(med - 10)}–${mmss(med + 20)} /km`;
+  }
+
+  function flexPlan(now, rd) {
+    const eq = loadEquipment();
+    const sg = FX.suggestFlex({ now, acts, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
+    const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
+    const e = sg.endurance;
+    return `
+      <div class="card today-plan">
+        <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })} · Flex</div>
+        <div class="equip" role="group" aria-label="Ausstattung vor Ort">${chips}</div>
+        <div class="flex-sug">
+          <div><span class="mini-title" style="margin:0">Gym</span>
+            <h3 style="font-size:20px;margin:2px 0"><i class="swatch" style="background:var(--other)"></i>${esc(sg.gym.title)}</h3>
+            <p class="muted" style="margin:0;font-size:14px">${esc(sg.gym.detail)}</p></div>
+          <div><span class="mini-title" style="margin:0">Ausdauer · optional${e && e.forMinimum ? " · fürs Wochen-Minimum" : ""}</span>
+            ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)} · ${e.minutes} min</h3>
+            <p class="muted" style="margin:0;font-size:14px">${esc(e.detail)}</p>` : `<p class="muted" style="margin:2px 0 0;font-size:14px">${rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt."}</p>`}</div>
+        </div>
+        ${sg.notes.length ? `<p class="muted" style="font-size:13px;margin:10px 0 0">${sg.notes.map(esc).join(" · ")}</p>` : ""}
+        <div class="mini-title">Wochen-Minimum</div>
+        ${minList(sg.week)}
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – Einheiten von heute erscheinen nach dem abendlichen Update.</p>
+      </div>`;
+  }
+
   function today() {
     const now = new Date();
     const rd = readiness();
@@ -854,14 +941,18 @@
     const color = CATS[s.sport]?.color || "var(--other)";
     const lv = rd ? LEVELS[rd.level] : null;
     const isOld = rd && (now - rd.date) / DAY > 1.5;
-    $("#today").innerHTML = `
+    const planHtml = FLEX.active ? flexPlan(now, rd) : null;
+    const sub = document.querySelector("#heute .section-sub");
+    if (sub && FLEX.active) sub.textContent = "Flex-Phase: nächster Gym-Split und optionale lockere Ausdauer – passend zu dem, was du vor Ort hast.";
+    const planCard = planHtml || `
       <div class="card today-plan">
         <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })}</div>
         <h3 style="font-size:20px;margin:4px 0 2px"><i class="swatch" style="background:${color}"></i>${esc(s.title)}</h3>
         <div class="muted" style="font-size:14px;margin-bottom:10px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)} · ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? ` · Phase ${esc(s.phase.short)}` : ""}${s.changed ? ` · <b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
         <p style="margin:0">${esc(s.detail)}</p>
         ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="done-list">${done.map((a) => `<li><i class="swatch" style="background:${CATS[a.cat].color}"></i>${esc(a.name)} · ${hm(a.sec)} h</li>`).join("")}</ul>` : ""}
-      </div>
+      </div>`;
+    $("#today").innerHTML = planCard + `
       <div class="card today-form">
         <div class="mini-title" style="margin-top:0">Form heute</div>
         ${rd ? `
@@ -871,6 +962,11 @@
           <div class="muted" style="font-size:12px;margin-top:8px">${esc(rd.source)} · Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
         : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
       </div>`;
+    $("#today").querySelectorAll("[data-eq]").forEach((b) => b.addEventListener("click", () => {
+      const cur = loadEquipment(), k = b.dataset.eq;
+      const next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
+      saveEquipment(next.length ? next : cur); today();
+    }));
   }
 
   function recovery() {
@@ -921,6 +1017,7 @@
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); zones(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
+  $("#toggleOther").setAttribute("aria-pressed", showOther);
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
   $("#toggleTable").addEventListener("click", (e) => {
     const on = e.currentTarget.getAttribute("aria-pressed") !== "true";
