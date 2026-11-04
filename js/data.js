@@ -24,7 +24,7 @@ window.TRAINING = {
   // Ist active false oder das Datum nach until, verhält sich die Seite wie bisher.
   flex: {
     active: true,
-    from: "2026-11-02",
+    from: "2026-10-27",
     until: "2027-01-10",
     label: "Gym-Block & Reisen",
     minimum: { gym: 4, endurance: 2, enduranceMinMinutes: 30, swim: 1 },   // pro Woche (Mo–So)
