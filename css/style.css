@@ -14,6 +14,7 @@
   --run: #1baf7a;
   --other: #a8a69f;
   --recovery: #6250d6;
+  --strength: #e87ba4;
   --cat1: #2a78d6; --cat2: #eb6834; --cat3: #1baf7a; --cat4: #eda100; --cat5: #e87ba4; --cat6: #6250d6;
   --good: #0f7b3e;
   --warn: #a35f00;
@@ -27,6 +28,7 @@
     --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
     --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #f0efec;
     --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64; --recovery: #9085e9;
+    --strength: #d55181;
     --cat1: #3987e5; --cat2: #d95926; --cat3: #199e70; --cat4: #c98500; --cat5: #d55181; --cat6: #9085e9;
     --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
     --shadow: none;
@@ -37,6 +39,7 @@
   --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
   --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #f0efec;
   --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64; --recovery: #9085e9;
+    --strength: #d55181;
     --cat1: #3987e5; --cat2: #d95926; --cat3: #199e70; --cat4: #c98500; --cat5: #d55181; --cat6: #9085e9;
   --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
   --shadow: none;
@@ -237,6 +240,38 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .lift .stat b { font-size: 15px; white-space: nowrap; }
 .lift .stats { gap: 6px; }
 .lift .stat { padding: 8px; }
+
+/* Kalender */
+.calendar { display: grid; gap: 6px; }
+.cal-row { display: grid; grid-template-columns: 72px repeat(7, minmax(0, 1fr)) 92px; gap: 6px; align-items: center; }
+.cal-head span { font-size: 12px; color: var(--text-3); text-align: center; }
+.cal-label { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.cal-flex { display: inline-block; font-size: 10px; font-weight: 600; color: var(--text-3); border: 1px dashed var(--text-3); border-radius: 4px; padding: 0 4px; margin-left: 2px; vertical-align: 1px; }
+.cal-row.flex .cal-label { color: var(--text); }
+.cal-sum { font-size: 13px; color: var(--text-2); text-align: right; white-space: nowrap; }
+.cal-cell { position: relative; height: 42px; min-width: 0; padding: 0; border-radius: 8px; border: 1px solid transparent; background: var(--surface-2); cursor: pointer; overflow: hidden; font: inherit; color: var(--text); }
+.cal-cell.rest { background: transparent; border-color: var(--border); }
+.cal-cell.future { opacity: .35; border-style: dashed; }
+.cal-cell.today { outline: 2px solid var(--text); outline-offset: 1px; }
+.cal-cell.sel::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px var(--text); pointer-events: none; }
+.cal-cell:focus-visible { outline: 2px solid var(--recovery); outline-offset: 2px; }
+.cal-stripes { position: absolute; inset: 0; display: flex; gap: 2px; }
+.cal-stripes i { display: block; height: 100%; min-width: 4px; }
+.cal-split { position: absolute; top: 3px; left: 3px; font-size: 10px; line-height: 1; padding: 2px 3px; border-radius: 4px; background: color-mix(in srgb, var(--surface) 82%, transparent); color: var(--text); }
+.cal-more { position: absolute; bottom: 2px; right: 4px; font-size: 12px; line-height: 1; color: var(--text); text-shadow: 0 0 3px var(--surface); }
+.cal-detail { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+.cal-detail ul { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
+.cal-detail li { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: baseline; }
+.cal-lv { display: inline-flex; align-items: center; gap: 3px; }
+.cal-lv i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+@media (max-width: 600px) {
+  .cal-row { grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 4px; }
+  .cal-label { grid-column: 1 / 5; grid-row: 1; }
+  .cal-sum { grid-column: 5 / 8; grid-row: 1; }
+  .cal-head span:first-child, .cal-head span:last-child { display: none; }
+  .cal-cell { height: 44px; }
+  .calendar { gap: 10px; }
+}
 
 /* Heute */
 .today-grid { grid-template-columns: 1.5fr 1fr; }

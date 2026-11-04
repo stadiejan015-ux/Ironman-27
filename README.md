@@ -74,6 +74,14 @@ speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym
 Beinpresse zählen nur am selben Ort. Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
 Tests: `node tests/gym.test.js`.
 
+## Kalender
+
+Die letzten 10 Wochen als Raster Mo–So (neueste oben, [`js/calendar.js`](js/calendar.js)): Farbe nach
+Sportart, mehrere Sportarten als Streifen (max. 3, Rest „+“), kräftiger bei längerer Tagesdauer
+(< 45 / 45–90 / > 90 min), Gym-Split als Kürzel (Pu/Pl/L). Kraft kommt nur aus den zusammengeführten
+Gym-Einheiten, damit nichts doppelt zählt. Antippen eines Tages zeigt die Einheiten darunter.
+Tests: `node tests/calendar.test.js`.
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):
