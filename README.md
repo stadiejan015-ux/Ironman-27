@@ -56,6 +56,14 @@ steigungsbereinigter Pace (GAP, Minetti-Modell) gewertet. Ob Brustgurt oder Uhr 
 (`data/hr-sources.json`); `#gurt` / `#uhr` im Strava-Titel oder in der Beschreibung hat Vorrang. Eigene HF-Zonen und alle Grenzen stehen in
 `js/data.js` unter `zones` und `z2`. Tests: `node tests/z2.test.js`.
 
+## Flex-Modus
+
+Bis zum Datum `flex.until` in `js/data.js` (aktuell 10.01.2027) läuft die Seite im Flex-Modus
+([`js/flex.js`](js/flex.js)): „Heute“ zeigt den nächsten Gym-Split (Rotation Push → Pull → Legs)
+und eine optionale lockere Ausdauereinheit passend zur gewählten Ausstattung vor Ort; statt
+Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 30 min, davon 1× Schwimmen).
+`flex.active: false` schaltet alles zurück. Tests: `node tests/flex.test.js`.
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):
@@ -65,6 +73,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
+| `flex` | Flex-Zeitraum, Wochen-Minimum, Split-Rotation und -Erkennung |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 
