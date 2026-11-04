@@ -45,7 +45,7 @@
   const inFlex = (d) => !!(FX && FX.flexState(FCFG, d).active);
   // Krafteinheiten: Garmin-Titel (Gym-Tracker) vor Strava-Namen, ±10 min zusammengeführt
   const GYM = window.Gym, GCFG = window.TRAINING.gym || {};
-  const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG) : [];
+  const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG, acts.filter((a) => a.cat !== "strength")) : [];
   // Für den Flex-Modus: Ausdauer aus Strava, Kraft aus den zusammengeführten Einheiten
   const flexActs = GYM ? acts.filter((a) => a.cat !== "strength").concat(GYM_SESS.map((x) => ({
     date: new Date(x.start), cat: "strength", sec: x.sec, name: x.split || [x.name, x.desc, x.alt].filter(Boolean).join(" "),

@@ -3,7 +3,8 @@
  * ------------------------------------------------------------
  *   parseGymTitle(title, desc, cfg)  → { split, exercise, sets, reps, weight, place, entry } | null
  *   epley(weight, reps)              → geschätztes 1RM = Gewicht × (1 + Wdh./30)
- *   gymSessions(garminActs, stravaActs, cfg) → Krafteinheiten (Garmin vor Strava, ±10 min zusammengeführt)
+ *   gymSessions(garminActs, stravaActs, cfg, otherActs) → Krafteinheiten (Garmin vor Strava, ±10 min zusammengeführt;
+ *                                    in Strava anders eingetragene Einheiten, z. B. Klettern, fallen raus)
  *   exerciseHistory(sessions, exercise, cfg) → Einträge mit 1RM und PR-Markierung
  *   splitCounts(sessions, from, to)  → Einheiten je Split im Zeitraum
  * Formate im Titel (oder in der Beschreibung): „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“,
@@ -81,10 +82,14 @@
 
   /* ---------- Einheiten zusammenführen ---------- */
   // garminActs: [{ id, start: "YYYY-MM-DDTHH:MM", name, desc, sec }]  stravaActs: [{ date: Date|string, name, sec }]
-  function gymSessions(garminActs, stravaActs, cfg) {
+  function gymSessions(garminActs, stravaActs, cfg, otherActs) {
     const c = conf(cfg);
     const toMin = (d) => (d instanceof Date ? d.getTime() : Date.parse(String(d).slice(0, 16))) / 60000;
-    const out = (garminActs || []).map((g) => ({ start: g.start, t: toMin(g.start), name: g.name, desc: g.desc || "", sec: g.sec || 0, source: "Garmin" }));
+    const others = (otherActs || []).map((o) => toMin(o.date));
+    const out = (garminActs || [])
+      .map((g) => ({ start: g.start, t: toMin(g.start), name: g.name, desc: g.desc || "", sec: g.sec || 0, source: "Garmin" }))
+      // Garmin speichert z. B. Klettern als Krafttraining – ist es in Strava anders eingetragen, gilt Strava
+      .filter((g) => !others.some((t) => Math.abs(t - g.t) <= 10) || (stravaActs || []).some((s) => Math.abs(toMin(s.date) - g.t) <= 10));
     for (const s of stravaActs || []) {
       const t = toMin(s.date);
       const twin = out.find((g) => Math.abs(g.t - t) <= 10);
