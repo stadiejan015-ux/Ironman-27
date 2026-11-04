@@ -515,7 +515,9 @@
     for (const r of all) {
       if (r.hrTag) { r.hrSrc = r.hrTag; r.hrSrcFrom = "Markierung"; continue; }
       const t = mins(r.date);
-      const m = srcs.find((x) => Math.abs(mins(x.start) - t) <= 3 && (r.kind === "run") === /run/.test(x.type));
+      // Kandidaten ±3 min; parallele Garmin-Aufzeichnung (z. B. Uhr neben Zwift) hat Vorrang vor „unbekannt“
+      const cand = srcs.filter((x) => Math.abs(mins(x.start) - t) <= 3 && (r.kind === "run") === /run/.test(x.type));
+      const m = cand.find((x) => x.source !== "unknown") || cand[0];
       r.hrSrc = m ? m.source : "unknown"; r.hrSrcFrom = m ? "Garmin" : null;
     }
     const strapOnly = (cfg.hrSource || {}).mode === "strapOnly";
