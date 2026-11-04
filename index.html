@@ -22,6 +22,7 @@
         <a href="#heute">Heute</a>
         <a href="#erholung">Erholung</a>
         <a href="#zone2">Zone 2</a>
+        <a href="#gym">Gym</a>
         <a href="#saison">Saisonplan</a>
         <a href="#umfang">Umfang</a>
         <a href="#disziplinen">Disziplinen</a>
@@ -126,6 +127,15 @@
       </details>
     </section>
 
+    <!-- GYM -->
+    <section id="gym">
+      <h2>Gym</h2>
+      <p class="section-sub">Split und Hauptübung kommen aus dem Titel deiner Krafteinheit in Garmin Connect, z.&nbsp;B. „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“ oder „Push 6x100 @Bali“.</p>
+      <div class="grid g4" id="gymWeek"></div>
+      <div class="grid g3" style="margin-top:12px" id="gymLifts"></div>
+      <div class="card" style="margin-top:12px" id="gymSplit"></div>
+    </section>
+
     <!-- SAISON -->
     <section id="saison">
       <h2>Saisonplan bis zum Rennen</h2>
@@ -224,7 +234,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/app.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/app.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten
