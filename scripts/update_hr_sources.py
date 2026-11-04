@@ -25,6 +25,7 @@ OUT = ROOT / "data" / "hr-sources.json"
 SECRET_KEYS = re.compile(r"serial|unitid|deviceid|^id$|uuid|mac|address", re.I)
 INTERNAL = re.compile(r"local|internal|wrist|elevate|optical|ohr", re.I)
 HR_HINT = re.compile(r"heart|hrm|\bhr\b", re.I)
+VERSION = 2  # bei Änderungen der Erkennung hochzählen → alle Einheiten werden neu eingestuft
 
 
 def commit_date():
@@ -56,8 +57,14 @@ def public_view(sensor):
 
 
 def classify(activity):
-    lists = find_sensor_lists(activity)
+    lists = [(p, l) for p, l in find_sensor_lists(activity) if l]
+    meta = activity.get("metadataDTO") or {}
+    maker = str(meta.get("manufacturer") or "").upper()
     if not lists:
+        # Garmin speichert "sensors" leer, wenn kein externer Sensor verbunden war → optischer Uhr-Sensor.
+        # Von Zwift & Co. hochgeladene Aktivitäten haben keine Sensordaten → unbekannt.
+        if "sensors" in meta and maker == "GARMIN":
+            return "wrist", [], ["metadataDTO.sensors (leer)"]
         return "unknown", [], None
     sensors = [s for _, lst in lists for s in lst]
     hr = []
@@ -79,13 +86,13 @@ def load():
 def write(db):
     acts = sorted(db["activities"], key=lambda a: a["start"])
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text('{\n  "updated": ' + json.dumps(db["updated"]) + ',\n  "activities": [\n'
+    OUT.write_text('{\n  "updated": ' + json.dumps(db["updated"]) + ',\n  "version": ' + json.dumps(db.get("version")) + ',\n  "activities": [\n'
                    + ",\n".join("    " + json.dumps(a, ensure_ascii=False) for a in acts) + "\n  ]\n}\n", encoding="utf-8")
 
 
 def main():
-    force = "--force" in sys.argv
     db = load()
+    force = "--force" in sys.argv or db.get("version") != VERSION
     known = {str(a["id"]) for a in db["activities"]} if not force else set()
     if force:
         db["activities"] = []
@@ -95,7 +102,7 @@ def main():
 
     g = ug.login()
     acts = g.get_activities_by_date(start, end) or []
-    debug_left = 3
+    shown = set()
     added = 0
     for a in acts:
         aid = str(a.get("activityId"))
@@ -104,20 +111,20 @@ def main():
             continue
         detail = ug.safe(g.get_activity, aid) or {}
         source, sensors, where = classify(detail)
-        if debug_left:  # Struktur zur Kontrolle ins Log (ohne Seriennummern/IDs)
+        if source not in shown:  # je ein Beispiel pro Ergebnis ins Log (ohne Seriennummern/IDs)
             meta = detail.get("metadataDTO") or {}
-            print(f"[Kontrolle] {a.get('startTimeLocal')} {typ}: Ergebnis {source}, Sensorlisten {where}, "
-                  f"metadataDTO-Schlüssel {sorted(meta.keys())[:40]}")
+            print(f"[Kontrolle] {a.get('startTimeLocal')} {typ}: Ergebnis {source}, Hersteller {meta.get('manufacturer')}, Sensorlisten {where}")
             for p, lst in find_sensor_lists(detail):
-                for s in lst[:6]:
+                for s in (lst or [])[:6]:
                     print(f"    {p}: {json.dumps(public_view(s), ensure_ascii=False)[:200]}")
-            debug_left -= 1
+            shown.add(source)
         db["activities"].append({
             "id": aid, "start": str(a.get("startTimeLocal", ""))[:16].replace(" ", "T"), "type": typ,
             "source": source, "sensors": sensors,
         })
         added += 1
     db["updated"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+    db["version"] = VERSION
     write(db)
     counts = {}
     for x in db["activities"]:
