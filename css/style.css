@@ -161,7 +161,6 @@ th { color: var(--text-3); font-weight: 600; font-size: 12px; text-transform: up
 td.num, th.num { text-align: right; }
 .table-scroll { overflow-x: auto; }
 tbody tr:hover { background: var(--surface-2); }
-.zone-bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; }
 
 /* Ziel vs. Prognose */
 .span-2 { grid-column: 1 / -1; }
@@ -330,4 +329,4 @@ footer { margin-top: 48px; color: var(--text-3); font-size: 13px; border-top: 1p
   .phase span { display: none; }
   .brand span { display: none; }
 }
-@media (forced-colors: active) { .swatch, .ready-fill, .zone-bar { forced-color-adjust: none; } }
+@media (forced-colors: active) { .swatch, .ready-fill { forced-color-adjust: none; } }
