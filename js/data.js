@@ -40,6 +40,19 @@ window.TRAINING = {
     },
   },
 
+  // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,
+  // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
+  gym: {
+    mainExercise: { Push: "Bankdrücken", Pull: "Latzug", Legs: "Beinpresse" },
+    aliases: {
+      "Bankdrücken": ["bankdrücken", "bankdruecken", "bench press", "bench"],
+      "Latzug": ["latzug", "lat pulldown", "pulldown", "lat"],
+      "Beinpresse": ["beinpresse", "leg press"],
+    },
+    splitKeywords: { Push: ["push"], Pull: ["pull"], Legs: ["leg day", "legs", "leg", "beine"] },
+    perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PRs nur am selben Gym-Ort vergleichen
+  },
+
   // Eigene Herzfrequenz-Zonen (ersetzen die Strava-Standardzonen auf der ganzen Seite).
   // [min, max] in bpm, max null = offen. Z1 < 130 · Z2 130–152 · Z3 153–175 · Z4 176–200 · Z5 ≥ 201
   zones: {

@@ -43,6 +43,13 @@
   const FX = window.Flex, FCFG = window.TRAINING.flex || {};
   const FLEX = FX ? FX.flexState(FCFG, new Date()) : { active: false };
   const inFlex = (d) => !!(FX && FX.flexState(FCFG, d).active);
+  // Krafteinheiten: Garmin-Titel (Gym-Tracker) vor Strava-Namen, ±10 min zusammengeführt
+  const GYM = window.Gym, GCFG = window.TRAINING.gym || {};
+  const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG) : [];
+  // Für den Flex-Modus: Ausdauer aus Strava, Kraft aus den zusammengeführten Einheiten
+  const flexActs = GYM ? acts.filter((a) => a.cat !== "strength").concat(GYM_SESS.map((x) => ({
+    date: new Date(x.start), cat: "strength", sec: x.sec, name: x.split || [x.name, x.desc, x.alt].filter(Boolean).join(" "),
+  }))) : acts;
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
   const ofCat = (arr, c) => arr.filter((a) => a.cat === c);
 
@@ -174,7 +181,7 @@
     }
     const cp = currentPhase(now);
     if (FLEX.active) {
-      const wk = FX.weekMinimum(acts, now, FCFG), after = currentPhase(addDays(FLEX.until, 1));
+      const wk = FX.weekMinimum(flexActs, now, FCFG), after = currentPhase(addDays(FLEX.until, 1));
       $("#currentPhase").innerHTML = `<div class="card" style="box-shadow:none;background:var(--surface-2);border:0">
         <h3 style="margin-bottom:2px">Flex · ${esc(FLEX.label)}</h3>
         <div class="muted" style="font-size:13px;margin-bottom:10px">${FLEX.from ? fmtDate(FLEX.from) + " – " : "bis "}${fmtDate(FLEX.until)} · noch ${FLEX.daysLeft} Tage${after ? ` · danach ${esc(after.name)}` : ""}</div>
@@ -201,7 +208,7 @@
     const h = (c) => sum(ofCat(list, c), (a) => a.sec) / 3600;
     const flexWeek = inFlex(addDays(w, 3)) || inFlex(w) || inFlex(addDays(w, 6));
     weeks.push({ start: w, swim: h("swim"), bike: h("bike"), run: h("run"), extra: h("strength") + h("other"),
-      flex: flexWeek, min: flexWeek && FX ? FX.weekMinimum(acts, w, FCFG) : null });
+      flex: flexWeek, min: flexWeek && FX ? FX.weekMinimum(flexActs, w, FCFG) : null });
   }
   let showOther = FLEX.active; // im Flex-Zeitraum Kraft standardmäßig mit anzeigen
 
@@ -722,6 +729,81 @@
     });
   }
 
+
+  /* ---------- Gym-Tracker (js/gym.js) ---------- */
+  const PLACE_COLORS = ["var(--cat1)", "var(--cat2)", "var(--cat3)", "var(--cat4)", "var(--cat5)", "var(--cat6)"];
+  function gymSection() {
+    if (!GYM) { $("#gym").hidden = true; return; }
+    const now = new Date(), todayIso = ymdLocal(now), mon = ymdLocal(monday(now));
+    const wk = GYM.splitCounts(GYM_SESS, mon, todayIso);
+    const tile = (label, value, sub) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${sub || "&nbsp;"}</div></div>`;
+    $("#gymWeek").innerHTML = ["Push", "Pull", "Legs"].map((k) => tile(`${k} diese Woche`, wk[k], k === "Legs" && !wk.Legs ? "noch kein Leg Day" : "")).join("")
+      + tile("Gym gesamt diese Woche", `${wk.total} <small>×</small>`, wk.ohne ? `davon ${wk.ohne} ohne erkannten Split` : `seit Montag, ${fmtDate(monday(now), { day: "2-digit", month: "2-digit" })}`);
+
+    // Orte → feste Farben in Reihenfolge des ersten Auftretens, „unbekannt“ grau
+    const places = [];
+    GYM_SESS.forEach((x) => { const p = x.parsed && x.parsed.entry && x.parsed.place; if (p && !places.includes(p)) places.push(p); });
+    const placeColor = (p) => (p === "unbekannt" || !p ? "var(--other)" : PLACE_COLORS[places.indexOf(p) % PLACE_COLORS.length]);
+
+    const lifts = Object.entries(GCFG.mainExercise || GYM.DEFAULTS.mainExercise);
+    $("#gymLifts").innerHTML = lifts.map(([split, ex]) => {
+      const h = GYM.exerciseHistory(GYM_SESS, ex, GCFG);
+      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span></h3><p class="muted" style="margin:0;font-size:14px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p></div>`;
+      const last = h[h.length - 1];
+      const scope = (GCFG.perPlace || []).includes(ex) ? h.filter((e) => e.place === last.place) : h;
+      const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
+      const set = (e) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${nf(e.weight, e.weight % 1 ? 1 : 0)} kg`;
+      const machine = (GCFG.perPlace || []).includes(ex);
+      return `<div class="card lift">
+        <h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}</h3>
+        <div class="stats">
+          <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} · ${esc(last.place)}</small></div>
+          <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
+          <div class="stat"><small>1RM geschätzt${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>Epley</small></div>
+        </div>
+        <div class="chart" data-lift="${esc(ex)}"></div>
+        <div class="legend" style="margin-top:4px">${[...new Set(h.map((e) => e.place))].map((p) => `<span><i class="swatch" style="background:${placeColor(p)};border-radius:50%"></i>${esc(p)}</span>`).join("")}${machine ? `<span class="muted">PR nur am selben Ort</span>` : ""}</div>
+      </div>`;
+    }).join("");
+    $("#gymLifts").querySelectorAll("[data-lift]").forEach((box) => liftChart(box, GYM.exerciseHistory(GYM_SESS, box.dataset.lift, GCFG), placeColor));
+
+    // Split-Verteilung der letzten 4 Wochen
+    const c4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), todayIso);
+    const maxN = Math.max(1, c4.Push, c4.Pull, c4.Legs, c4.ohne);
+    const avgPP = (c4.Push + c4.Pull) / 2;
+    const short = c4.Legs < avgPP * 0.6 && avgPP >= 2;
+    $("#gymSplit").innerHTML = `<h3>Split-Verteilung · letzte 4 Wochen${short ? ` <span class="badge warn">Legs kommen zu kurz</span>` : ""}</h3>
+      <div class="split-bars">${[["Push", c4.Push], ["Pull", c4.Pull], ["Legs", c4.Legs], ["ohne Split", c4.ohne]].map(([k, v]) => `<div class="split-row"><span>${k}</span><div class="ready-track"><div class="ready-fill" style="width:${(v / maxN) * 100}%;background:${k === "ohne Split" ? "var(--other)" : "var(--recovery)"}"></div></div><b>${v}×</b></div>`).join("")}</div>
+      <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}${c4.ohne ? ` „ohne Split“: Titel ohne Push/Pull/Legs, z. B. „Gym Bali“.` : ""} Quelle: Garmin-Titel, sonst Strava.</p>`;
+  }
+  const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  function liftChart(box, hist, placeColor) {
+    const W = Math.max(280, Math.round(box.clientWidth || 340)), H = 150, m = { t: 10, r: 8, b: 22, l: 40 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const pts = hist.map((e) => ({ d: parse(e.date), v: e.e1rm, e }));
+    let lo = Math.min(...pts.map((p) => p.v)), hi = Math.max(...pts.map((p) => p.v));
+    const pad = (hi - lo) * 0.2 || Math.max(2, hi * 0.03); lo -= pad; hi += pad;
+    let t0 = pts[0].d.getTime(), t1 = pts[pts.length - 1].d.getTime();
+    if (t1 - t0 < 14 * DAY) { t0 -= 7 * DAY; t1 += 7 * DAY; }
+    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0)) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Geschätztes 1RM über die Zeit">`;
+    for (let i = 0; i <= 2; i++) { const v = lo + ((hi - lo) / 2) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`; }
+    // Linie je Ort (Maschinen nicht ortsübergreifend verbinden)
+    [...new Set(pts.map((p) => p.e.place))].forEach((pl) => {
+      const ps = pts.filter((p) => p.e.place === pl);
+      if (ps.length > 1) s += `<path d="${ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="${placeColor(pl)}" stroke-width="2" opacity=".7"/>`;
+    });
+    pts.forEach((p, i) => {
+      s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="${p.e.pr ? 6 : 4.5}" fill="${placeColor(p.e.place)}" stroke="var(--surface)" stroke-width="2"/>`;
+      if (p.e.pr) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="9" fill="none" stroke="var(--good)" stroke-width="2"/>`;
+      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="13" fill="transparent"/>`;
+    });
+    s += `<text x="${m.l}" y="${H - 4}">${fmtDate(new Date(t0), { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(new Date(t1), { day: "2-digit", month: "2-digit" })}</text></svg>`;
+    box.innerHTML = s;
+    attachPointTips(box, pts, "var(--recovery)", (p) => `<div class="t-title">${fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" })} · ${esc(p.e.place)}</div>${tRow(placeColor(p.e.place), `${p.e.sets > 1 ? p.e.sets + "×" : ""}${p.e.reps}×${nf(p.e.weight, p.e.weight % 1 ? 1 : 0)} kg`, `1RM ${nf(p.v, 1)} kg`)}${p.e.pr ? `<div style="color:var(--good);font-weight:600">PR</div>` : ""}`);
+  }
+
   /* ---------- Zonen & Bestleistungen ---------- */
   function zones() {
     const z = D.zones;
@@ -911,7 +993,7 @@
 
   function flexPlan(now, rd) {
     const eq = loadEquipment();
-    const sg = FX.suggestFlex({ now, acts, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
+    const sg = FX.suggestFlex({ now, acts: flexActs, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
     const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
     const e = sg.endurance;
     return `
@@ -1013,7 +1095,13 @@
 
   /* ---------- Init ---------- */
   $("#actMore").addEventListener("click", () => { showAll = true; activities(); });
-  today(); recovery();
+  // Im Flex-Zeitraum steht „Gym“ direkt nach „Heute“ (auch in der Navigation)
+  if (FLEX.active) {
+    $("#heute").after($("#gym"));
+    const link = document.querySelector('.nav a[href="#gym"]'), heuteLink = document.querySelector('.nav a[href="#heute"]');
+    if (link && heuteLink) heuteLink.after(link);
+  }
+  today(); recovery(); gymSection();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); zones(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));

@@ -20,6 +20,7 @@ import datetime as dt
 import json
 import os
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -200,10 +201,50 @@ def fetch_day(g, day):
     return {"date": ds, **rec} if rec else None
 
 
+# ---------------------------------------------------------------- Krafteinheiten (Gym-Tracker)
+STRENGTH = ("strength_training", "strength", "indoor_cardio", "fitness_equipment")
+TITLE_REFRESH_DAYS = 14  # Titel nachträglich geändert? So lange rückwirkend neu einlesen
+
+
+def parse_activity(a, detail=None):
+    """Garmin-Aktivität → kompakter Eintrag (nur was der Gym-Tracker braucht)."""
+    desc = a.get("description")
+    if desc is None and detail:
+        desc = get(detail, "description") or get(detail, "summaryDTO", "description")
+    return {
+        "id": str(a.get("activityId")),
+        "start": str(a.get("startTimeLocal") or "")[:16].replace(" ", "T"),
+        "type": (get(a, "activityType", "typeKey") or "").lower(),
+        "name": (a.get("activityName") or "").strip(),
+        "desc": (desc or "").strip()[:300],
+        "sec": int(round(a.get("movingDuration") or a.get("duration") or 0)),
+    }
+
+
+def fetch_strength(g, existing, start, end):
+    """Krafteinheiten zwischen start und end (YYYY-MM-DD) mit Titel und Beschreibung."""
+    acts = safe(g.get_activities_by_date, start, end) or []
+    known = {a["id"]: a for a in existing}
+    out = []
+    for a in acts:
+        typ = (get(a, "activityType", "typeKey") or "").lower()
+        if not any(k in typ for k in STRENGTH):
+            continue
+        aid = str(a.get("activityId"))
+        detail = None
+        if a.get("description") is None:  # Beschreibung steht nicht immer in der Liste
+            detail = safe(g.get_activity, aid)
+        rec = parse_activity(a, detail)
+        if aid in known and not rec["desc"]:
+            rec["desc"] = known[aid].get("desc", "")
+        out.append(rec)
+    return out
+
+
 # ---------------------------------------------------------------- Datei
 def load_existing():
     if not OUT.exists():
-        return {"updated": None, "days": []}
+        return {"updated": None, "days": [], "activities": []}
     text = OUT.read_text(encoding="utf-8")
     body = text[text.index(PREFIX) + len(PREFIX):].rstrip().rstrip(";")
     return json.loads(body)
@@ -211,12 +252,15 @@ def load_existing():
 
 def write(data):
     days = sorted(data["days"], key=lambda d: d["date"])[-KEEP_DAYS:]
+    acts = sorted(data.get("activities") or [], key=lambda a: a["start"])[-600:]
     lines = ",\n".join("    " + json.dumps(d, ensure_ascii=False) for d in days)
+    alines = ",\n".join("    " + json.dumps(a, ensure_ascii=False) for a in acts)
     OUT.write_text(
         "/* Automatisch erzeugt von scripts/update_garmin.py – nicht von Hand bearbeiten. */\n"
         + PREFIX + "{\n"
         + f'  "updated": {json.dumps(data["updated"])},\n'
-        + '  "days": [\n' + lines + ("\n" if lines else "") + "  ]\n};\n",
+        + '  "days": [\n' + lines + ("\n" if lines else "") + "  ],\n"
+        + '  "activities": [\n' + alines + ("\n" if alines else "") + "  ]\n};\n",
         encoding="utf-8",
     )
 
@@ -241,6 +285,25 @@ def main():
             byd[rec["date"]] = {**byd.get(rec["date"], {}), **rec}
             got += 1
     data["days"] = list(byd.values())
+
+    # Krafteinheiten mit Titel (Gym-Tracker): erster Lauf ab commitDate, danach die letzten 14 Tage neu
+    existing = data.get("activities") or []
+    if existing:
+        start = (today - dt.timedelta(days=TITLE_REFRESH_DAYS)).isoformat()
+    else:
+        m = re.search(r'commitDate:\s*"(\d{4}-\d{2}-\d{2})"', (ROOT / "js" / "data.js").read_text(encoding="utf-8"))
+        start = m.group(1) if m else (today - dt.timedelta(days=120)).isoformat()
+    try:
+        fresh = fetch_strength(g, existing, start, today.isoformat())
+        bya = {a["id"]: a for a in existing}
+        for a in fresh:
+            bya[a["id"]] = a
+        data["activities"] = list(bya.values())
+        print(f"Krafteinheiten: {len(fresh)} seit {start} gelesen, {len(bya)} gespeichert. Neueste: "
+              + "; ".join(f'{a["start"]} „{a["name"]}“' for a in sorted(fresh, key=lambda a: a["start"])[-3:]))
+    except Exception as e:  # Gym-Daten dürfen die Tageswerte nicht blockieren
+        print(f"! Krafteinheiten nicht gelesen: {type(e).__name__}: {str(e)[:120]}", file=sys.stderr)
+
     data["updated"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
     write(data)
     latest = max(byd.values(), key=lambda d: d["date"]) if byd else {}

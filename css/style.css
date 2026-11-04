@@ -14,6 +14,7 @@
   --run: #1baf7a;
   --other: #a8a69f;
   --recovery: #6250d6;
+  --cat1: #2a78d6; --cat2: #eb6834; --cat3: #1baf7a; --cat4: #eda100; --cat5: #e87ba4; --cat6: #6250d6;
   --good: #0f7b3e;
   --warn: #a35f00;
   --bad: #b3261e;
@@ -26,6 +27,7 @@
     --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
     --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #f0efec;
     --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64; --recovery: #9085e9;
+    --cat1: #3987e5; --cat2: #d95926; --cat3: #199e70; --cat4: #c98500; --cat5: #d55181; --cat6: #9085e9;
     --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
     --shadow: none;
   }
@@ -35,6 +37,7 @@
   --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
   --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86; --accent: #f0efec;
   --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64; --recovery: #9085e9;
+    --cat1: #3987e5; --cat2: #d95926; --cat3: #199e70; --cat4: #c98500; --cat5: #d55181; --cat6: #9085e9;
   --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
   --shadow: none;
 }
@@ -225,6 +228,15 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .flex-span span { position: absolute; bottom: -18px; left: 4px; font-size: 11px; font-weight: 600; color: var(--text-2); }
 .phase-list li.flex-li { outline-style: dashed; }
 .chart text.min-ok { fill: var(--good); font-weight: 700; font-size: 13px; }
+
+/* Gym */
+.split-bars { display: grid; gap: 8px; }
+.split-row { display: grid; grid-template-columns: 84px 1fr 40px; gap: 10px; align-items: center; font-size: 14px; }
+.split-row b { text-align: right; }
+.lift .stat small:last-child { display: block; color: var(--text-3); font-size: 11px; }
+.lift .stat b { font-size: 15px; white-space: nowrap; }
+.lift .stats { gap: 6px; }
+.lift .stat { padding: 8px; }
 
 /* Heute */
 .today-grid { grid-template-columns: 1.5fr 1fr; }

@@ -64,6 +64,16 @@ und eine optionale lockere Ausdauereinheit passend zur gewählten Ausstattung vo
 Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 30 min, davon 1× Schwimmen).
 `flex.active: false` schaltet alles zurück. Tests: `node tests/flex.test.js`.
 
+## Gym-Tracker
+
+Titel der Krafteinheit in Garmin Connect: `Push 6x100`, `Pull · Latzug 8x90`, `Legs 3x10x180`,
+`Push 6x100 @Bali` (mit Gym-Ort) oder nur `Push` (Einheit ohne Eintrag). „kg“ ist optional,
+Komma-Dezimalen (82,5) sind erlaubt, auch die Beschreibung wird geprüft. `scripts/update_garmin.py`
+speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym.js) erkennt Split,
+Übung, Wiederholungen, Gewicht, Sätze und Ort und berechnet das 1RM nach Epley. PRs bei Latzug und
+Beinpresse zählen nur am selben Ort. Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
+Tests: `node tests/gym.test.js`.
+
 ## Anpassen
 
 Alles Persönliche steht in [`js/data.js`](js/data.js):
@@ -73,6 +83,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
+| `gym` | Hauptübung je Split, Aliase, Übungen mit Orts-Vergleich |
 | `flex` | Flex-Zeitraum, Wochen-Minimum, Split-Rotation und -Erkennung |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
