@@ -104,8 +104,9 @@ h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 .kpi .delta { font-size: 13px; color: var(--text-2); margin-top: 4px; }
 
 /* Phase timeline */
-.timeline { display: flex; gap: 3px; height: 54px; margin: 8px 0 6px; position: relative; }
-.phase { border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 8px; overflow: hidden; font-size: 12px; color: var(--text-2); position: relative; min-width: 0; }
+.timeline-scroll { overflow-x: auto; overflow-y: hidden; padding: 24px 2px 26px; margin: -16px -2px -18px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.timeline { display: flex; gap: 3px; height: 54px; position: relative; }
+.phase { border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 8px; overflow: hidden; font-size: 12px; color: var(--text-2); position: relative; min-width: 0; flex: 1 1 0; }
 .phase b { display: block; color: var(--text); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .phase span { white-space: nowrap; }
 .phase.current { background: var(--text); color: var(--bg); border-color: var(--text); }

@@ -84,7 +84,7 @@
   function hero() {
     $("#raceName").textContent = D.race.name;
     $("#raceMeta").textContent = `${fmtDate(race, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${D.race.location && D.race.location !== "tbd" ? " · " + D.race.location : ""}`;
-    $("#heroSub").textContent = `${nf(D.race.swimKm, 1)} km Schwimmen · ${D.race.bikeKm} km Rad · ${nf(D.race.runKm, 1)} km Laufen. Fokus aktuell: ${D.athlete.focus}.`;
+    $("#heroSub").textContent = `${nf(D.race.swimKm, 1)} km Schwimmen · ${D.race.bikeKm} km Rad · ${nf(D.race.runKm, 1)} km Laufen. Fokus aktuell: ${FLEX.active && FCFG.focus ? FCFG.focus : D.athlete.focus}.`;
     const now = new Date();
     const days = Math.max(0, Math.ceil((race - now) / DAY));
     const weeks = Math.floor(days / 7);
@@ -157,29 +157,65 @@
   });
   function currentPhase(d) { return PHASES.find((p) => d >= p.start && d < p.end) || null; }
 
+  // Zeitstrahl-Layout: Breite proportional zur Dauer, aber jede Phase mindestens TL_MIN px breit
+  // (Peak/Taper bleiben lesbar). Ist der Platz zu knapp (Handy), wird der Zeitstrahl breiter und
+  // scrollt horizontal; Heute-Marker und Flex-Spanne werden an den Phasen ausgerichtet.
+  const TL_MIN = 66, TL_GAP = 3, TL_MIN_WIDTH = 720;
+  function layoutTimeline(scrollToToday) {
+    const tl = $("#timeline"), wrap = tl && tl.parentElement;
+    if (!tl || !wrap || !wrap.clientWidth) return;
+    const els = tl.querySelectorAll(".phase");
+    const W = Math.max(wrap.clientWidth - 4, TL_MIN_WIDTH);
+    const free = W - (PHASES.length - 1) * TL_GAP, fixed = new Set();
+    let widths = [];
+    for (let k = 0; k <= PHASES.length; k++) {
+      const dur = PHASES.reduce((s, p, i) => s + (fixed.has(i) ? 0 : p.end - p.start), 0);
+      const rest = free - fixed.size * TL_MIN;
+      widths = PHASES.map((p, i) => (fixed.has(i) ? TL_MIN : (rest * (p.end - p.start)) / dur));
+      const small = widths.map((w, i) => (w < TL_MIN && !fixed.has(i) ? i : -1)).filter((i) => i >= 0);
+      if (!small.length) break;
+      small.forEach((i) => fixed.add(i));
+    }
+    const lefts = [];
+    widths.reduce((x, w, i) => { lefts[i] = x; els[i].style.flex = `0 0 ${w}px`; return x + w + TL_GAP; }, 0);
+    tl.style.width = W + "px";
+    const xOf = (d) => {
+      const i = Math.max(0, PHASES.findIndex((p) => d < p.end));
+      const p = PHASES[i];
+      return lefts[i] + Math.min(1, Math.max(0, (d - p.start) / (p.end - p.start))) * widths[i];
+    };
+    const span = tl.querySelector(".flex-span");
+    if (span) {
+      const fs = FCFG.from ? parse(FCFG.from) : new Date(), fe = addDays(parse(FCFG.until), 1);
+      span.style.left = xOf(fs) + "px";
+      span.style.width = Math.max(4, xOf(fe) - xOf(fs)) + "px";
+    }
+    const m = tl.querySelector(".today-marker");
+    if (m) m.style.left = xOf(new Date()) + "px";
+    if (scrollToToday && m && W > wrap.clientWidth) wrap.scrollLeft = Math.max(0, xOf(new Date()) - wrap.clientWidth * 0.35);
+  }
+
   function season() {
     const now = new Date();
     const total = race - planStart;
     const tl = $("#timeline");
     tl.innerHTML = PHASES.map((p) => {
-      const w = ((p.end - p.start) / total) * 100;
       const state = now >= p.end ? "done" : now >= p.start ? "current" : "";
-      return `<div class="phase ${state}" style="flex:0 0 calc(${w}% - 3px)" title="${esc(p.name)}"><b>${esc(p.short)}</b><span>${p.hours}</span></div>`;
+      return `<div class="phase ${state}" title="${esc(p.name)}"><b>${esc(p.short)}</b><span>${p.hours}</span></div>`;
     }).join("");
     if (FX && FCFG.active && FCFG.until) {
-      const fs = FCFG.from ? parse(FCFG.from) : now, fe = addDays(parse(FCFG.until), 1);
+      const fs = FCFG.from ? parse(FCFG.from) : now;
       const span = document.createElement("div");
       span.className = "flex-span"; span.title = `${FCFG.label || "Flex"}: ${fmtDate(fs)} – ${fmtDate(parse(FCFG.until))}`;
-      span.style.left = Math.max(0, ((fs - planStart) / total) * 100) + "%";
-      span.style.width = Math.max(1, ((fe - fs) / total) * 100) + "%";
       span.innerHTML = "<span>Flex</span>";
       tl.appendChild(span);
     }
     if (now > planStart && now < race) {
       const m = document.createElement("div");
-      m.className = "today-marker"; m.style.left = ((now - planStart) / total) * 100 + "%";
+      m.className = "today-marker";
       tl.appendChild(m);
     }
+    layoutTimeline(true);
     const cp = currentPhase(now);
     if (FLEX.active) {
       const wk = FX.weekMinimum(flexActs, now, FCFG), after = currentPhase(addDays(FLEX.until, 1));
@@ -197,8 +233,11 @@
     } else {
       $("#currentPhase").innerHTML = `<p class="muted">Außerhalb des Plans.</p>`;
     }
-    $("#phaseList").innerHTML = (FLEX.active ? `<li class="current flex-li"><b>Flex</b><span class="dates">${FLEX.from ? fmtDate(FLEX.from, { day: "2-digit", month: "short" }) + " – " : "bis "}${fmtDate(FLEX.until, { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">Minimum</span></li>` : "") + PHASES.map((p) => `<li class="${p === cp && !FLEX.active ? "current" : ""}">
-      <b>${esc(p.short)}</b><span class="dates">${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">${p.hours}</span></li>`).join("");
+    // chronologisch nach Startdatum – Flex landet so zwischen Grundlage 1 und Grundlage 2
+    const rows = PHASES.map((p) => ({ start: p.start, html: `<li class="${p === cp && !FLEX.active ? "current" : ""}">
+      <b>${esc(p.short)}</b><span class="dates">${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">${p.hours}</span></li>` }));
+    if (FLEX.active) rows.push({ start: FLEX.from || now, html: `<li class="current flex-li"><b>Flex</b><span class="dates">${FLEX.from ? fmtDate(FLEX.from, { day: "2-digit", month: "short" }) + " – " : "bis "}${fmtDate(FLEX.until, { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">Minimum</span></li>` });
+    $("#phaseList").innerHTML = rows.sort((a, b) => a.start - b.start).map((r) => r.html).join("");
   }
 
   /* ---------- Wochenumfang (gestapelte Balken) ---------- */
@@ -1017,6 +1056,8 @@
     { label: "Eingeschränkt", cls: "warn", text: "Nur locker trainieren." },
     { label: "Erholung", cls: "bad", text: "Heute regenerieren." },
   ];
+  // Im Flex-Zeitraum gibt es keinen Plan – Texte passend zum Tagesvorschlag
+  const FLEX_LEVEL_TEXT = ["Bereit fürs Training.", "Training ok – Ausdauer kürzer und locker.", "Nur leicht trainieren: Technik statt Limit.", "Heute regenerieren."];
 
   /* ---------- Flex: Ausstattung & Tagesvorschlag ---------- */
   const EQ_KEY = "ironman.flexEquipment";
@@ -1087,7 +1128,7 @@
         <div class="mini-title" style="margin-top:0">Form heute</div>
         ${rd ? `
           <div class="form-score"><b>${rd.R}</b><span class="badge ${lv.cls}">${lv.label}</span></div>
-          <div class="muted" style="font-size:13px;margin:2px 0 10px">${lv.text}${rd.notes.length ? " Grund: " + esc(rd.notes.join(", ")) + "." : ""}</div>
+          <div class="muted" style="font-size:13px;margin:2px 0 10px">${FLEX.active ? FLEX_LEVEL_TEXT[rd.level] : lv.text}${rd.notes.length ? " Grund: " + esc(rd.notes.join(", ")) + "." : ""}</div>
           <ul class="factor-list">${rd.factors.map((x) => `<li><span class="dot ${x.state}" aria-hidden="true"></span><span>${x.label}</span><b>${esc(x.value)}</b><span class="sr-only">${x.state === "good" ? "gut" : x.state === "ok" ? "mittel" : "schlecht"}</span></li>`).join("")}</ul>
           <div class="muted" style="font-size:12px;margin-top:8px">${esc(rd.source)} · Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
         : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
@@ -1193,7 +1234,7 @@
   }
   today(); recovery(); gymSection(); calendarSection();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); }, 150); });
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); layoutTimeline(false); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
