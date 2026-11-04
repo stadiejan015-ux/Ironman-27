@@ -40,6 +40,17 @@ window.TRAINING = {
     },
   },
 
+  // „Zuletzt gemacht“ (Abschnitt Heute): Tage seit der letzten Einheit – grün bis / gelb bis, danach rot.
+  // Rad inkl. Zwift, Laufen inkl. Laufband, Legs = Gym-Split. minMinutes = Mindestdauer für „lang“.
+  sinceLast: {
+    swim:     { green: 7,  yellow: 14 },
+    bike:     { green: 10, yellow: 21 },
+    run:      { green: 4,  yellow: 10 },
+    longRun:  { green: 14, yellow: 28, minMinutes: 75 },
+    longRide: { green: 21, yellow: 42, minMinutes: 150 },
+    legs:     { green: 5,  yellow: 9 },
+  },
+
   // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,
   // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
   gym: {
