@@ -43,6 +43,14 @@ jobs:
           GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
         run: python scripts/update_garmin.py --days "${{ github.event.inputs.days || '3' }}"
 
+      - name: Pulsmesser erkennen (Brustgurt/Uhr)
+        continue-on-error: true
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
+        run: python scripts/update_hr_sources.py
+
       - name: Rennprognose speichern
         run: node scripts/save_prediction.js
 
@@ -50,7 +58,7 @@ jobs:
         run: |
           git config user.name "garmin-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/garmin-data.js data/prediction-history.json
+          git add js/garmin-data.js data/prediction-history.json data/hr-sources.json 2>/dev/null || git add js/garmin-data.js data/prediction-history.json
           if git diff --cached --quiet; then
             echo "Keine Änderungen."
             exit 0
@@ -65,10 +73,13 @@ jobs:
               # eigene Garmin-Daten behalten und Prognose neu berechnen.
               git rebase --abort
               cp js/garmin-data.js /tmp/garmin-data.js
+              [ -f data/hr-sources.json ] && cp data/hr-sources.json /tmp/hr-sources.json
               git reset --hard origin/main
               cp /tmp/garmin-data.js js/garmin-data.js
+              [ -f /tmp/hr-sources.json ] && cp /tmp/hr-sources.json data/hr-sources.json
               node scripts/save_prediction.js
               git add js/garmin-data.js data/prediction-history.json
+              [ -f data/hr-sources.json ] && git add data/hr-sources.json
               git commit -m "Garmin-Update $(date -u +%Y-%m-%d)" || exit 0
             fi
             sleep $((i * 5))

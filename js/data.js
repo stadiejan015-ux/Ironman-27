@@ -39,6 +39,8 @@ window.TRAINING = {
       maxElevPerKm: 10,        // hügeliger → nicht gewertet
       maxHighShare: 0.10,      // > 10 % der Zeit ≥ Z4 → Intervall-Lauf
       minSpeed: 1.5,           // m/s, Gehen/Stehen ignorieren
+      // Hügelige Läufe (10–25 Hm/km) mit steigungsbereinigter Pace (GAP, Minetti-Modell) werten
+      gap: { enabled: true, maxElevPerKm: 25, gradeRange: [-6, 6] },
     },
     ride: {
       hrBand: [135, 145],      // Watt @ HF (nur echte Watt)
@@ -52,6 +54,10 @@ window.TRAINING = {
       maxVi: 1.10,                        // Rad: Variabilitätsindex
       thresholds: [5, 10],                // < 5 % grün, 5–10 % gelb, > 10 % rot
     },
+    // Pulsmesser: Brustgurt-Erkennung über Garmin (data/hr-sources.json) oder #gurt / #uhr
+    // im Strava-Titel bzw. in der Beschreibung. mode "mark" = Uhr-Werte markieren,
+    // "strapOnly" = für Pace/Watt @ HF und Entkopplung nur Brustgurt-Einheiten werten.
+    hrSource: { mode: "mark" },
     zonesIncludeWarmup: true,  // Zonenverteilung inkl. Aufwärmen (echte Trainingszeit)
     windowDays: 28,            // Kacheln: letzte 4 Wochen vs. 4 Wochen davor
     minPoints: 3,              // darunter „noch zu wenig Daten“

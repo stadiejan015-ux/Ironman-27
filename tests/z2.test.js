@@ -6,7 +6,8 @@ const Z2 = require("../js/z2.js");
 const zones = [[0, 129], [130, 152], [153, 175], [176, 200], [201, null]];
 const cfg = {
   warmupSec: 600, smoothSec: 60, maxGapSec: 10,
-  run: { hrBand: [140, 148], gradeRange: [-2, 2], minBandSec: 480, maxElevPerKm: 10, maxHighShare: 0.10, minSpeed: 1.5 },
+  run: { hrBand: [140, 148], gradeRange: [-2, 2], minBandSec: 480, maxElevPerKm: 10, maxHighShare: 0.10, minSpeed: 1.5,
+    gap: { enabled: true, maxElevPerKm: 25, gradeRange: [-6, 6] } },
   ride: { hrBand: [135, 145], gradeRange: [-2, 2], minBandSec: 480, maxHighShare: 0.10 },
   decoupling: { runMinSec: 3600, rideMinSec: 5400, minZ12Share: 0.8, maxVi: 1.10, thresholds: [5, 10] },
   zonesIncludeWarmup: true, windowDays: 28, minPoints: 3, longRunWindowDays: 56,
@@ -58,7 +59,7 @@ test("Ausschlüsse: TrailRun, Laufband, hügelig, Intervalle", () => {
   assert.equal(Z2.analyzeActivity(runMeta({ sport: "TrailRun" }), s, cfg, zones).status.pace, "TrailRun");
   assert.equal(Z2.analyzeActivity(runMeta({ name: "Laufband" }), s, cfg, zones).status.pace, "Laufband");
   assert.equal(Z2.analyzeActivity(runMeta({ trainer: true }), s, cfg, zones).status.pace, "Laufband");
-  assert.match(Z2.analyzeActivity(runMeta({ km: 5, elev: 155 }), s, cfg, zones).status.pace, /hügelig \(31 Hm\/km\)/);
+  assert.match(Z2.analyzeActivity(runMeta({ km: 5, elev: 155 }), s, cfg, zones).status.pace, /zu hügelig \(31 Hm\/km\)/);
   const iv = stream(3000, (t) => ({ hr: t % 600 < 240 ? 182 : 140 })); // 4-min-Intervalle ≥ Z4
   assert.match(Z2.analyzeActivity(runMeta(), iv, cfg, zones).status.pace, /Intervalle/);
 });
@@ -115,6 +116,33 @@ test("Zeitreihen: gleitender Median, Kacheln, Wochen", () => {
   const wk = Z2.weeklyZones([{ date: "2026-11-03T08:00", kind: "run", zoneSec: [60, 120, 0, 0, 0] }, { date: "2026-11-04T08:00", kind: "ride", zoneSec: [30, 0, 0, 0, 0] }]);
   assert.deepEqual(wk, [{ week: "2026-11-02", sec: [90, 120, 0, 0, 0] }]);
   assert.equal(Z2.ampel(4.9, [5, 10]), "good"); assert.equal(Z2.ampel(7, [5, 10]), "warn"); assert.equal(Z2.ampel(10.5, [5, 10]), "bad");
+});
+
+test("GAP: Faktor nach Minetti (eben 1, bergauf > 1, bergab < 1)", () => {
+  approx(Z2.gapFactor(0), 1, 1e-9, "eben");
+  approx(Z2.gapFactor(5), 4.685 / 3.6, 0.01, "+5 %");
+  assert.ok(Z2.gapFactor(-5) < 1 && Z2.gapFactor(-5) > 0.7, "−5 %");
+});
+
+test("GAP: hügeliger Lauf (10–25 Hm/km) wird mit GAP gewertet und markiert", () => {
+  // 40 min auf und ab: 3 min +4 % mit 2,6 m/s, 3 min −4 % mit 3,4 m/s; HF 144
+  const s = stream(2400, (t) => { const up = Math.floor(t / 180) % 2 === 0; return { hr: 144, v: up ? 2.6 : 3.4, g: up ? 4 : -4 }; });
+  const rec = Z2.analyzeActivity(runMeta({ km: 7.2, elev: 110, sec: 2400 }), s, cfg, zones); // 15 Hm/km
+  assert.equal(rec.status.pace, "ok (GAP)");
+  assert.equal(rec.pace.gap, true);
+  // Ohne GAP würde dieser Lauf (Steigung ±4 % außerhalb ±2 %) gar nicht gewertet
+  const off = Z2.analyzeActivity(runMeta({ km: 7.2, elev: 110, sec: 2400 }), s, { ...cfg, run: { ...cfg.run, gap: { enabled: false } } }, zones);
+  assert.match(off.status.pace, /zu hügelig/);
+  // > 25 Hm/km bleibt ausgeschlossen
+  assert.match(Z2.analyzeActivity(runMeta({ km: 5, elev: 150 }), s, cfg, zones).status.pace, /zu hügelig \(30 Hm\/km\)/);
+});
+
+test("Pulsmesser-Markierung #gurt / #uhr aus Titel oder Beschreibung", () => {
+  const s = stream(1200, () => ({ hr: 144 }));
+  assert.equal(Z2.analyzeActivity(runMeta({ name: "Easy Run #gurt" }), s, cfg, zones).hrTag, "strap");
+  assert.equal(Z2.analyzeActivity(runMeta({ description: "mit #Brustgurt" }), s, cfg, zones).hrTag, "strap");
+  assert.equal(Z2.analyzeActivity(runMeta({ name: "Lauf #uhr" }), s, cfg, zones).hrTag, "wrist");
+  assert.equal(Z2.analyzeActivity(runMeta(), s, cfg, zones).hrTag, undefined);
 });
 
 console.log(`\n${n} Tests bestanden.`);

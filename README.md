@@ -50,7 +50,10 @@ in `data/prediction-history.json` (Verlaufslinie auf der Seite).
 Pace bei 140–148 bpm, Watt bei 135–145 bpm (nur echte Watt), Entkopplung (Pa:HR / Pw:HR) langer
 ruhiger Einheiten und Zeit pro HF-Zone. Das abendliche Update lädt die Streams neuer Einheiten,
 [`scripts/process_streams.js`](scripts/process_streams.js) speichert daraus **nur die Kennzahlen** in
-`data/z2-metrics.json` – rohe Streams kommen nie ins Repo. Eigene HF-Zonen und alle Grenzen stehen in
+`data/z2-metrics.json` – rohe Streams kommen nie ins Repo. Hügelige Läufe (10–25 Hm/km) werden mit
+steigungsbereinigter Pace (GAP, Minetti-Modell) gewertet. Ob Brustgurt oder Uhr gemessen hat, erkennt
+[`scripts/update_hr_sources.py`](scripts/update_hr_sources.py) in der Garmin-Action aus den Sensordaten
+(`data/hr-sources.json`); `#gurt` / `#uhr` im Strava-Titel oder in der Beschreibung hat Vorrang. Eigene HF-Zonen und alle Grenzen stehen in
 `js/data.js` unter `zones` und `z2`. Tests: `node tests/z2.test.js`.
 
 ## Anpassen

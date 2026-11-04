@@ -83,7 +83,7 @@
         <div class="card">
           <h3>Pace bei fester Herzfrequenz</h3>
           <div class="chart" id="z2Pace"></div>
-          <div class="legend" style="margin-top:6px"><span><i class="swatch" style="background:var(--recovery);opacity:.4;border-radius:50%"></i>einzelner Lauf</span><span><i class="swatch" style="background:var(--recovery);height:3px"></i>Median 4 Wochen</span><span class="muted">schneller = oben</span></div>
+          <div class="legend" style="margin-top:6px"><span><i class="swatch" style="background:var(--recovery);opacity:.45;border-radius:50%"></i>Brustgurt</span><span><i class="swatch" style="background:var(--surface);border:2px solid var(--recovery);border-radius:50%"></i>Uhr / unbekannt</span><span><i class="swatch" style="background:var(--recovery);opacity:.45;transform:rotate(45deg);border-radius:1px"></i>GAP (hügelig)</span><span><i class="swatch" style="background:var(--recovery);height:3px"></i>Median 4 Wochen</span><span class="muted">schneller = oben</span></div>
         </div>
         <div class="card">
           <h3>Watt bei fester Herzfrequenz</h3>
@@ -112,7 +112,10 @@
         <summary>Wie wird gemessen?</summary>
         <ul>
           <li>Pro Einheit: erste 10 min als Aufwärmen verworfen, Stillstand entfernt, Herzfrequenz, Tempo und Watt mit 60-s-Mittel geglättet.</li>
-          <li><b>Pace @ HF:</b> Median-Pace aller Abschnitte mit 140–148 bpm und −2 bis +2 % Steigung, mind. 8 min im Band. Nicht gewertet: Trail, Laufband, &gt; 10 Hm/km, &gt; 10 % der Zeit ≥ Z4.</li>
+          <li><b>Pace @ HF:</b> Median-Pace aller Abschnitte mit 140–148 bpm und −2 bis +2 % Steigung, mind. 8 min im Band. Nicht gewertet: Trail, Laufband, &gt; 25 Hm/km, &gt; 10 % der Zeit ≥ Z4.</li>
+          <li><b>Hügelige Läufe (10–25 Hm/km):</b> steigungsbereinigte Pace (GAP, Minetti-Modell) auf Abschnitten mit höchstens ±6 % Steigung, als Raute markiert. Der Puls reagiert 30–60 s verzögert auf Steigungen – GAP-Werte sind deshalb etwas unsicherer.</li>
+          <li><b>Pulsmesser:</b> Brustgurt oder Uhr wird aus den Garmin-Sensordaten erkannt; <code>#gurt</code> bzw. <code>#uhr</code> im Strava-Titel oder in der Beschreibung hat Vorrang. Uhr-Werte werden hohl markiert (in <code>data.js</code> umstellbar auf „nur Brustgurt“).</li>
+          <li id="z2SrcStats"></li>
           <li><b>Watt @ HF:</b> gleiche Logik mit 135–145 bpm, nur mit echten Watt (Zwift). Die Orbea-Watt sind geschätzt und zählen nicht.</li>
           <li><b>Entkopplung:</b> ruhige Läufe ab 60 min bzw. Fahrten ab 90 min (≥ 80 % in Z1–2, Rad VI ≤ 1,10). Effizienz = Tempo bzw. Watt ÷ HF in beiden Hälften, Entkopplung = (EF1 − EF2) ÷ EF1.</li>
           <li><b>Zonen:</b> eigene HF-Zonen (Z1 &lt; 130, Z2 130–152, Z3 153–175, Z4 176–200, Z5 ≥ 201). Die Zonenverteilung zählt das Aufwärmen mit, weil es echte Trainingszeit ist.</li>

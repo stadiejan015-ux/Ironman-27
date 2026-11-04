@@ -26,7 +26,8 @@ sie auch jederzeit von Hand in einer Claude-Session anstoßen.
    - `jobs.json` im Scratchpad anlegen:
      `[{ "id": "…", "file": "<Pfad>" | "skip": "<Grund>", "meta": { "date": start_local,
      "sport": sport_type, "name": …, "km": distance, "sec": moving_time,
-     "elev": elevation_gain, "trainer": is_trainer } }]`
+     "elev": elevation_gain, "trainer": is_trainer, "description": description } }]`
+     (Beschreibung wird für die Markierung `#gurt` / `#uhr` gebraucht)
    - `node scripts/process_streams.js <jobs.json>` – speichert nur Kennzahlen.
      Rohe Streams kommen NIE ins Repo (es ist öffentlich).
 6. Rennprognose speichern: `node scripts/save_prediction.js`

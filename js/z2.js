@@ -52,6 +52,15 @@
   };
   const dur = (arr) => arr.reduce((s, x) => s + x.dt, 0);
 
+  // Steigungsbereinigte Pace (GAP): Energiekosten des Laufens nach Minetti et al. (2002),
+  // C(i) = 155,4i⁵ − 30,4i⁴ − 43,3i³ + 46,3i² + 19,5i + 3,6 (J/kg/m), i = Steigung als Anteil.
+  // GAP-Geschwindigkeit = v · C(i) / C(0) – bergauf schneller, bergab langsamer als gemessen.
+  function gapFactor(gradePct) {
+    if (!Number.isFinite(gradePct)) return 1;
+    const i = Math.max(-0.45, Math.min(0.45, gradePct / 100));
+    return (155.4 * i ** 5 - 30.4 * i ** 4 - 43.3 * i ** 3 + 46.3 * i ** 2 + 19.5 * i + 3.6) / 3.6;
+  }
+
   /* ---------- Stream vorbereiten ---------- */
   // Stillstand entfernen, Bewegungszeit aufbauen, HF/Tempo/Watt mit gleitendem Mittel glätten,
   // Aufwärmen abtrennen. Gibt { all, main } zurück (all inkl. Aufwärmen).
@@ -66,11 +75,11 @@
       const dt = i ? Math.min(Math.max(t[i] - t[i - 1], 0), gap) : 0;
       if (mv.length && mv[i] === false) continue;
       mt += dt;
-      s.push({ mt, dt, hr: hr[i], v: v[i], w: w[i], g: g[i], alt: alt[i] });
+      s.push({ mt, dt, hr: hr[i], v: v[i], w: w[i], g: g[i], alt: alt[i], gap: Number.isFinite(v[i]) ? v[i] * gapFactor(g[i]) : undefined });
     }
     // Zeitbasiertes gleitendes Mittel (rückwärts, Fenster smoothSec) – je Kanal, zeitgewichtet
     const win = cfg.smoothSec || 60;
-    for (const key of ["hr", "v", "w"]) {
+    for (const key of ["hr", "v", "w", "gap"]) {
       let lo = 0, sum = 0, wsum = 0;
       for (let i = 0; i < s.length; i++) {
         const x = s[i];
@@ -124,11 +133,11 @@
     return Math.pow(acc / accW, 0.25);
   }
 
-  function decoupling(main, kind, c, hrZones) {
+  function decoupling(main, kind, c, hrZones, speedKey) {
     const z3 = hrZones[2][0];
     const total = dur(main);
     const z12 = total ? main.filter((x) => Number.isFinite(x.hrS) && x.hrS < z3).reduce((s, x) => s + x.dt, 0) / total : 0;
-    const key = kind === "ride" ? "wS" : "vS";
+    const key = kind === "ride" ? "wS" : speedKey || "vS";
     const mid = main.length ? (main[0].mt + main[main.length - 1].mt) / 2 : 0;
     const h1 = main.filter((x) => x.mt < mid), h2 = main.filter((x) => x.mt >= mid);
     const ef1 = wMean(h1, key) / wMean(h1, "hrS"), ef2 = wMean(h2, key) / wMean(h2, "hrS");
@@ -152,6 +161,9 @@
       hasHr: (streams.heart_rate || []).length > 0, deviceWatts: (streams.watts || []).length > 0 && kind === "ride",
       zoneSec: null, pace: null, watts: null, decoupling: null, status: {},
     };
+    const txt = `${meta.name || ""} ${meta.description || ""}`;
+    if (/#(brust)?gurt\b|#hrm\b/i.test(txt)) rec.hrTag = "strap";
+    else if (/#uhr\b/i.test(txt)) rec.hrTag = "wrist";
     if (!kind) { rec.status.all = "keine Lauf- oder Radeinheit"; return rec; }
     if (!rec.hasHr) { rec.status.all = "keine Herzfrequenz"; return rec; }
 
@@ -165,24 +177,27 @@
     if (kind === "run") {
       const c = cfg.run;
       const epk = rec.km ? rec.elev / rec.km : 0;
+      const g = c.gap || {};
+      const useGap = epk > c.maxElevPerKm && g.enabled && epk <= g.maxElevPerKm;
       let why = null;
       if (meta.sport === "TrailRun") why = "TrailRun";
       else if (isTreadmill(meta, streams)) why = "Laufband";
-      else if (epk > c.maxElevPerKm) why = `hügelig (${String(r1(epk)).replace(".", ",")} Hm/km)`;
+      else if (epk > c.maxElevPerKm && !useGap) why = `zu hügelig (${String(r1(epk)).replace(".", ",")} Hm/km)`;
       else if (hi > c.maxHighShare) why = `intensiv/Intervalle (${pctDe(hi)} ≥ Z4)`;
       if (why) rec.status.pace = why;
       else {
-        const r = atHr(p.main, c, (x) => (x.vS > c.minSpeed ? 1000 / x.vS : null));
-        if (r.value != null) { rec.pace = { sec: Math.round(r.value), bandSec: Math.round(r.bandSec) }; rec.status.pace = "ok"; }
+        const sp = useGap ? "gapS" : "vS";
+        const r = atHr(p.main, useGap ? { ...c, gradeRange: g.gradeRange } : c, (x) => (x[sp] > c.minSpeed ? 1000 / x[sp] : null));
+        if (r.value != null) { rec.pace = { sec: Math.round(r.value), bandSec: Math.round(r.bandSec), ...(useGap ? { gap: true } : {}) }; rec.status.pace = useGap ? "ok (GAP)" : "ok"; }
         else rec.status.pace = `nur ${Math.round(r.bandSec / 60)} min im Band`;
       }
       const d = cfg.decoupling;
       if (why) rec.status.decoupling = why;
       else if (p.movingSec < d.runMinSec) rec.status.decoupling = `zu kurz (< ${d.runMinSec / 60} min)`;
       else {
-        const r = decoupling(p.main, "run", d, hrZones);
+        const r = decoupling(p.main, "run", d, hrZones, useGap ? "gapS" : "vS");
         if (r.z12Share < d.minZ12Share) rec.status.decoupling = `nicht ruhig (Z1–2 nur ${pctDe(r.z12Share)})`;
-        else { rec.decoupling = { pct: r1(r.pct), z12Share: Math.round(r.z12Share * 100) / 100, durSec: Math.round(r.durSec) }; rec.status.decoupling = "ok"; }
+        else { rec.decoupling = { pct: r1(r.pct), z12Share: Math.round(r.z12Share * 100) / 100, durSec: Math.round(r.durSec), ...(useGap ? { gap: true } : {}) }; rec.status.decoupling = useGap ? "ok (GAP)" : "ok"; }
       }
     } else {
       const c = cfg.ride, d = cfg.decoupling;
@@ -274,7 +289,7 @@
       parts.push(`Pace @ ${mid} bpm: ${mmss(a)} → ${mmss(b)} /km in ${weeks} Wochen`);
     }
     const easy = recs.filter((r) => r.kind === "run" && r.hrMed && utc(r.date) > end - span
-      && (r.status.pace === "ok" || /^nur /.test(r.status.pace || "")));
+      && (/^ok/.test(r.status.pace || "") || /^nur /.test(r.status.pace || "")));
     const easyMed = median(easy.map((r) => r.hrMed));
     if (easy.length >= 2 && easyMed > band[1]) parts.push(`Lockere Läufe liegen im Median bei ${Math.round(easyMed)} bpm – über dem Band ${band[0]}–${band[1]}. Langsamer laufen bringt mehr Zone-2-Zeit und mehr Messwerte`);
     const share = zoneShare(recs, asOf, cfg.windowDays, [0, 1]);
@@ -285,7 +300,7 @@
   }
 
   return {
-    RUN, RIDE, zoneIndex, zoneMins, weightedMedian, median, prepare, zoneTimes, highShare, atHr, normalizedPower,
+    RUN, RIDE, gapFactor, zoneIndex, zoneMins, weightedMedian, median, prepare, zoneTimes, highShare, atHr, normalizedPower,
     decoupling, analyzeActivity, paceSeries, wattSeries, decouplingSeries, rollingMedian, kpi, ampel,
     mondayIso, weeklyZones, zoneShare, summary,
   };
