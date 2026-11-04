@@ -789,11 +789,18 @@
     const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0)) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Geschätztes 1RM über die Zeit">`;
     for (let i = 0; i <= 2; i++) { const v = lo + ((hi - lo) / 2) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`; }
-    // Linie je Ort (Maschinen nicht ortsübergreifend verbinden)
-    [...new Set(pts.map((p) => p.e.place))].forEach((pl) => {
-      const ps = pts.filter((p) => p.e.place === pl);
-      if (ps.length > 1) s += `<path d="${ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="${placeColor(pl)}" stroke-width="2" opacity=".7"/>`;
-    });
+    const path = (ps) => ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("");
+    if (pts.length && pts.every((p) => p.e.compareKey === "alle")) {
+      // Ortsübergreifend verglichen (z. B. Bankdrücken): eine durchgehende Linie in neutraler Farbe
+      const ps = pts.slice().sort((a, b) => a.d - b.d);
+      if (ps.length > 1) s += `<path d="${path(ps)}" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linejoin="round"/>`;
+    } else {
+      // Linie je Ort (Maschinen nicht ortsübergreifend verbinden)
+      [...new Set(pts.map((p) => p.e.place))].forEach((pl) => {
+        const ps = pts.filter((p) => p.e.place === pl);
+        if (ps.length > 1) s += `<path d="${path(ps)}" fill="none" stroke="${placeColor(pl)}" stroke-width="2" opacity=".7"/>`;
+      });
+    }
     pts.forEach((p, i) => {
       s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="${p.e.pr ? 6 : 4.5}" fill="${placeColor(p.e.place)}" stroke="var(--surface)" stroke-width="2"/>`;
       if (p.e.pr) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="9" fill="none" stroke="var(--good)" stroke-width="2"/>`;
