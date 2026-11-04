@@ -10,8 +10,9 @@ sie auch jederzeit von Hand in einer Claude-Session anstoßen.
    - `get_athlete_profile`, `get_athlete_zones`, `get_active_streak`,
      `get_athlete_best_efforts` (ohne Parameter).
 3. Ergebnisse unverändert als JSON in temporäre Dateien schreiben (nicht ins Repo):
-   - `acts.json`: das `activities`-Array (Felder `name`, `sport_type`,
-     `start_local`, `summary` reichen).
+   - `acts.json`: das `activities`-Array (Felder `name`, `description`,
+     `sport_type`, `start_local`, `summary` reichen). Von Beschreibungen speichert
+     das Skript nur gym-relevante Zeilen bei Krafteinheiten (Push/Pull/Legs, „6x100“, „@Ort“).
    - `profile.json`: `{"athlete": …, "zones": …, "streak": …, "bests": …}`.
 4. `python3 scripts/update_strava.py --activities acts.json --profile profile.json --date <heute>`
 5. Zone 2 (Streams): Für jede Lauf- oder Radeinheit aus Schritt 2 (Run, TrailRun,
