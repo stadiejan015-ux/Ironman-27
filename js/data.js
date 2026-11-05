@@ -91,8 +91,8 @@ window.TRAINING = {
     // Nächstes Ziel nach doppelter Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt in kg
     progression: {
       "Bankdrücken": { reps: [6, 8], step: 2.5 },
-      "Latzug":      { reps: [8, 12], step: 5 },
-      "Beinpresse":  { reps: [8, 12], step: 10 },
+      "Latzug":      { reps: [5, 8], step: 5 },
+      "Beinpresse":  { reps: [5, 8], step: 10 },
       stagnation: 3,   // so viele Einträge ohne neues bestes 1RM → Hinweis „kein Fortschritt“
     },
   },

@@ -92,7 +92,7 @@ speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym
 Übung, Wiederholungen, Gewicht, Sätze und Ort und berechnet das 1RM nach Epley. PRs bei Latzug und
 Beinpresse zählen nur am selben Ort. Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
 **Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Latzug und
-Beinpresse 8–12 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
+Beinpresse 5–8 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
 1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Latzug und Beinpresse nur mit Einträgen vom aktuellen
 Ort (letzte Einheit mit @Ort). Badge „Ziel erreicht“ und Hinweis bei Stagnation (3 Einträge ohne neues bestes 1RM).
 Tests: `node tests/gym.test.js`.
