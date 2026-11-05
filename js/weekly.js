@@ -1,0 +1,139 @@
+/*
+ * Wochenzusammenfassung – reine Funktionen aus festen Regeln (kein DOM, kein Date.now(), keine KI/API).
+ * ------------------------------------------------------------------------------------------------
+ *   defaultWeekStart(today) → Montag der gezeigten Woche (Mo/Di: abgeschlossene Vorwoche, sonst laufende)
+ *   weeklySummary({ acts, gymSessions, garminDays, today, weekStart, cfg, equipment }) → Zusammenfassung
+ * Nutzt die vorhandenen Bausteine statt eigener Logik:
+ *   Calendar.buildCalendar  – Wochenraster Mo–So, Stunden, Einheiten, Flex-Wochen
+ *   Gym.splitCounts / exerciseHistory – Splits und PRs der Hauptübungen
+ *   Flex.mergeActs / weekMinimum / lastWhere / flexState / SINCE_DEFAULTS – Minimum, Schwimmen, Flex
+ * cfg = { weekly, flex, gym, sinceLast } (aus js/data.js)
+ * Läuft im Browser (window.Weekly) und in Node (require("./js/weekly.js")).
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("./calendar.js"), require("./gym.js"), require("./flex.js"));
+  else root.Weekly = factory(root.Calendar, root.Gym, root.Flex);
+})(typeof self !== "undefined" ? self : this, function (Calendar, Gym, Flex) {
+  "use strict";
+
+  const DAY = 86400000;
+  const DEFAULTS = { hrvDropPct: 10, sleepMinH: 7, loadFactor: 1.5, maxHints: 3, weeksBack: 8 };
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const parseDay = (s) => { const [y, m, d] = String(s).slice(0, 10).split("-").map(Number); return new Date(y, m - 1, d); };
+  const mondayOf = Flex.mondayOf;
+  const hm = (sec) => { const m = Math.round(sec / 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`; };
+  const dur = (sec) => (sec >= 3600 ? `${hm(sec)} h` : `${Math.round(sec / 60)} min`);
+  const de = (n, d = 0) => n.toFixed(d).replace(".", ",");
+  const kg = (w) => de(w, w % 1 ? 1 : 0);
+  const entryText = (e) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${kg(e.weight)} kg`;
+  const avg = (arr) => (arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null);
+  const MIN_NAMES = { gym: "Gym", endurance: "lockere Ausdauer", swim: "Schwimmen" };
+
+  function defaultWeekStart(today) {
+    const mon = mondayOf(today);
+    return (today.getDay() + 6) % 7 <= 1 ? addDays(mon, -7) : mon;
+  }
+
+  // Schnitt eines Garmin-Tageswerts zwischen zwei Daten (inklusive), nur Tage mit Wert
+  function garminAvg(days, fromIso, toIso, key) {
+    return avg(days.filter((d) => d.date >= fromIso && d.date <= toIso && d[key] != null).map((d) => d[key]));
+  }
+  const trend = (cur, prev, eps) => (cur == null || prev == null ? null : cur - prev > eps ? "up" : prev - cur > eps ? "down" : "flat");
+
+  function weeklySummary({ acts = [], gymSessions = [], garminDays = [], today, weekStart, cfg = {}, equipment = null }) {
+    const c = { ...DEFAULTS, ...(cfg.weekly || {}) };
+    const flexCfg = cfg.flex || {}, gymCfg = cfg.gym || {};
+    const mon = mondayOf(weekStart), sun = addDays(mon, 6);
+    const monIso = ymd(mon), sunIso = ymd(sun), todayIso = ymd(today);
+    const running = todayIso >= monIso && todayIso <= sunIso;
+
+    // Wochenraster wie im Kalender: Zielwoche + die 4 Wochen davor
+    const back = Math.max(0, Math.round((mondayOf(today) - mon) / (7 * DAY)));
+    const isFlex = (d) => Flex.flexState(flexCfg, d).active;
+    const cal = Calendar.buildCalendar({ acts, gymSessions, today, weeks: back + 5, isFlex });
+    const [week, ...prev4] = cal.weeks.slice(back, back + 5);
+    const items = week.days.flatMap((d) => d.items);
+
+    // Gym: Splits (Gym.splitCounts) und Einträge der Hauptübungen
+    const splits = Gym.splitCounts(gymSessions, monIso, sunIso);
+    const lifts = items.filter((x) => x.cat === "strength" && x.exercise && x.entry)
+      .map((x) => ({ exercise: x.exercise, date: x.day, text: `${x.exercise} ${entryText(x.entry)}${x.entry.place ? " @" + x.entry.place : ""}` }));
+
+    // PRs der Hauptübungen in dieser Woche (Gym.exerciseHistory)
+    const exercises = [...new Set(Object.values(gymCfg.mainExercise || Gym.DEFAULTS.mainExercise))];
+    const prs = exercises.flatMap((ex) => Gym.exerciseHistory(gymSessions, ex, gymCfg)
+      .filter((h) => h.pr && h.date >= monIso && h.date <= sunIso).map((h) => ({ ...h, exercise: ex })))
+      .sort((a, b) => a.start.localeCompare(b.start));
+
+    // Ausdauer & Sonstiges je Sportart
+    const sports = ["swim", "bike", "run", "other"].map((cat) => {
+      const l = items.filter((x) => x.cat === cat);
+      return { cat, count: l.length, sec: l.reduce((s, x) => s + x.sec, 0) };
+    }).filter((x) => x.count);
+
+    // Gesamtstunden vs. Schnitt der 4 Wochen davor
+    const prevSecs = prev4.map((w) => w.totalSec);
+    const avg4Sec = prevSecs.length === 4 && prevSecs.some(Boolean) ? avg(prevSecs) : null;
+    const totalDiffPct = avg4Sec ? Math.round((week.totalSec / avg4Sec - 1) * 100) : null;
+
+    // Wochen-Minimum (gibt es nur im Flex-Zeitraum)
+    const merged = Flex.mergeActs(acts, gymSessions);
+    let minimum = null;
+    if (week.flex) {
+      const wm = Flex.weekMinimum(merged, mon, flexCfg);
+      minimum = { ok: wm.ok, items: wm.items, missing: wm.items.filter((x) => !x.ok).map((x) => `${x.need - x.have}× ${MIN_NAMES[x.key] || x.key}`) };
+    }
+
+    // Erholung (Garmin): Wochenschnitt vs. Vorwoche
+    const prevMonIso = ymd(addDays(mon, -7)), prevSunIso = ymd(addDays(mon, -1));
+    const rec = [["sleepH", "Schlaf", 0.1], ["sleepScore", "Sleep Score", 1], ["hrv", "HRV", 1], ["rhr", "Ruhepuls", 1]].map(([key, label, eps]) => {
+      const value = garminAvg(garminDays, monIso, sunIso, key), prev = garminAvg(garminDays, prevMonIso, prevSunIso, key);
+      return { key, label, value, prev, trend: trend(value, prev, eps) };
+    });
+    const recovery = rec.some((r) => r.value != null) ? rec : null;
+    const recOf = (k) => rec.find((r) => r.key === k).value;
+
+    // Highlight: neuer PR > Wochen-Minimum komplett > längste Einheit
+    const longest = items.reduce((m, x) => (!m || x.sec > m.sec ? x : m), null);
+    let highlight = null;
+    if (prs.length) {
+      const p = prs[prs.length - 1];
+      highlight = { type: "pr", text: `Neuer PR: ${p.exercise} ${entryText(p)} (1RM ${kg(Math.round(p.e1rm))} kg)${prs.length > 1 ? ` · +${prs.length - 1} weitere` : ""}` };
+    } else if (minimum && minimum.ok) {
+      highlight = { type: "minimum", text: "Wochen-Minimum komplett erfüllt" };
+    } else if (longest) {
+      highlight = { type: "longest", cat: longest.cat, text: `Längste Einheit: ${longest.name || "Einheit"} · ${dur(longest.sec)}` };
+    }
+
+    // Hinweise – nur wenn eine Regel greift, nach Wichtigkeit, höchstens maxHints
+    const hints = [];
+    const hrvBase = garminAvg(garminDays, ymd(addDays(mon, -28)), prevSunIso, "hrv");
+    const hrvW = recOf("hrv"), sleepW = recOf("sleepH");
+    if (hrvBase && hrvW != null && sleepW != null && hrvW < hrvBase * (1 - c.hrvDropPct / 100) && sleepW < c.sleepMinH) {
+      hints.push({ key: "recovery", text: `Erholung im Blick behalten: HRV ${Math.round((1 - hrvW / hrvBase) * 100)} % unter dem 4-Wochen-Schnitt, Schlaf Ø ${hm(sleepW * 3600)} h.` });
+    }
+    if (!splits.Legs) hints.push({ key: "legs", text: running ? "Legs kam diese Woche bisher nicht vor." : "Legs kam in dieser Woche nicht vor." });
+    const swimCfg = { ...Flex.SINCE_DEFAULTS.swim, ...((cfg.sinceLast || {}).swim || {}) };
+    const poolOk = !(week.flex && equipment && !equipment.includes("pool"));
+    if (poolOk) {
+      const last = Flex.lastWhere(merged, (a) => a.cat === "swim", running ? today : sun);
+      if (!last) hints.push({ key: "swim", text: "Seit der Anmeldung noch kein Schwimmen." });
+      else if (last.days > swimCfg.yellow) hints.push({ key: "swim", text: `Schwimmen ist ${last.days} Tage her.` });
+    }
+    if (week.flex && flexCfg.until) {
+      const left = Math.ceil(Math.round((parseDay(flexCfg.until) - sun) / DAY) / 7);
+      if (left > 0) hints.push({ key: "flex", text: `Noch ${left} ${left === 1 ? "Woche" : "Wochen"} bis zum Ende der Flex-Phase.` });
+      else hints.push({ key: "flex", text: "Letzte Woche der Flex-Phase." });
+    }
+
+    return {
+      monday: monIso, sunday: sunIso, running, flex: week.flex, empty: week.count === 0,
+      highlight, totalSec: week.totalSec, count: week.count, avg4Sec, totalDiffPct,
+      gym: { count: splits.total, splits, lifts }, prs, sports, minimum, recovery,
+      hints: hints.slice(0, c.maxHints),
+    };
+  }
+
+  return { DEFAULTS, defaultWeekStart, weeklySummary, garminAvg };
+});

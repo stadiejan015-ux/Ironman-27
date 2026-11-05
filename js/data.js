@@ -52,6 +52,15 @@ window.TRAINING = {
     legs:     { green: 5,  yellow: 9 },
   },
 
+  // Wochenzusammenfassung (Abschnitt Heute) – feste Regeln, keine KI. Schwellen für die Hinweise:
+  weekly: {
+    hrvDropPct: 10,   // HRV-Wochenschnitt so viel % unter dem 4-Wochen-Schnitt …
+    sleepMinH: 7,     // … und Schlaf unter so vielen Stunden → „Erholung im Blick behalten“
+    loadFactor: 1.5,  // Wochenbelastung über dem 1,5-Fachen des 4-Wochen-Schnitts (Teil 2)
+    maxHints: 3,      // höchstens so viele Hinweise
+    weeksBack: 8,     // so viele Wochen lassen sich mit ← → durchblättern
+  },
+
   // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,
   // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
   gym: {

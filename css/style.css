@@ -283,6 +283,34 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .dot { width: 10px; height: 10px; border-radius: 50%; }
 .dot.good { background: var(--good); } .dot.ok { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.na { background: var(--text-3); opacity: .6; }
 
+/* Wochenzusammenfassung */
+.today-main { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.week-nav { display: flex; align-items: center; gap: 6px; }
+.week-nav .chip { min-width: 44px; min-height: 36px; padding: 4px 12px; font-size: 16px; line-height: 1; }
+.week-nav .chip:disabled { opacity: .35; cursor: default; }
+.week-range { font-size: 14px; font-weight: 600; white-space: nowrap; min-width: 108px; text-align: center; }
+.wk-running { margin-top: 6px; }
+.wk-hl { display: flex; gap: 8px; align-items: baseline; margin: 10px 0 0; font-size: 15px; font-weight: 600; }
+.wk-hl > span:first-child { color: var(--text-3); }
+.wk-dl { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 14px; }
+.wk-dl dt { color: var(--text-3); font-size: 13px; padding-top: 1px; }
+.wk-dl dd { margin: 0; min-width: 0; }
+.wk-sub { font-size: 13px; margin-top: 2px; }
+.wk-sport { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; white-space: nowrap; }
+.wk-ok { color: var(--good); font-weight: 600; }
+.wk-rec { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.wk-rec > div { background: var(--surface-2); border-radius: 8px; padding: 6px 10px; min-width: 0; }
+.wk-rec > div > span:first-child { display: block; font-size: 12px; color: var(--text-2); }
+.wk-rec b { font-size: 15px; }
+.wk-trend { font-style: normal; color: var(--text-2); font-weight: 600; }
+.wk-hints { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+@media (max-width: 600px) {
+  .wk-rec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wk-dl { grid-template-columns: 1fr; gap: 2px; }
+  .wk-dl dd { margin-bottom: 6px; }
+}
+
 /* Zuletzt gemacht */
 #sinceBox { container-type: inline-size; }
 .since-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }

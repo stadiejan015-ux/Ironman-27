@@ -47,10 +47,9 @@
   const GYM = window.Gym, GCFG = window.TRAINING.gym || {};
   const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG, acts.filter((a) => a.cat !== "strength")) : [];
   // Für den Flex-Modus: Ausdauer aus Strava, Kraft aus den zusammengeführten Einheiten
-  const flexActs = GYM ? acts.filter((a) => a.cat !== "strength").concat(GYM_SESS.map((x) => ({
-    date: new Date(x.start), cat: "strength", sport: "WeightTraining", sec: x.sec, title: x.alt || x.name,
-    name: x.split || [x.name, x.desc, x.alt].filter(Boolean).join(" "),
-  }))) : acts;
+  const flexActs = GYM && FX ? FX.mergeActs(acts, GYM_SESS) : acts;
+  // Für Anzeigen: Strava-Name, wenn der Garmin-Titel nur „Krafttraining“ ist (Kalender, Wochenkarte)
+  const GYM_VIEW = GYM_SESS.map((x) => ({ ...x, name: x.alt || x.name }));
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
   const ofCat = (arr, c) => arr.filter((a) => a.cat === c);
 
@@ -865,7 +864,7 @@
     if (!window.Calendar) { $("#kalender").hidden = true; return; }
     const cal = window.Calendar.buildCalendar({
       acts, today: new Date(), weeks: 10, isFlex: FX ? inFlex : null,
-      gymSessions: GYM_SESS.map((x) => ({ ...x, name: x.alt || x.name })),   // Strava-Name, wenn der Garmin-Titel nur „Krafttraining“ ist
+      gymSessions: GYM_VIEW,
     });
     const cell = (d, wi, di) => {
       const label = `${WD_LONG[d.weekday]}, ${fmtDate(parse(d.date), { day: "2-digit", month: "2-digit" })}${d.isToday ? " (heute)" : ""}: `
@@ -1123,7 +1122,7 @@
         <div id="sinceBox"></div>
         ${standLine}
       </div>`;
-    $("#today").innerHTML = planCard + `
+    $("#today").innerHTML = `<div class="today-main">${planCard}<div class="card week-card" id="weekCard" aria-live="polite"></div></div>` + `
       <div class="card today-form">
         <div class="mini-title" style="margin-top:0">Form heute</div>
         ${rd ? `
@@ -1139,6 +1138,58 @@
       saveEquipment(next.length ? next : cur); today();
     }));
     renderSince(now);
+    renderWeek(now);
+  }
+
+  /* ---------- Wochenzusammenfassung (js/weekly.js) – feste Regeln, keine KI ---------- */
+  const WK = window.Weekly, WCFG = window.TRAINING.weekly || {};
+  let wkOffset = null;   // 0 = laufende Woche, 1 = Vorwoche …
+  const TREND = { up: ["↑", "höher als in der Vorwoche"], down: ["↓", "niedriger als in der Vorwoche"], flat: ["→", "etwa wie in der Vorwoche"] };
+  const REC_FMT = { sleepH: (v) => `${hm(v * 3600)} h`, sleepScore: (v) => nf(v), hrv: (v) => `${nf(v)} ms`, rhr: (v) => `${nf(v)} bpm` };
+  function renderWeek(now) {
+    const box = $("#weekCard");
+    if (!box) return;
+    if (!WK) { box.hidden = true; return; }
+    const thisMon = monday(now), maxBack = (WCFG.weeksBack || 8) - 1;
+    if (wkOffset == null) wkOffset = Math.round((thisMon - WK.defaultWeekStart(now)) / (7 * DAY));
+    const s = WK.weeklySummary({
+      acts, gymSessions: GYM_VIEW, garminDays: gDays, today: now, weekStart: addDays(thisMon, -7 * wkOffset),
+      cfg: { weekly: WCFG, flex: FCFG, gym: GCFG, sinceLast: window.TRAINING.sinceLast || {} },
+      equipment: FLEX.active ? loadEquipment() : null,
+    });
+    const dm = (iso) => fmtDate(parse(iso), { day: "2-digit", month: "2-digit" });
+    const sp = s.gym.splits;
+    const splitTxt = ["Push", "Pull", "Legs"].filter((k) => sp[k]).map((k) => `${sp[k]} ${k}`).concat(sp.ohne ? [`${sp.ohne} ohne Split`] : []).join(", ");
+    const sport = (x) => `<span class="wk-sport"><i class="swatch" style="background:${CATS[x.cat].color}"></i>${CATS[x.cat].label} ${x.count}× · ${durTxt(x.sec)}</span>`;
+    const endu = s.sports.filter((x) => x.cat !== "other"), other = s.sports.find((x) => x.cat === "other");
+    const pct = s.totalDiffPct;
+    const rows = [
+      ["Gym", s.gym.count ? `${s.gym.count}× Gym${splitTxt ? ` · ${splitTxt}` : ""}${s.gym.lifts.length ? `<div class="muted wk-sub">${s.gym.lifts.map((l) => esc(l.text)).join(" · ")}</div>` : ""}` : `<span class="muted">kein Gym</span>`],
+      ["Ausdauer", (endu.length ? endu.map(sport).join("") : `<span class="muted">keine</span>`) + (other ? sport(other) : "")],
+      ["Gesamt", `${nf(s.totalSec / 3600, 1)} h · ${s.count} ${s.count === 1 ? "Einheit" : "Einheiten"}${s.avg4Sec ? ` <span class="muted">· Ø der 4 Wochen davor ${nf(s.avg4Sec / 3600, 1)} h (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %)</span>` : ""}`],
+    ];
+    if (s.minimum) rows.push(["Minimum", s.minimum.ok ? `<span class="wk-ok">✓ erfüllt</span>` : `${s.running ? "fehlt noch" : "gefehlt"}: ${s.minimum.missing.map(esc).join(", ")}`]);
+    box.innerHTML = `
+      <div class="week-head">
+        <div class="mini-title" style="margin:0">Woche</div>
+        <div class="week-nav">
+          <button type="button" class="chip" data-wk="1" aria-label="Ältere Woche"${wkOffset >= maxBack ? " disabled" : ""}>←</button>
+          <span class="week-range">${dm(s.monday)} – ${dm(s.sunday)}</span>
+          <button type="button" class="chip" data-wk="-1" aria-label="Neuere Woche"${wkOffset <= 0 ? " disabled" : ""}>→</button>
+        </div>
+      </div>
+      ${s.running ? `<div class="wk-running"><span class="badge neutral">läuft noch</span></div>` : ""}
+      ${s.highlight ? `<p class="wk-hl"><span aria-hidden="true">★</span><span>${esc(s.highlight.text)}</span></p>` : `<p class="muted" style="margin:10px 0 0">Keine Einheiten in dieser Woche.</p>`}
+      ${s.empty ? "" : `<div class="mini-title">Training</div><dl class="wk-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`}
+      ${s.recovery ? `<div class="mini-title">Erholung · Garmin, Ø der Woche</div>
+        <div class="wk-rec">${s.recovery.map((r) => `<div><span>${r.label}</span><b>${r.value == null ? "–" : REC_FMT[r.key](r.value)}</b>${r.trend ? ` <em class="wk-trend" title="${TREND[r.trend][1]}">${TREND[r.trend][0]}</em><span class="sr-only">${TREND[r.trend][1]}</span>` : ""}</div>`).join("")}</div>` : ""}
+      ${s.hints.length ? `<div class="mini-title">Hinweise</div><ul class="wk-hints">${s.hints.map((h) => `<li>${esc(h.text)}</li>`).join("")}</ul>` : ""}`;
+    box.querySelectorAll("[data-wk]").forEach((b) => b.addEventListener("click", () => {
+      wkOffset = Math.min(maxBack, Math.max(0, wkOffset + Number(b.dataset.wk)));
+      renderWeek(now);
+      const again = box.querySelector(`[data-wk="${b.dataset.wk}"]`);
+      if (again && !again.disabled) again.focus({ preventScroll: true });
+    }));
   }
 
   /* ---------- Zuletzt gemacht (Flex.sinceLast) ---------- */

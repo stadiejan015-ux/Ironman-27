@@ -81,6 +81,16 @@ Im Flex-Modus wird eine Sportart ohne passende Ausstattung grau („nicht verfü
 Einheiten sind dort nur Info. Berechnung: `sinceLast()` in [`js/flex.js`](js/flex.js), dieselbe
 `lastWhere()`-Logik nutzt auch der Leg-Day-Check im Tagesvorschlag. Tests: `node tests/flex.test.js`.
 
+## Wochenzusammenfassung
+
+Karte „Woche“ in „Heute“ unter „Zuletzt gemacht“, nur aus festen Regeln (keine KI, keine API), direkt im
+Browser berechnet ([`js/weekly.js`](js/weekly.js)). Mo/Di zeigt sie die abgeschlossene Vorwoche, sonst die
+laufende; mit ← → lassen sich 8 Wochen durchblättern. Inhalt: Highlight (neuer PR > Wochen-Minimum erfüllt >
+längste Einheit), Gym mit Splits und Einträgen, Ausdauer je Sportart, Gesamtstunden gegenüber dem Schnitt der
+4 Wochen davor, Wochen-Minimum (Flex), Garmin-Erholung mit Pfeil zur Vorwoche und höchstens 3 Hinweise.
+Wiederverwendet werden Kalender-Raster, Gym-Splits/PRs, Wochen-Minimum und „Zuletzt gemacht“.
+Schwellen: `weekly` in `js/data.js`. Tests: `node tests/weekly.test.js`.
+
 ## Kalender
 
 Die letzten 10 Wochen als Raster Mo–So (neueste oben, [`js/calendar.js`](js/calendar.js)): Farbe nach
@@ -101,6 +111,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `gym` | Hauptübung je Split, Aliase, Übungen mit Orts-Vergleich |
 | `flex` | Flex-Zeitraum, Wochen-Minimum, Split-Rotation und -Erkennung |
 | `sinceLast` | Ampel-Schwellen (Tage) und Mindestdauern für „Zuletzt gemacht“ |
+| `weekly` | Schwellen der Wochen-Hinweise (HRV-Abfall, Schlaf, Belastungsfaktor), Anzahl Hinweise und Wochen |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 
