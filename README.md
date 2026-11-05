@@ -21,6 +21,7 @@ Kein Build-Schritt nötig: `index.html` im Browser öffnen. Für GitHub Pages:
 Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden mittags und abends
 von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](scripts/UPDATE.md),
 Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
+Die geplante Aufgabe neu anlegen (unabhängig von einem Chat): [`scripts/STRAVA_AUFGABE.md`](scripts/STRAVA_AUFGABE.md).
 
 ## Datenstand-Warnung
 
