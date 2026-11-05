@@ -38,7 +38,7 @@ test("1RM nach Epley: Gewicht × (1 + Wdh./30)", () => {
   assert.ok(Math.abs(G.epley(82.5, 10) - 110) < 1e-9);
 });
 
-test("PR: Bankdrücken über alle Orte, Maschinen nur am selben Ort", () => {
+test("PR: standardmäßig alle Hauptübungen über alle Orte; mit gym.perPlace Maschinen nur am selben Ort", () => {
   const s = (start, name) => ({ start, name, desc: "", sec: 3600 });
   const sessions = G.gymSessions([
     s("2026-11-01T10:00", "Push 6x100 @Bali"),     // 120
@@ -50,8 +50,12 @@ test("PR: Bankdrücken über alle Orte, Maschinen nur am selben Ort", () => {
   ], []);
   const bench = G.exerciseHistory(sessions, "Bankdrücken");
   assert.deepEqual(bench.map((e) => [e.e1rm, e.pr]), [[120, false], [122.5, true]]);
+  // Standard (perPlace leer): Latzug über alle Orte – 8×100 in Kuta ist PR, 10×90 in Bali danach nicht mehr
   const lat = G.exerciseHistory(sessions, "Latzug");
-  assert.deepEqual(lat.map((e) => [e.place, e.pr, e.first]), [["Bali", false, true], ["Kuta", false, true], ["Bali", true, false], ["unbekannt", false, true]]);
+  assert.deepEqual(lat.map((e) => [e.place, e.pr, e.compareKey]), [["Bali", false, "alle"], ["Kuta", true, "alle"], ["Bali", false, "alle"], ["unbekannt", false, "alle"]]);
+  // mit perPlace: nur am selben Ort
+  const latP = G.exerciseHistory(sessions, "Latzug", { perPlace: ["Latzug", "Beinpresse"] });
+  assert.deepEqual(latP.map((e) => [e.place, e.pr, e.first]), [["Bali", false, true], ["Kuta", false, true], ["Bali", true, false], ["unbekannt", false, true]]);
 });
 
 test("Einheiten: Garmin-Titel vor Strava-Namen (±10 min), Strava-only bleibt erhalten", () => {
@@ -121,22 +125,33 @@ test("Nächstes Ziel bei Sätzen: gilt pro Satz, Satzzahl bleibt", () => {
   assert.deepEqual(plan.target, { sets: 3, reps: 11, weight: 180, rule: "rep" });
 });
 
-test("Ort-Logik Maschinen: nur Einträge vom aktuellen Ort, kein Übertrag von anderen Orten", () => {
+test("Standard: nächstes Ziel aus dem letzten Eintrag, egal an welchem Ort", () => {
+  const s = sess([[day(0), "Pull · Latzug 7x80 @Abu Dhabi"], [day(2), "Push @Bali"]]);
+  const p = G.liftPlan(s, "Latzug", {});
+  assert.equal(p.perPlace, false); assert.equal(p.place, null); assert.equal(p.noEntryAtPlace, false);
+  assert.deepEqual(p.target, { sets: 1, reps: 8, weight: 80, rule: "low" });   // Standardbereich Latzug 8–12 → 7 Wdh. liegen darunter
+  const s2 = sess([[day(0), "Legs 10x240 @Abu Dhabi"], [day(2), "Legs 8x200 @Bali"]]);
+  const p2 = G.liftPlan(s2, "Beinpresse", {});
+  assert.equal(p2.entries.length, 2); assert.equal(p2.last.place, "Bali");
+});
+
+const PP = { perPlace: ["Latzug", "Beinpresse"] };
+test("Mit gym.perPlace: nur Einträge vom aktuellen Ort, kein Übertrag von anderen Orten", () => {
   // Latzug in Abu Dhabi, danach Gym-Einheit in Bali ohne Latzug-Eintrag → aktueller Ort Bali
   const s1 = sess([[day(0), "Pull · Latzug 10x80 @Abu Dhabi"], [day(2), "Push @Bali"]]);
   assert.equal(G.currentPlace(s1), "Bali");
-  const p1 = G.liftPlan(s1, "Latzug", {});
+  const p1 = G.liftPlan(s1, "Latzug", PP);
   assert.equal(p1.place, "Bali"); assert.equal(p1.noEntryAtPlace, true); assert.equal(p1.target, null); assert.equal(p1.last, null);
   // erster Eintrag in Bali: Ziel nur daraus, nicht aus Abu Dhabi
   const s2 = sess([[day(0), "Pull · Latzug 12x80 @Abu Dhabi"], [day(2), "Pull · Latzug 8x60 @Bali"]]);
-  const p2 = G.liftPlan(s2, "Latzug", {});
+  const p2 = G.liftPlan(s2, "Latzug", PP);
   assert.deepEqual(p2.target, { sets: 1, reps: 9, weight: 60, rule: "rep" });
   assert.equal(p2.entries.length, 1); assert.equal(p2.reached, false); assert.equal(p2.prevTarget, null);
   // Bankdrücken ist keine Maschine: zählt über alle Orte
   const s3 = sess([[day(0), "Push 7x100 @Abu Dhabi"], [day(2), "Legs @Bali"]]);
-  assert.deepEqual(G.liftPlan(s3, "Bankdrücken", {}).target, { sets: 1, reps: 8, weight: 100, rule: "rep" });
+  assert.deepEqual(G.liftPlan(s3, "Bankdrücken", PP).target, { sets: 1, reps: 8, weight: 100, rule: "rep" });
   // gar kein Eintrag
-  const p4 = G.liftPlan(sess([[day(0), "Pull @Bali"]]), "Latzug", {});
+  const p4 = G.liftPlan(sess([[day(0), "Pull @Bali"]]), "Latzug", PP);
   assert.equal(p4.noEntries, true); assert.equal(p4.noEntryAtPlace, false);
 });
 
@@ -155,14 +170,17 @@ test("„Ziel erreicht“: neuester Eintrag erreicht oder übertrifft das Ziel a
   assert.deepEqual(checks.map((x) => x.reached), [null, true, false]);
 });
 
-test("Stagnation: kein neues bestes 1RM in den letzten 3 Einträgen (Maschinen am selben Ort)", () => {
-  const plan = (titles, ex = "Bankdrücken") => G.liftPlan(sess(titles.map((t, i) => [day(i), t])), ex, {});
+test("Stagnation: kein neues bestes 1RM in den letzten 3 Einträgen (Standard über alle Orte, mit perPlace am selben Ort)", () => {
+  const plan = (titles, ex = "Bankdrücken", cfg = {}) => G.liftPlan(sess(titles.map((t, i) => [day(i), t])), ex, cfg);
   assert.equal(plan(["Push 7x100", "Push 6x100", "Push 7x100", "Push 6x100"]).stagnation, true);
   assert.equal(plan(["Push 7x100", "Push 6x100", "Push 8x100", "Push 6x100"]).stagnation, false);   // 8×100 = neues 1RM
   assert.equal(plan(["Push 7x100", "Push 6x100", "Push 7x100"]).stagnation, false);                 // erst 2 Einträge nach dem Bestwert
-  // Maschine: Fortschritt an einem anderen Ort zählt nicht, Stillstand dort auch nicht
   const lat4 = ["Pull · Latzug 10x80 @Bali", "Pull · Latzug 9x80 @Bali", "Pull · Latzug 12x90 @Abu Dhabi", "Pull · Latzug 10x80 @Bali", "Pull · Latzug 10x80 @Bali"];
-  const p = plan(lat4, "Latzug");
+  // Standard: 12×90 in Abu Dhabi ist ein neues bestes 1RM (über alle Orte) → danach erst 2 Einträge, keine Stagnation
+  const all = plan(lat4, "Latzug");
+  assert.equal(all.entries.length, 5); assert.equal(all.stagnation, false);
+  // mit perPlace: Fortschritt an einem anderen Ort zählt nicht
+  const p = plan(lat4, "Latzug", PP);
   assert.equal(p.place, "Bali"); assert.equal(p.entries.length, 4); assert.equal(p.stagnation, true);
   // Schwelle anpassbar
   assert.equal(G.liftPlan(sess(["Push 7x100", "Push 6x100", "Push 7x100", "Push 6x100"].map((t, i) => [day(i), t])), "Bankdrücken", { progression: { stagnation: 4 } }).stagnation, false);
@@ -182,9 +200,12 @@ test("1RM-Ziel: bestes geschätztes 1RM, Prozent, erreicht; ohne Ziel nichts", (
   assert.equal(G.goalProgress(s, "Bankdrücken", { goals: { "Latzug": 140 } }), null);
 });
 
-test("1RM-Ziel bei Maschinen: nur der aktuelle Ort zählt", () => {
-  const goals = { goals: { "Beinpresse": 300 } };
+test("1RM-Ziel: Standard bestes 1RM über alle Orte; mit perPlace nur der aktuelle Ort", () => {
   const s = sess([[day(0), "Legs 10x240 @Abu Dhabi"], [day(2), "Legs 8x200 @Bali"]]);
+  const all = G.goalProgress(s, "Beinpresse", { goals: { "Beinpresse": 300 } });
+  assert.equal(all.perPlace, false); assert.equal(all.place, null);
+  assert.equal(all.current, 320); assert.equal(all.pct, 107); assert.equal(all.reached, true);   // 240 × (1 + 10/30) aus Abu Dhabi
+  const goals = { goals: { "Beinpresse": 300 }, ...PP };
   const gp = G.goalProgress(s, "Beinpresse", goals);
   assert.equal(gp.place, "Bali"); assert.equal(gp.perPlace, true);
   assert.equal(gp.current, 253.3); assert.equal(gp.pct, 84);   // 200 × (1 + 8/30), nicht die 320 aus Abu Dhabi

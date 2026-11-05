@@ -96,7 +96,7 @@ window.TRAINING = {
       "Beinpresse": ["beinpresse", "leg press"],
     },
     splitKeywords: { Push: ["push"], Pull: ["pull"], Legs: ["leg day", "legday", "legs", "leg", "beine"] },
-    perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PRs nur am selben Gym-Ort vergleichen
+    perPlace: [],   // Übungen, die nur am selben Gym-Ort verglichen werden, z. B. ["Latzug", "Beinpresse"]; leer = alle ortsübergreifend
     // Nächstes Ziel nach doppelter Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt in kg
     progression: {
       "Bankdrücken": { reps: [6, 8], step: 2.5 },

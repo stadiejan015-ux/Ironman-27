@@ -35,7 +35,7 @@
       Pull: ["pull"],
       Legs: ["leg day", "legday", "legs", "leg", "beine"],
     },
-    perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PR nur am selben Ort vergleichen
+    perPlace: [],   // Übungen, die nur am selben Ort verglichen werden (z. B. Maschinen); leer = alle ortsübergreifend
     unknownPlace: "unbekannt",
     // Doppelte Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt (kg) je Hauptübung
     progression: {
@@ -205,7 +205,7 @@
   }
 
   /* ---------- 1RM-Ziel ---------- */
-  // Aktueller Wert = bestes geschätztes 1RM; bei Maschinen (perPlace) nur am aktuellen Ort
+  // Aktueller Wert = bestes geschätztes 1RM; bei Übungen in perPlace nur am aktuellen Ort
   function goalProgress(sessions, exercise, cfg) {
     const goal = cfg && cfg.goals ? Number(cfg.goals[exercise]) : NaN;
     if (!(goal > 0)) return null;
