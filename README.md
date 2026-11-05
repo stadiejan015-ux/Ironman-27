@@ -95,6 +95,12 @@ und eine optionale lockere Ausdauereinheit passend zur gewählten Ausstattung vo
 Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 30 min, davon 1× Schwimmen).
 `flex.active: false` schaltet alles zurück. Tests: `node tests/flex.test.js`.
 
+Der **Saisonplan** passt sich an ([`js/phases.js`](js/phases.js)): Phasen beginnen montags (wie das Wochenraster),
+Phasen vor dem Flex-Beginn enden dort, danach folgen Flex, **Wiedereinstieg** (2 Wochen, lockere Einheiten nach Puls,
+3× Schwimmtechnik, Gym 2–3×), Grundlage 2 (6), Aufbau 1 (6) und Aufbau 2 bis zum Peak; Peak und Taper bleiben
+rückwärts vom Renntag. Wochenzahlen: `plan` in `js/data.js`; bleiben für Aufbau 2 weniger als 3 Wochen, warnt der
+Saisonplan. Tests: `node tests/phases.test.js`.
+
 ## Gym-Tracker
 
 Titel der Krafteinheit in Garmin Connect: `Push 6x100`, `Pull · Latzug 8x90`, `Legs 3x10x180`,
@@ -154,6 +160,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `weekly` | Schwellen der Wochen-Hinweise (HRV-Abfall, Schlaf, Belastungsfaktor), Anzahl Hinweise und Wochen |
 | `freshness` | Ab wie vielen Stunden die Datenstand-Warnung gelb/rot wird, Link zu GitHub Actions |
 | `layout` | Welche Abschnitte im Flex- und im Normalzeitraum standardmäßig eingeklappt sind |
+| `plan` | Wochen je Phase nach einem Flex-Zeitraum (Wiedereinstieg, Grundlage 2, Aufbau 1; Aufbau 2 = Rest) |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 

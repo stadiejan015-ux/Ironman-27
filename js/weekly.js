@@ -2,7 +2,8 @@
  * Wochenzusammenfassung – reine Funktionen aus festen Regeln (kein DOM, kein Date.now(), keine KI/API).
  * ------------------------------------------------------------------------------------------------
  *   defaultWeekStart(today) → Montag der gezeigten Woche (Mo/Di: abgeschlossene Vorwoche, sonst laufende)
- *   weeklySummary({ acts, gymSessions, garminDays, garminLoads, today, weekStart, cfg, equipment }) → Zusammenfassung
+ *   weeklySummary({ acts, gymSessions, garminDays, garminLoads, today, weekStart, cfg, equipment, emphasizeLoad }) → Zusammenfassung
+ *     emphasizeLoad: Woche im Wiedereinstieg → Belastungs-Hinweis ganz oben und hervorgehoben (strong)
  *   loadWeeks({ garminLoads, acts, gymSessions, today, weeks }) → Garmin-Belastung je Woche (neueste zuerst),
  *     aufgeteilt in Kraft / Ausdauer / Sonstiges – nur echte Garmin-Werte, nichts geschätzt
  * Nutzt die vorhandenen Bausteine statt eigener Logik:
@@ -90,7 +91,7 @@
   }
   const trend = (cur, prev, eps) => (cur == null || prev == null ? null : cur - prev > eps ? "up" : prev - cur > eps ? "down" : "flat");
 
-  function weeklySummary({ acts = [], gymSessions = [], garminDays = [], garminLoads = null, today, weekStart, cfg = {}, equipment = null }) {
+  function weeklySummary({ acts = [], gymSessions = [], garminDays = [], garminLoads = null, today, weekStart, cfg = {}, equipment = null, emphasizeLoad = false }) {
     const c = { ...DEFAULTS, ...(cfg.weekly || {}) };
     const flexCfg = cfg.flex || {}, gymCfg = cfg.gym || {};
     const mon = mondayOf(weekStart), sun = addDays(mon, 6);
@@ -191,7 +192,9 @@
       hints.push({ key: "recovery", text: `Erholung im Blick behalten: HRV ${Math.round((1 - hrvW / hrvBase) * 100)} % unter dem 4-Wochen-Schnitt, Schlaf Ø ${hm(sleepW * 3600)} h.` });
     }
     if (load && load.avg4 && load.sum != null && load.sum > c.loadFactor * load.avg4) {
-      hints.push({ key: "load", text: "Belastung deutlich gestiegen. Umfang langsam aufbauen." });
+      // im Wiedereinstieg nach Flex besonders sichtbar: ganz oben und hervorgehoben
+      if (emphasizeLoad) hints.unshift({ key: "load", strong: true, text: "Belastung deutlich gestiegen. Umfang langsam aufbauen – gerade im Wiedereinstieg nach der Flex-Phase." });
+      else hints.push({ key: "load", text: "Belastung deutlich gestiegen. Umfang langsam aufbauen." });
     }
     if (stagnant.length) {
       const nStag = Gym.progOf(stagnant[0], gymCfg).stagnation;

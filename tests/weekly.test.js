@@ -237,4 +237,19 @@ test("Hinweis Belastung: über dem 1,5-Fachen des 4-Wochen-Schnitts, nur mit Dat
   assert.deepEqual(hintKeys(s), ["recovery", "load", "legs"]);
 });
 
+test("Wiedereinstieg: Belastungs-Hinweis steht ganz oben und ist hervorgehoben", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00");
+  const base = Array.from({ length: 28 }, (_, i) => { const x = new Date(2026, 9, 5 + i); return day(`2026-10-${String(x.getDate()).padStart(2, "0")}`, { hrv: 80, sleepH: 8 }); });
+  const opts = { today, weekStart, cfg: { flex: noFlex }, garminDays: base.concat([day("2026-11-03", { hrv: 60, sleepH: 6 })]), garminLoads: base4.concat([gl("2026-11-04T10:00", "running", 600)]) };
+  const normal = W.weeklySummary(opts);
+  assert.deepEqual(hintKeys(normal), ["recovery", "load", "legs"]);
+  assert.equal(normal.hints[1].strong, undefined);
+  const re = W.weeklySummary({ ...opts, emphasizeLoad: true });
+  assert.deepEqual(hintKeys(re), ["load", "recovery", "legs"]);
+  assert.equal(re.hints[0].strong, true);
+  assert.match(re.hints[0].text, /Wiedereinstieg/);
+  // ohne gestiegene Belastung kein Hinweis, auch im Wiedereinstieg
+  assert.ok(!hintKeys(W.weeklySummary({ ...opts, emphasizeLoad: true, garminLoads: base4.concat([gl("2026-11-04T10:00", "running", 300)]) })).includes("load"));
+});
+
 console.log(`\n${n} Tests bestanden.`);
