@@ -168,4 +168,29 @@ test("Stagnation: kein neues bestes 1RM in den letzten 3 Einträgen (Maschinen a
   assert.equal(G.liftPlan(sess(["Push 7x100", "Push 6x100", "Push 7x100", "Push 6x100"].map((t, i) => [day(i), t])), "Bankdrücken", { progression: { stagnation: 4 } }).stagnation, false);
 });
 
+test("1RM-Ziel: bestes geschätztes 1RM, Prozent, erreicht; ohne Ziel nichts", () => {
+  const goals = { goals: { "Bankdrücken": 100, "Latzug": 140, "Beinpresse": 300 } };
+  const s = sess([[day(0), "Push 6x80"], [day(1), "Push 5x85 @Bali"], [day(2), "Push 8x75"]]);
+  const gp = G.goalProgress(s, "Bankdrücken", goals);
+  assert.equal(gp.goal, 100);
+  assert.equal(gp.current, 99.2);                 // 85 × (1 + 5/30) = 99,17 – bester Eintrag, ortsübergreifend
+  assert.equal(gp.best.weight, 85); assert.equal(gp.pct, 99); assert.equal(gp.reached, false); assert.equal(gp.place, null);
+  const done = G.goalProgress(sess([[day(0), "Push 6x84"]]), "Bankdrücken", goals);   // 84 × 1,2 = 100,8
+  assert.equal(done.reached, true); assert.equal(done.pct, 101);
+  // kein Ziel konfiguriert → null
+  assert.equal(G.goalProgress(s, "Bankdrücken", {}), null);
+  assert.equal(G.goalProgress(s, "Bankdrücken", { goals: { "Latzug": 140 } }), null);
+});
+
+test("1RM-Ziel bei Maschinen: nur der aktuelle Ort zählt", () => {
+  const goals = { goals: { "Beinpresse": 300 } };
+  const s = sess([[day(0), "Legs 10x240 @Abu Dhabi"], [day(2), "Legs 8x200 @Bali"]]);
+  const gp = G.goalProgress(s, "Beinpresse", goals);
+  assert.equal(gp.place, "Bali"); assert.equal(gp.perPlace, true);
+  assert.equal(gp.current, 253.3); assert.equal(gp.pct, 84);   // 200 × (1 + 8/30), nicht die 320 aus Abu Dhabi
+  // aktueller Ort ohne Eintrag → kein aktueller Wert
+  const none = G.goalProgress(sess([[day(0), "Legs 10x240 @Abu Dhabi"], [day(2), "Push @Bali"]]), "Beinpresse", goals);
+  assert.equal(none.place, "Bali"); assert.equal(none.current, null); assert.equal(none.pct, 0); assert.equal(none.reached, false);
+});
+
 console.log(`\n${n} Tests bestanden.`);

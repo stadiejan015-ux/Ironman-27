@@ -104,6 +104,8 @@ window.TRAINING = {
       "Beinpresse":  { reps: [5, 8], step: 10 },
       stagnation: 3,   // so viele Einträge ohne neues bestes 1RM → Hinweis „kein Fortschritt“
     },
+    // Zielwert je Hauptübung als geschätztes 1RM in kg (Übung weglassen = kein Ziel anzeigen)
+    goals: { "Bankdrücken": 100, "Latzug": 140, "Beinpresse": 300 },
   },
 
   // Eigene Herzfrequenz-Zonen (ersetzen die Strava-Standardzonen auf der ganzen Seite).
