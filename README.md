@@ -22,6 +22,16 @@ Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden m
 von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](scripts/UPDATE.md),
 Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
 
+## Datenstand-Warnung
+
+Ein Banner unter dem Header warnt, wenn ein automatischer Sync ausgefallen ist: Strava gelb ab 20 h, rot ab
+48 h; Garmin gelb ab 8 h, rot ab 24 h – mit Tipp, was zu tun ist, und „Ausblenden“ bis zum nächsten Update.
+Ist der Garmin-Sync frisch, der letzte Schlafwert aber älter als gestern, erscheint ein grauer Hinweis, dass die
+Uhr nicht synchronisiert hat. Die Fußzeile zeigt beide Zeitstempel in Gerätezeit. Grundlage: `snapshotAt` in
+`js/strava-data.js` (schreibt `update_strava.py` bei jedem Lauf) und `updated` in `js/garmin-data.js`.
+Berechnung: [`js/freshness.js`](js/freshness.js), Schwellen: `freshness` in `js/data.js`.
+Tests: `node tests/freshness.test.js`.
+
 ## Garmin (Erholung & Form, Tagesvorschlag)
 
 Die GitHub Action [`.github/workflows/garmin.yml`](.github/workflows/garmin.yml) holt alle 3 Stunden
@@ -116,6 +126,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `flex` | Flex-Zeitraum, Wochen-Minimum, Split-Rotation und -Erkennung |
 | `sinceLast` | Ampel-Schwellen (Tage) und Mindestdauern für „Zuletzt gemacht“ |
 | `weekly` | Schwellen der Wochen-Hinweise (HRV-Abfall, Schlaf, Belastungsfaktor), Anzahl Hinweise und Wochen |
+| `freshness` | Ab wie vielen Stunden die Datenstand-Warnung gelb/rot wird, Link zu GitHub Actions |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 

@@ -97,7 +97,6 @@
       <div><b class="phase-name" style="font-size:18px;line-height:32px">${phase ? esc(phase.short) : "–"}</b><small>Phase</small></div>
       <div class="journey"><div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} · ${pct} %</span><span>Rennen</span></div>
         <div class="ready-track" role="img" aria-label="${pct} % der Vorbereitung vergangen"><div class="ready-fill" style="width:${pct}%;background:var(--text)"></div></div></div>`;
-    $("#snap").textContent = fmtDate(snap);
     const banner = $("#flexBanner");
     if (FLEX.active) {
       const until = fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" });
@@ -955,6 +954,38 @@
   }
 
 
+  /* ---------- Datenstand: Warnung bei ausgefallenem Sync (js/freshness.js) ---------- */
+  const FRESH_KEY = "ironman.freshDismiss";
+  function freshBanner() {
+    const el = $("#freshBanner"), FR = window.Freshness;
+    if (!FR) { $("#snap").textContent = fmtDate(snap); return; }
+    const GD = window.GARMIN;
+    // neuester Garmin-Tag mit Schlafwert – zeigt, wann die Uhr zuletzt synchronisiert hat
+    const lastSleep = GD && (GD.days || []).filter((d) => d.sleepH != null || d.sleepScore != null).map((d) => d.date).sort().pop();
+    const f = FR.freshness({
+      now: new Date(),
+      strava: { snapshotAt: S.snapshotAt, snapshotDate: S.snapshotDate },
+      garmin: GD ? { updated: GD.updated, lastDay: lastSleep || null } : null,
+      cfg: window.TRAINING.freshness || {},
+    });
+    $("#snap").textContent = f.footer || fmtDate(snap);
+    let dismissed = null;
+    try { dismissed = localStorage.getItem(FRESH_KEY); } catch (e) { /* ignore */ }
+    if (!f.messages.length || dismissed === f.stamp) { el.hidden = true; return; }
+    const DOT = { warn: "ok", bad: "bad", info: "na" };
+    const LBL = { warn: "Hinweis", bad: "Warnung", info: "Info" };
+    el.className = `fresh-banner ${f.worst}`;
+    el.innerHTML = `<div class="fresh-list">${f.messages.map((m) => `<p class="fresh-item">
+        <span class="dot ${DOT[m.level]}" aria-hidden="true"></span><span><span class="sr-only">${LBL[m.level]}: </span><b>${esc(m.text)}</b>${m.tip
+          ? ` <span class="fresh-tip">Tipp: ${m.tip.href ? `<a href="${esc(m.tip.href)}" target="_blank" rel="noopener">${esc(m.tip.text)}</a>` : esc(m.tip.text)}</span>` : ""}</span></p>`).join("")}</div>
+      <button type="button" class="chip fresh-close" aria-label="Warnung bis zum nächsten Update ausblenden">Ausblenden</button>`;
+    el.hidden = false;
+    el.querySelector(".fresh-close").addEventListener("click", () => {
+      try { localStorage.setItem(FRESH_KEY, f.stamp); } catch (e) { /* ignore */ }
+      el.hidden = true;
+    });
+  }
+
   /* ---------- Garmin: Erholung & Form ---------- */
   const G = window.GARMIN || { days: [] };
   const gDays = (G.days || []).slice().sort((a, b) => a.date.localeCompare(b.date));
@@ -1348,6 +1379,7 @@
     if (calLink && link) link.after(calLink);
   }
   today(); recovery(); gymSection(); calendarSection();
+  freshBanner();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); layoutTimeline(false); renderWeek(new Date()); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));

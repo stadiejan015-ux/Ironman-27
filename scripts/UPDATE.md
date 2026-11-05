@@ -15,6 +15,9 @@ sie auch jederzeit von Hand in einer Claude-Session anstoßen.
      das Skript nur gym-relevante Zeilen bei Krafteinheiten (Push/Pull/Legs, „6x100“, „@Ort“).
    - `profile.json`: `{"athlete": …, "zones": …, "streak": …, "bests": …}`.
 4. `python3 scripts/update_strava.py --activities acts.json --profile profile.json --date <heute>`
+   Das Skript schreibt neben `snapshotDate` automatisch `snapshotAt` (Zeitpunkt des Abrufs, UTC mit
+   Zeitzone, z. B. `2026-11-05T13:40+00:00`). Daran erkennt die Website, wie alt die Daten sind, und
+   warnt, wenn der Sync ausfällt. Prüfen, dass `snapshotAt` in `js/strava-data.js` steht.
 5. Zone 2 (Streams): Für jede Lauf- oder Radeinheit aus Schritt 2 (Run, TrailRun,
    VirtualRun, Ride, VirtualRide, GravelRide, MountainBikeRide), deren `id` noch
    nicht in `data/z2-metrics.json` steht:
@@ -33,7 +36,8 @@ sie auch jederzeit von Hand in einer Claude-Session anstoßen.
      Rohe Streams kommen NIE ins Repo (es ist öffentlich).
 6. Rennprognose speichern: `node scripts/save_prediction.js`
 7. Nur `js/strava-data.js`, `data/z2-metrics.json` und `data/prediction-history.json` committen
-   (`Strava-Update <Datum>`) und auf `main` pushen. GitHub Pages veröffentlicht
+   (`Strava-Update <Datum>`) und auf `main` pushen – **auch wenn es keine neuen Einheiten gibt**,
+   damit `snapshotAt` zeigt, dass der Sync gelaufen ist. GitHub Pages veröffentlicht
    die Seite danach automatisch.
    Wird der Push abgelehnt: `git pull --rebase origin main`. Bei einem Konflikt
    in `data/prediction-history.json` die Version von `main` nehmen

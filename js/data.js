@@ -61,6 +61,15 @@ window.TRAINING = {
     weeksBack: 8,     // so viele Wochen lassen sich mit ← → durchblättern
   },
 
+  // Warnung bei veralteten Daten (Banner oben): Alter in Stunden, ab dem gelb bzw. rot gewarnt wird
+  freshness: {
+    stravaWarnH: 20, stravaBadH: 48,   // Strava-Update läuft mittags und abends
+    garminWarnH: 8, garminBadH: 24,    // Garmin-Update alle 3 h
+    fallbackWarnDays: 2,               // alte Strava-Daten ohne Uhrzeit: erst ab 2 Tagen warnen
+    watchDays: 2,                      // letzter Garmin-Tageswert älter als gestern → „Uhr nicht synchronisiert“
+    actionsUrl: "https://github.com/stadiejan015-ux/Ironman-27/actions",
+  },
+
   // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,
   // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
   gym: {
