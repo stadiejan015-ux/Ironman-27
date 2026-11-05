@@ -14,6 +14,9 @@ bei jedem Lauf neu eingeloggt werden muss.
 Aufruf:
   python3 scripts/update_garmin.py              # letzte 3 Tage aktualisieren
   python3 scripts/update_garmin.py --days 90    # Verlauf nachladen
+
+Gespeichert werden Tageswerte (Schlaf, HRV, Belastung akut/chronisch …), Krafteinheiten mit Titel
+(Gym-Tracker) und für jede Einheit aller Sportarten Garmins Belastungswert (activityTrainingLoad).
 """
 import argparse
 import datetime as dt
@@ -129,6 +132,7 @@ def parse_training_status(t):
         "acuteLoad": get(acute, "dailyTrainingLoadAcute"),
         "chronicLoad": get(acute, "dailyTrainingLoadChronic"),
         "loadRatio": num(get(acute, "dailyAcuteChronicWorkloadRatio"), 2),
+        "loadStatus": get(acute, "acwrStatus"),  # Garmins Einordnung: LOW / OPTIMAL / HIGH / VERY_HIGH
         "loadAerobicLow": num(get(lb, "monthlyLoadAerobicLow"), 0),
         "loadAerobicHigh": num(get(lb, "monthlyLoadAerobicHigh"), 0),
         "loadAnaerobic": num(get(lb, "monthlyLoadAnaerobic"), 0),
@@ -204,6 +208,7 @@ def fetch_day(g, day):
 # ---------------------------------------------------------------- Krafteinheiten (Gym-Tracker)
 STRENGTH = ("strength_training", "strength", "indoor_cardio", "fitness_equipment")
 TITLE_REFRESH_DAYS = 14  # Titel nachträglich geändert? So lange rückwirkend neu einlesen
+LOAD_BACKFILL_DAYS = 70  # Belastung je Einheit: beim ersten Lauf 10 Wochen nachladen
 
 
 def parse_activity(a, detail=None):
@@ -221,12 +226,26 @@ def parse_activity(a, detail=None):
     }
 
 
-def fetch_strength(g, existing, start, end):
+def parse_load(a):
+    """Garmin-Aktivität (jede Sportart) → Belastungswert der Einheit (activityTrainingLoad, None wenn fehlt)."""
+    return {
+        "id": str(a.get("activityId")),
+        "start": str(a.get("startTimeLocal") or "")[:16].replace(" ", "T"),
+        "type": (get(a, "activityType", "typeKey") or "").lower(),
+        "sec": int(round(a.get("movingDuration") or a.get("duration") or 0)),
+        "load": num(a.get("activityTrainingLoad"), 1),
+    }
+
+
+def fetch_strength(g, existing, start, end, acts=None):
     """Krafteinheiten zwischen start und end (YYYY-MM-DD) mit Titel und Beschreibung."""
-    acts = safe(g.get_activities_by_date, start, end) or []
+    if acts is None:
+        acts = safe(g.get_activities_by_date, start, end) or []
     known = {a["id"]: a for a in existing}
     out = []
     for a in acts:
+        if str(a.get("startTimeLocal") or "")[:10] < start:
+            continue
         typ = (get(a, "activityType", "typeKey") or "").lower()
         if not any(k in typ for k in STRENGTH):
             continue
@@ -241,10 +260,34 @@ def fetch_strength(g, existing, start, end):
     return out
 
 
+def update_loads(g, data, byd, acts_list, load_start, backfill, recent_days, today):
+    """Belastung je Einheit (alle Sportarten) speichern; beim ersten Lauf Status akut/chronisch für 10 Wochen nachtragen."""
+    if acts_list is None:
+        return
+    byl = {a["id"]: a for a in data.get("loads") or []}
+    for a in acts_list:
+        if str(a.get("startTimeLocal") or "")[:10] >= load_start:
+            rec = parse_load(a)
+            byl[rec["id"]] = rec
+    data["loads"] = list(byl.values())
+    with_load = sum(1 for a in byl.values() if a["load"] is not None)
+    print(f"Belastung: {len(byl)} Einheiten gespeichert, {with_load} mit Garmin-Belastungswert (seit {load_start})")
+    if backfill:
+        # Garmins Status zum Verhältnis akut/chronisch für dieselben 10 Wochen nachtragen (1 Abfrage pro Tag)
+        for i in range(LOAD_BACKFILL_DAYS, recent_days - 1, -1):
+            ds = (today - dt.timedelta(days=i)).isoformat()
+            ts = {k: v for k, v in parse_training_status(safe(g.get_training_status, ds)).items()
+                  if k in ("acuteLoad", "chronicLoad", "loadRatio", "loadStatus") and v is not None}
+            if ts and ds in byd:
+                byd[ds].update(ts)
+        data["days"] = list(byd.values())
+        data["loadsSince"] = load_start
+
+
 # ---------------------------------------------------------------- Datei
 def load_existing():
     if not OUT.exists():
-        return {"updated": None, "days": [], "activities": []}
+        return {"updated": None, "days": [], "activities": [], "loads": []}
     text = OUT.read_text(encoding="utf-8")
     body = text[text.index(PREFIX) + len(PREFIX):].rstrip().rstrip(";")
     return json.loads(body)
@@ -253,14 +296,18 @@ def load_existing():
 def write(data):
     days = sorted(data["days"], key=lambda d: d["date"])[-KEEP_DAYS:]
     acts = sorted(data.get("activities") or [], key=lambda a: a["start"])[-600:]
+    loads = sorted(data.get("loads") or [], key=lambda a: a["start"])[-1500:]
     lines = ",\n".join("    " + json.dumps(d, ensure_ascii=False) for d in days)
     alines = ",\n".join("    " + json.dumps(a, ensure_ascii=False) for a in acts)
+    llines = ",\n".join("    " + json.dumps(a, ensure_ascii=False) for a in loads)
     OUT.write_text(
         "/* Automatisch erzeugt von scripts/update_garmin.py – nicht von Hand bearbeiten. */\n"
         + PREFIX + "{\n"
         + f'  "updated": {json.dumps(data["updated"])},\n'
         + '  "days": [\n' + lines + ("\n" if lines else "") + "  ],\n"
-        + '  "activities": [\n' + alines + ("\n" if alines else "") + "  ]\n};\n",
+        + '  "activities": [\n' + alines + ("\n" if alines else "") + "  ],\n"
+        + f'  "loadsSince": {json.dumps(data.get("loadsSince"))},\n'
+        + '  "loads": [\n' + llines + ("\n" if llines else "") + "  ]\n};\n",
         encoding="utf-8",
     )
 
@@ -293,8 +340,16 @@ def main():
     else:
         m = re.search(r'commitDate:\s*"(\d{4}-\d{2}-\d{2})"', (ROOT / "js" / "data.js").read_text(encoding="utf-8"))
         start = m.group(1) if m else (today - dt.timedelta(days=120)).isoformat()
+    # Belastung je Einheit (alle Sportarten): einmalig 10 Wochen nachladen, danach die letzten 14 Tage
+    backfill = not data.get("loadsSince")
+    load_start = (today - dt.timedelta(days=LOAD_BACKFILL_DAYS if backfill else TITLE_REFRESH_DAYS)).isoformat()
+    acts_list = safe(g.get_activities_by_date, min(start, load_start), today.isoformat())
     try:
-        fresh = fetch_strength(g, existing, start, today.isoformat())
+        update_loads(g, data, byd, acts_list, load_start, backfill, args.days, today)
+    except Exception as e:  # Belastung darf die Tageswerte nicht blockieren
+        print(f"! Belastung nicht gelesen: {type(e).__name__}: {str(e)[:120]}", file=sys.stderr)
+    try:
+        fresh = fetch_strength(g, existing, start, today.isoformat(), acts_list)
         bya = {a["id"]: a for a in existing}
         for a in fresh:
             bya[a["id"]] = a

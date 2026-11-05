@@ -2,7 +2,9 @@
  * Wochenzusammenfassung – reine Funktionen aus festen Regeln (kein DOM, kein Date.now(), keine KI/API).
  * ------------------------------------------------------------------------------------------------
  *   defaultWeekStart(today) → Montag der gezeigten Woche (Mo/Di: abgeschlossene Vorwoche, sonst laufende)
- *   weeklySummary({ acts, gymSessions, garminDays, today, weekStart, cfg, equipment }) → Zusammenfassung
+ *   weeklySummary({ acts, gymSessions, garminDays, garminLoads, today, weekStart, cfg, equipment }) → Zusammenfassung
+ *   loadWeeks({ garminLoads, acts, gymSessions, today, weeks }) → Garmin-Belastung je Woche (neueste zuerst),
+ *     aufgeteilt in Kraft / Ausdauer / Sonstiges – nur echte Garmin-Werte, nichts geschätzt
  * Nutzt die vorhandenen Bausteine statt eigener Logik:
  *   Calendar.buildCalendar  – Wochenraster Mo–So, Stunden, Einheiten, Flex-Wochen
  *   Gym.splitCounts / exerciseHistory – Splits und PRs der Hauptübungen
@@ -29,6 +31,33 @@
   const entryText = (e) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${kg(e.weight)} kg`;
   const avg = (arr) => (arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null);
   const MIN_NAMES = { gym: "Gym", endurance: "lockere Ausdauer", swim: "Schwimmen" };
+  // "YYYY-MM-DDTHH:MM" als lokale Zeit
+  const timeFrom = (iso) => { const [dd, t = "00:00"] = String(iso).split("T"); const [h, mi] = t.split(":").map(Number); const x = parseDay(dd); x.setHours(h || 0, mi || 0); return x; };
+  const toMin = (x) => (x instanceof Date ? x : timeFrom(x)).getTime() / 60000;
+  const MATCH_MIN = 10;   // gleiche Einheit in Strava und Garmin: Start höchstens 10 min auseinander
+
+  /* ---------- Trainingsbelastung (Garmin) ---------- */
+  const LOAD_CATS = ["strength", "endurance", "other"];   // Stapelreihenfolge von unten
+  const garminCat = (type) => (/swim|cycl|bik|ride|run|row/.test(type || "") ? "endurance" : /strength|fitness_equipment|indoor_cardio/.test(type || "") ? "strength" : "other");
+  const stravaCat = (cat) => (cat === "strength" ? "strength" : ["swim", "bike", "run"].includes(cat) ? "endurance" : "other");
+
+  // Belastung je Woche. Kategorie: Sportart der gleichen Einheit in Strava/Gym (±10 min), sonst Garmin-Typ
+  // (Garmin speichert z. B. Klettern als Krafttraining). Einheiten ohne Garmin-Wert zählen nicht mit.
+  function loadWeeks({ garminLoads = [], acts = [], gymSessions = [], today, weeks = 8 }) {
+    const merged = Flex.mergeActs(acts, gymSessions).map((a) => ({ t: toMin(a.date), cat: stravaCat(a.cat) }));
+    const loads = garminLoads.filter((l) => l.load != null && l.start).map((l) => {
+      const t = toMin(l.start), m = merged.find((x) => Math.abs(x.t - t) <= MATCH_MIN);
+      return { day: l.start.slice(0, 10), load: l.load, cat: m ? m.cat : garminCat(l.type) };
+    });
+    const thisMon = mondayOf(today);
+    return Array.from({ length: weeks }, (_, i) => {
+      const mon = addDays(thisMon, -7 * i), monIso = ymd(mon), sunIso = ymd(addDays(mon, 6));
+      const inWeek = loads.filter((l) => l.day >= monIso && l.day <= sunIso);
+      const by = { strength: 0, endurance: 0, other: 0 };
+      inWeek.forEach((l) => { by[l.cat] += l.load; });
+      return { monday: monIso, ...by, total: by.strength + by.endurance + by.other, n: inWeek.length };
+    });
+  }
 
   function defaultWeekStart(today) {
     const mon = mondayOf(today);
@@ -41,7 +70,7 @@
   }
   const trend = (cur, prev, eps) => (cur == null || prev == null ? null : cur - prev > eps ? "up" : prev - cur > eps ? "down" : "flat");
 
-  function weeklySummary({ acts = [], gymSessions = [], garminDays = [], today, weekStart, cfg = {}, equipment = null }) {
+  function weeklySummary({ acts = [], gymSessions = [], garminDays = [], garminLoads = null, today, weekStart, cfg = {}, equipment = null }) {
     const c = { ...DEFAULTS, ...(cfg.weekly || {}) };
     const flexCfg = cfg.flex || {}, gymCfg = cfg.gym || {};
     const mon = mondayOf(weekStart), sun = addDays(mon, 6);
@@ -106,12 +135,37 @@
       highlight = { type: "longest", cat: longest.cat, text: `Längste Einheit: ${longest.name || "Einheit"} · ${dur(longest.sec)}` };
     }
 
+    // Trainingsbelastung (Garmin): Summe der Einheiten Mo–So, nur echte Werte
+    let load = null;
+    if (garminLoads && garminLoads.length) {
+      const series = loadWeeks({ garminLoads, acts, gymSessions, today, weeks: Math.max(back + 6, c.weeksBack) });
+      const cur = series[back], prev = series[back + 1], prev4 = series.slice(back + 1, back + 5);
+      const loadedT = garminLoads.filter((l) => l.load != null && l.start).map((l) => toMin(l.start));
+      const withoutLoad = items.filter((x) => !loadedT.some((t) => Math.abs(t - toMin(x.start)) <= MATCH_MIN)).length;
+      const avg4 = prev4.length === 4 && prev4.every((w) => w.n > 0) ? avg(prev4.map((w) => w.total)) : null;
+      const day = garminDays.filter((g) => g.date >= monIso && g.date <= sunIso && g.acuteLoad != null)
+        .sort((a, b) => a.date.localeCompare(b.date)).pop() || null;
+      load = {
+        sum: cur.n ? Math.round(cur.total) : null, n: cur.n, withoutLoad,
+        prevSum: prev && prev.n ? Math.round(prev.total) : null,
+        diffPct: cur.n && prev && prev.n && prev.total > 0 ? Math.round((cur.total / prev.total - 1) * 100) : null,
+        byCat: { strength: Math.round(cur.strength), endurance: Math.round(cur.endurance), other: Math.round(cur.other) },
+        avg4: avg4 == null ? null : Math.round(avg4),
+        acute: day ? day.acuteLoad : null, chronic: day ? day.chronicLoad : null, ratio: day ? day.loadRatio : null,
+        status: day ? day.loadStatus || null : null, statusDate: day ? day.date : null,
+        weeks: series.slice(0, c.weeksBack), index: back,
+      };
+    }
+
     // Hinweise – nur wenn eine Regel greift, nach Wichtigkeit, höchstens maxHints
     const hints = [];
     const hrvBase = garminAvg(garminDays, ymd(addDays(mon, -28)), prevSunIso, "hrv");
     const hrvW = recOf("hrv"), sleepW = recOf("sleepH");
     if (hrvBase && hrvW != null && sleepW != null && hrvW < hrvBase * (1 - c.hrvDropPct / 100) && sleepW < c.sleepMinH) {
       hints.push({ key: "recovery", text: `Erholung im Blick behalten: HRV ${Math.round((1 - hrvW / hrvBase) * 100)} % unter dem 4-Wochen-Schnitt, Schlaf Ø ${hm(sleepW * 3600)} h.` });
+    }
+    if (load && load.avg4 && load.sum != null && load.sum > c.loadFactor * load.avg4) {
+      hints.push({ key: "load", text: "Belastung deutlich gestiegen. Umfang langsam aufbauen." });
     }
     if (!splits.Legs) hints.push({ key: "legs", text: running ? "Legs kam diese Woche bisher nicht vor." : "Legs kam in dieser Woche nicht vor." });
     const swimCfg = { ...Flex.SINCE_DEFAULTS.swim, ...((cfg.sinceLast || {}).swim || {}) };
@@ -130,10 +184,10 @@
     return {
       monday: monIso, sunday: sunIso, running, flex: week.flex, empty: week.count === 0,
       highlight, totalSec: week.totalSec, count: week.count, avg4Sec, totalDiffPct,
-      gym: { count: splits.total, splits, lifts }, prs, sports, minimum, recovery,
+      gym: { count: splits.total, splits, lifts }, prs, sports, minimum, recovery, load,
       hints: hints.slice(0, c.maxHints),
     };
   }
 
-  return { DEFAULTS, defaultWeekStart, weeklySummary, garminAvg };
+  return { DEFAULTS, LOAD_CATS, defaultWeekStart, weeklySummary, loadWeeks, garminAvg };
 });

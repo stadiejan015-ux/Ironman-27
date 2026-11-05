@@ -89,6 +89,10 @@ laufende; mit ← → lassen sich 8 Wochen durchblättern. Inhalt: Highlight (ne
 längste Einheit), Gym mit Splits und Einträgen, Ausdauer je Sportart, Gesamtstunden gegenüber dem Schnitt der
 4 Wochen davor, Wochen-Minimum (Flex), Garmin-Erholung mit Pfeil zur Vorwoche und höchstens 3 Hinweise.
 Wiederverwendet werden Kalender-Raster, Gym-Splits/PRs, Wochen-Minimum und „Zuletzt gemacht“.
+Dazu die **Trainingsbelastung von Garmin**: Summe der Einheiten Mo–So mit Vergleich zur Vorwoche, Balken der
+letzten 8 Wochen (Kraft / Ausdauer / Sonstiges), akut/chronisch mit Garmins Status. Einheiten ohne
+Garmin-Belastungswert werden gezählt, nicht geschätzt. `scripts/update_garmin.py` speichert dafür für jede
+Einheit aller Sportarten `activityTrainingLoad` (beim ersten Lauf 10 Wochen rückwirkend).
 Schwellen: `weekly` in `js/data.js`. Tests: `node tests/weekly.test.js`.
 
 ## Kalender

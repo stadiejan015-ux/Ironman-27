@@ -1153,7 +1153,7 @@
     const thisMon = monday(now), maxBack = (WCFG.weeksBack || 8) - 1;
     if (wkOffset == null) wkOffset = Math.round((thisMon - WK.defaultWeekStart(now)) / (7 * DAY));
     const s = WK.weeklySummary({
-      acts, gymSessions: GYM_VIEW, garminDays: gDays, today: now, weekStart: addDays(thisMon, -7 * wkOffset),
+      acts, gymSessions: GYM_VIEW, garminDays: gDays, garminLoads: G.loads || null, today: now, weekStart: addDays(thisMon, -7 * wkOffset),
       cfg: { weekly: WCFG, flex: FCFG, gym: GCFG, sinceLast: window.TRAINING.sinceLast || {} },
       equipment: FLEX.active ? loadEquipment() : null,
     });
@@ -1181,6 +1181,7 @@
       ${s.running ? `<div class="wk-running"><span class="badge neutral">läuft noch</span></div>` : ""}
       ${s.highlight ? `<p class="wk-hl"><span aria-hidden="true">★</span><span>${esc(s.highlight.text)}</span></p>` : `<p class="muted" style="margin:10px 0 0">Keine Einheiten in dieser Woche.</p>`}
       ${s.empty ? "" : `<div class="mini-title">Training</div><dl class="wk-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`}
+      ${loadBlock(s, box.clientWidth - 32)}
       ${s.recovery ? `<div class="mini-title">Erholung · Garmin, Ø der Woche</div>
         <div class="wk-rec">${s.recovery.map((r) => `<div><span>${r.label}</span><b>${r.value == null ? "–" : REC_FMT[r.key](r.value)}</b>${r.trend ? ` <em class="wk-trend" title="${TREND[r.trend][1]}">${TREND[r.trend][0]}</em><span class="sr-only">${TREND[r.trend][1]}</span>` : ""}</div>`).join("")}</div>` : ""}
       ${s.hints.length ? `<div class="mini-title">Hinweise</div><ul class="wk-hints">${s.hints.map((h) => `<li>${esc(h.text)}</li>`).join("")}</ul>` : ""}`;
@@ -1190,6 +1191,69 @@
       const again = box.querySelector(`[data-wk="${b.dataset.wk}"]`);
       if (again && !again.disabled) again.focus({ preventScroll: true });
     }));
+    // Belastungsdiagramm: Tooltip je Woche, Antippen wählt die Woche
+    const lw = s.load && s.load.weeks;
+    box.querySelectorAll(".load-chart .hit").forEach((h) => {
+      const w = lw[+h.dataset.i];
+      const html = () => `<b>${dm(w.monday)} – ${dm(ymdOf(addDays(parse(w.monday), 6)))}</b>` + (w.n
+        ? LOAD_ORDER.slice().reverse().map((k) => tRow(LOAD_COLORS[k], LOAD_LABEL[k], nf(w[k]))).join("") + tRow("transparent", "Summe", nf(w.total))
+        : `<div class="muted">keine Belastungswerte</div>`);
+      h.addEventListener("mousemove", (ev) => showTip(html(), ev));
+      h.addEventListener("mouseleave", hideTip);
+      h.addEventListener("click", () => { hideTip(); wkOffset = +h.dataset.i; renderWeek(now); });
+    });
+  }
+
+  // Trainingsbelastung (Garmin) – nur echte Werte, Einheiten ohne Wert werden genannt statt geschätzt
+  const LOAD_ORDER = ["strength", "endurance", "other"];   // von unten nach oben (Magenta und Grau nie nebeneinander)
+  const LOAD_COLORS = { strength: "var(--strength)", endurance: "var(--cat1)", other: "var(--other)" };
+  const LOAD_LABEL = { strength: "Kraft", endurance: "Ausdauer", other: "Sonstiges" };
+  const LOAD_STATUS = { LOW: "niedrig", OPTIMAL: "optimal", HIGH: "hoch", VERY_HIGH: "sehr hoch" };
+  const ymdOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  function loadChart(L, width) {
+    const weeks = L.weeks.slice().reverse(), sel = weeks.length - 1 - L.index;   // älteste links
+    const W = Math.round(Math.max(260, Math.min(720, width || 360))), H = 120, m = { t: 18, r: 4, b: 18, l: 38 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b, band = iw / weeks.length, bw = Math.min(26, band * 0.62);
+    const { max, step } = niceScale(Math.max(1, ...weeks.map((w) => w.total)) * 1.05, 2);
+    const y = (v) => m.t + ih - (v / max) * ih;
+    const dmS = (iso) => fmtDate(parse(iso), { day: "2-digit", month: "2-digit" });
+    const label = weeks.map((w) => `${dmS(w.monday)}: ${w.n ? nf(w.total) : "keine Werte"}`).join(", ");
+    let svg = `<svg class="chart load-chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Trainingsbelastung der letzten ${weeks.length} Wochen (Garmin): ${label}">`;
+    if (sel >= 0 && sel < weeks.length) svg += `<rect x="${m.l + band * sel + 1}" y="${m.t - 16}" width="${band - 2}" height="${ih + 16}" rx="6" fill="var(--surface-2)"/>`;
+    for (let v = step; v <= max + 1e-9; v += step) svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`;
+    svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}"/>`;
+    weeks.forEach((w, i) => {
+      const x = m.l + band * i + (band - bw) / 2;
+      const segs = LOAD_ORDER.filter((k) => w[k] > 0);
+      let base = 0;
+      segs.forEach((k, j) => {
+        const y0 = y(base), y1 = y(base + w[k]), gap = j > 0 ? 2 : 0;   // 2 px Abstand zwischen den Segmenten
+        const h = Math.max(0, y0 - y1 - gap);
+        svg += j === segs.length - 1 ? `<path d="${roundedTopRect(x, y1, bw, h, Math.min(4, h))}" fill="${LOAD_COLORS[k]}"/>` : `<rect x="${x}" y="${y1 + gap}" width="${bw}" height="${h}" fill="${LOAD_COLORS[k]}"/>`;
+        base += w[k];
+      });
+      if (i === sel && w.n) svg += `<text class="load-val" x="${x + bw / 2}" y="${y(w.total) - 5}" text-anchor="middle">${nf(w.total)}</text>`;
+      // wenig Platz (Handy): nur jede zweite Woche beschriften, die gewählte immer
+      const tight = band < 40, anchor = (weeks.length - 1) % 2;
+      if (!tight || i === sel || (i % 2 === anchor && Math.abs(i - sel) !== 1)) svg += `<text x="${m.l + band * i + band / 2}" y="${H - 4}" text-anchor="middle"${i === sel ? ' class="load-sel"' : ""}>${dmS(w.monday)}</text>`;
+      svg += `<rect class="hit" data-i="${weeks.length - 1 - i}" x="${m.l + band * i}" y="0" width="${band}" height="${H}" fill="transparent"><title>${dmS(w.monday)}</title></rect>`;
+    });
+    return svg + `</svg>`;
+  }
+  function loadBlock(s, width) {
+    const L = s.load;
+    if (!L) return G.loads ? "" : `<div class="mini-title">Belastung · Garmin</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
+    const pct = L.diffPct;
+    const head = L.sum == null ? `<span class="muted">Keine Belastungswerte in dieser Woche.</span>`
+      : `Trainingsbelastung: <b>${nf(L.sum)}</b>${L.prevSum != null ? ` <span class="muted" style="white-space:nowrap">(Vorwoche ${nf(L.prevSum)}${pct != null ? `, ${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %` : ""})</span>` : ""}`;
+    const ac = L.acute != null ? `<p class="wk-load-line">Akut ${nf(L.acute)} · Chronisch ${nf(L.chronic)}${L.ratio != null ? ` · Verhältnis ${nf(L.ratio, 1)}` : ""}${L.status && LOAD_STATUS[L.status] ? ` · Garmin: <b>${LOAD_STATUS[L.status]}</b>` : ""} <span class="muted">(Stand ${fmtDate(parse(L.statusDate), { day: "2-digit", month: "2-digit" })})</span></p>` : "";
+    return `<div class="mini-title">Belastung · Garmin</div>
+      <p class="wk-load-line">${head}</p>
+      ${loadChart(L, width)}
+      <div class="legend wk-legend">${LOAD_ORDER.slice().reverse().map((k) => `<span><i class="swatch" style="background:${LOAD_COLORS[k]}"></i>${LOAD_LABEL[k]}</span>`).join("")}</div>
+      ${ac}
+      ${L.withoutLoad ? `<p class="muted wk-note">${L.withoutLoad} ${L.withoutLoad === 1 ? "Einheit" : "Einheiten"} ohne Belastungswert</p>` : ""}
+      <p class="muted wk-note">Garmin berechnet die Belastung aus dem Puls. Krafttraining wird dabei nur schwach abgebildet.</p>`;
   }
 
   /* ---------- Zuletzt gemacht (Flex.sinceLast) ---------- */
@@ -1285,7 +1349,7 @@
   }
   today(); recovery(); gymSection(); calendarSection();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); layoutTimeline(false); }, 150); });
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); layoutTimeline(false); renderWeek(new Date()); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
