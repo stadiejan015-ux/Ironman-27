@@ -81,6 +81,13 @@ window.TRAINING = {
     },
     splitKeywords: { Push: ["push"], Pull: ["pull"], Legs: ["leg day", "legday", "legs", "leg", "beine"] },
     perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PRs nur am selben Gym-Ort vergleichen
+    // Nächstes Ziel nach doppelter Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt in kg
+    progression: {
+      "Bankdrücken": { reps: [6, 8], step: 2.5 },
+      "Latzug":      { reps: [8, 12], step: 5 },
+      "Beinpresse":  { reps: [8, 12], step: 10 },
+      stagnation: 3,   // so viele Einträge ohne neues bestes 1RM → Hinweis „kein Fortschritt“
+    },
   },
 
   // Eigene Herzfrequenz-Zonen (ersetzen die Strava-Standardzonen auf der ganzen Seite).

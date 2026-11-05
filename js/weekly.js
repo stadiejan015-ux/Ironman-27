@@ -115,6 +115,13 @@
       .filter((h) => h.pr && h.date >= monIso && h.date <= sunIso).map((h) => ({ ...h, exercise: ex })))
       .sort((a, b) => a.start.localeCompare(b.start));
 
+    // Ziele der Hauptübungen (Gym.targetChecks): Einträge der Woche, die ein Ziel aus dem Eintrag davor hatten
+    const checks = exercises.flatMap((ex) => Gym.targetChecks(gymSessions, ex, gymCfg).filter((e) => e.target && e.date >= monIso && e.date <= sunIso));
+    const goals = checks.length ? { reached: checks.filter((e) => e.reached).length, total: checks.length } : null;
+    // Stagnation zum Wochenende (Gym.liftPlan mit den Einheiten bis Sonntag)
+    const upToSun = gymSessions.filter((g) => String(g.start).slice(0, 10) <= sunIso);
+    const stagnant = exercises.filter((ex) => Gym.liftPlan(upToSun, ex, gymCfg).stagnation);
+
     // Ausdauer & Sonstiges je Sportart
     const sports = ["swim", "bike", "run", "other"].map((cat) => {
       const l = items.filter((x) => x.cat === cat);
@@ -186,6 +193,10 @@
     if (load && load.avg4 && load.sum != null && load.sum > c.loadFactor * load.avg4) {
       hints.push({ key: "load", text: "Belastung deutlich gestiegen. Umfang langsam aufbauen." });
     }
+    if (stagnant.length) {
+      const nStag = Gym.progOf(stagnant[0], gymCfg).stagnation;
+      hints.push({ key: "stagnation", text: `Seit ${nStag} Einheiten kein Fortschritt bei ${stagnant.join(", ")}.` });
+    }
     if (!splits.Legs) hints.push({ key: "legs", text: running ? "Legs kam diese Woche bisher nicht vor." : "Legs kam in dieser Woche nicht vor." });
     const swimCfg = { ...Flex.SINCE_DEFAULTS.swim, ...((cfg.sinceLast || {}).swim || {}) };
     const poolOk = !(week.flex && equipment && !equipment.includes("pool"));
@@ -203,7 +214,7 @@
     return {
       monday: monIso, sunday: sunIso, running, flex: week.flex, empty: week.count === 0,
       highlight, totalSec: week.totalSec, count: week.count, avg4Sec, totalDiffPct,
-      gym: { count: splits.total, splits, lifts }, prs, sports, minimum, recovery, load,
+      gym: { count: splits.total, splits, lifts, goals, stagnant }, prs, sports, minimum, recovery, load,
       hints: hints.slice(0, c.maxHints),
     };
   }

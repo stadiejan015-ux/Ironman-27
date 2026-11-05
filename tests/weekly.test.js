@@ -139,6 +139,27 @@ test("Hinweis Flex: Wochen bis zum Ende, nur in Flex-Wochen; höchstens 3 Hinwei
   assert.deepEqual(hintKeys(four), ["recovery", "legs", "swim"]);
 });
 
+test("Gym-Ziele: „Ziele erreicht“ zählt die Einträge der Woche mit Ziel aus dem Eintrag davor", () => {
+  const g = gymSess([["2026-10-27T09:00", "Push 6x100", 60], ["2026-10-28T09:00", "Pull · Latzug 8x80 @Bali", 60], ["2026-10-29T09:00", "Legs 3x10x180 @Bali", 60],
+    ["2026-11-03T09:00", "Push 7x100", 60], ["2026-11-04T09:00", "Pull · Latzug 8x80 @Bali", 60], ["2026-11-05T09:00", "Legs 3x11x180 @Bali", 60]]);
+  const s = sum({ gymSessions: g, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.deepEqual(s.gym.goals, { reached: 2, total: 3 });   // Bankdrücken ✓, Latzug ✗ (Ziel 9×80), Beinpresse ✓
+  // Woche ohne Einträge mit Ziel → keine Angabe
+  assert.equal(sum({ gymSessions: g, today: d("2026-11-10T12:00"), weekStart: d("2026-10-26T00:00") }).gym.goals, null);
+});
+
+test("Hinweis Stagnation: 3 Einträge ohne neues bestes 1RM, Stand zum Wochenende", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00"), swim = [act("2026-11-03T07:00", "swim", "Pool", 40, "Swim")];
+  const flat = gymSess([["2026-10-26T09:00", "Push 7x100", 60], ["2026-10-29T09:00", "Push 6x100", 60], ["2026-11-02T09:00", "Push 7x100", 60], ["2026-11-05T09:00", "Push 6x100", 60], ["2026-11-06T09:00", "Legs", 60]]);
+  const s = sum({ acts: swim, gymSessions: flat, today, weekStart });
+  assert.deepEqual(s.gym.stagnant, ["Bankdrücken"]);
+  assert.equal(s.hints.find((h) => h.key === "stagnation").text, "Seit 3 Einheiten kein Fortschritt bei Bankdrücken.");
+  const up = gymSess([["2026-10-26T09:00", "Push 7x100", 60], ["2026-10-29T09:00", "Push 6x100", 60], ["2026-11-02T09:00", "Push 8x100", 60], ["2026-11-05T09:00", "Push 6x100", 60], ["2026-11-06T09:00", "Legs", 60]]);
+  assert.ok(!hintKeys(sum({ acts: swim, gymSessions: up, today, weekStart })).includes("stagnation"));
+  // für die Vorwoche zählt nur, was bis zu deren Sonntag passiert ist
+  assert.ok(!hintKeys(sum({ acts: swim, gymSessions: flat, today, weekStart: d("2026-10-26T00:00") })).includes("stagnation"));
+});
+
 /* ---------- Teil 2: Trainingsbelastung ---------- */
 const gl = (start, type, load, id = start) => ({ id, start, type, sec: 3600, load });
 // 4 Wochen vor der Zielwoche (02.11.) je 300 Belastung (zum Vergleich)
