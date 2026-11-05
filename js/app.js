@@ -111,6 +111,7 @@
     const from = addDays(snapEnd, -28), prevFrom = addDays(snapEnd, -56);
     const cur = inRange(from, snapEnd), prev = inRange(prevFrom, from);
     $("#kpiSub").textContent = `${fmtDate(from)} – ${fmtDate(snap)}, verglichen mit den 4 Wochen davor.`;
+    setSum("letzte4", `${nf(sum(cur, (a) => a.sec) / 3600, 1)} h · ${cur.length} Einheiten`);
     const delta = (a, b, unit, d = 0) => {
       const diff = a - b; if (Math.abs(diff) < 0.05) return "± 0 zur Vorperiode";
       if (FLEX.active && diff < 0) return `<span class="neutral-delta">−${nf(Math.abs(diff), d)} ${unit} · Flex-Phase, kein Soll</span>`;
@@ -236,6 +237,9 @@
       <b>${esc(p.short)}</b><span class="dates">${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">${p.hours}</span></li>` }));
     if (FLEX.active) rows.push({ start: FLEX.from || now, html: `<li class="current flex-li"><b>Flex</b><span class="dates">${FLEX.from ? fmtDate(FLEX.from, { day: "2-digit", month: "short" }) + " – " : "bis "}${fmtDate(FLEX.until, { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">Minimum</span></li>` });
     $("#phaseList").innerHTML = rows.sort((a, b) => a.start - b.start).map((r) => r.html).join("");
+    const afterFlex = FLEX.active ? currentPhase(addDays(FLEX.until, 1)) : null;
+    setSum("saison", FLEX.active ? `Flex bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })}${afterFlex ? ` · danach ${afterFlex.short}` : ""}`
+      : cp ? `${cp.short} · noch ${Math.ceil((cp.end - now) / DAY / 7)} Wochen` : "");
   }
 
   /* ---------- Wochenumfang (gestapelte Balken) ---------- */
@@ -259,6 +263,8 @@
 
   function volumeChart() {
     const keys = showOther ? ["swim", "bike", "run", "extra"] : ["swim", "bike", "run"];
+    const lastW = weeks[weeks.length - 1];
+    if (lastW) setSum("umfang", `${lastW.start.getTime() === monday(new Date()).getTime() ? "Diese Woche" : `Woche ab ${fmtDate(lastW.start, { day: "2-digit", month: "2-digit" })}`} ${nf(keys.reduce((a, k) => a + lastW[k], 0), 1)} h`);
     const colors = { swim: "var(--swim)", bike: "var(--bike)", run: "var(--run)", extra: "var(--other)" };
     const labels = { swim: "Schwimmen", bike: "Rad", run: "Laufen", extra: "Kraft & Sonstiges" };
     $("#volLegend").innerHTML = keys.map((k) => `<span><i class="swatch" style="background:${colors[k]}"></i>${labels[k]}</span>`).join("");
@@ -377,6 +383,7 @@
   const runPaceZ2 = [1000 / D.zones.run[1][1], 1000 / D.zones.run[1][0]]; // s/km (schnell, langsam)
   function disciplines() {
     const swims = ofCat(acts, "swim"), bikes = ofCat(acts, "bike"), runs = ofCat(acts, "run");
+    setSum("disziplinen", `Schwimmen ${swims.length}× · Rad ${bikes.length}× · Laufen ${runs.length}×`);
     const weeksN = weeks.length;
     const stat = (l, v) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`;
 
@@ -476,6 +483,7 @@
       { key: "run", label: "Laufen", color: "var(--run)", goal: toSec(g.run), pred: p.run, unit: (t) => `${mmss(t / runKm)} /km` },
     ];
     const goalTotal = sum(legs, (l) => l.goal);
+    setSum("rennen", `Prognose ${hm(p.total.realistic)} · Ziel ${hm(goalTotal)}`);
     $("#predAsOf").textContent = `Wenn heute Renntag wäre · Stand ${fmtDate(parse(p.asOf))}`;
 
     // Zwei gestapelte Balken auf derselben Zeitskala
@@ -588,10 +596,12 @@
     const cfg = window.TRAINING.z2, Z = window.Z2;
     if (!cfg || !Z) { $("#zone2").hidden = true; return; }
     const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    setSum("zone2", "wird geladen …");
     Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
       .then(([db, src]) => { Z2DATA = db; HRSRC = src; renderZone2(); if (FLEX.active) today(); })
       .catch(() => {
         $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
+        setSum("zone2", "nicht verfügbar");
         const ins = $("#z2Insight p"); if (ins) ins.textContent = "Noch keine Zone-2-Auswertung verfügbar.";
       });
   }
@@ -646,6 +656,8 @@
     const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3: ${Math.round((sh3 ? sh3.share : 0) * 100)} % · Z4–5: ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} % · ${hm(sh.totalSec)} h Lauf & Rad · Richtwert ~80 %`)
       : tile("Anteil Z1–2 (4 Wochen)", "–", "keine Einheiten mit Herzfrequenz");
     $("#z2Tiles").innerHTML = t1 + t2 + t3 + t4;
+    const decAvg = decRecent.length ? decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length : null;
+    setSum("zone2", [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null].filter(Boolean).join(" · ") || "noch keine Auswertung");
 
     // Chart 1: Pace @ HF
     const toPts = (arr, kind) => arr.map((p) => ({ d: parse(p.date), v: p.v, rec: p.rec, kind,
@@ -774,6 +786,7 @@
     if (!GYM) { $("#gym").hidden = true; return; }
     const now = new Date(), todayIso = ymdLocal(now), mon = ymdLocal(monday(now));
     const wk = GYM.splitCounts(GYM_SESS, mon, todayIso);
+    setSum("gym", `${wk.total}× diese Woche${wk.total ? ` · ${["Push", "Pull", "Legs"].filter((k) => wk[k]).map((k) => `${wk[k]} ${k}`).join(", ") || "ohne Split"}` : ""}`);
     const tile = (label, value, sub) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${sub || "&nbsp;"}</div></div>`;
     $("#gymWeek").innerHTML = ["Push", "Pull", "Legs"].map((k) => tile(`${k} diese Woche`, wk[k], k === "Legs" && !wk.Legs ? "noch kein Leg Day" : "")).join("")
       + tile("Gym gesamt diese Woche", `${wk.total} <small>×</small>`, wk.ohne ? `davon ${wk.ohne} ohne erkannten Split` : `seit Montag, ${fmtDate(monday(now), { day: "2-digit", month: "2-digit" })}`);
@@ -920,6 +933,7 @@
       </div>${selDay ? detail(selDay) : ""}`;
     }).join("");
     box.innerHTML = head + rows;
+    setSum("kalender", `Diese Woche ${nf(cal.weeks[0].totalSec / 3600, 1)} h · ${cal.weeks[0].count}×`);
     box.querySelectorAll(".cal-cell").forEach((b) => b.addEventListener("click", () => {
       const d = cal.weeks[+b.dataset.w].days[+b.dataset.d];
       calSel = calSel === d.date ? null : d.date;
@@ -954,6 +968,8 @@
         : [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
       ["good", "Fokus", "Zone 2 verbessern", `Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm. Die Entwicklung wird aus deinen Läufen und Fahrten berechnet …`, "z2Insight"],
     ];
+    const warn = items.find((i) => i[0] === "warn");
+    setSum("stand", `${items.length} Einschätzungen${warn ? ` · ${warn[2]}` : ""}`);
     $("#insights").innerHTML = items.map(([cls, badge, title, text, id]) => `<div class="card insight"${id ? ` id="${id}"` : ""}><span class="badge ${cls}">${badge}</span><div><b>${title}</b><p>${text}</p></div></div>`).join("");
   }
 
@@ -966,6 +982,7 @@
     $("#actFilter").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; showAll = false; activities(); }));
     const list = filter === "all" ? acts : acts.filter((a) => a.cat === filter);
     $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.`;
+    setSum("aktivitaeten", `${acts.length} Einträge`);
     $("#actCount").textContent = list.length > ACT_LIMIT && !showAll ? `${ACT_LIMIT} von ${list.length}` : `${list.length} Einträge`;
     $("#actTable").innerHTML = `<thead><tr><th>Datum</th><th>Sport</th><th>Name</th><th class="num">Distanz</th><th class="num">Zeit</th><th class="num">Hm</th><th class="num">Pace / Tempo</th></tr></thead><tbody>` +
       list.slice(0, showAll ? list.length : ACT_LIMIT).map((a) => `<tr><td>${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}</td>
@@ -1381,13 +1398,119 @@
     ].map(([k, label, fmt]) => ({ k, label, fmt, pts: gDays.slice(-60).filter((d) => d[k] != null).map((d) => ({ d: parse(d.date), v: d[k], raw: d })) }))
       .filter((c) => c.pts.length >= 2);
     el.innerHTML = `<div class="grid g4">${tiles.join("")}</div>` +
-      (charts.length ? `<div class="grid g3" style="margin-top:12px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div>` : "");
-    charts.forEach((c, i) => {
+      (charts.length ? `<div class="rec-more"><button type="button" class="chip rec-toggle" aria-expanded="true" aria-controls="erholungVerlauf-body">Verläufe ausblenden</button></div>
+        <div class="sec-body" id="erholungVerlauf-body"><div class="grid g3" style="margin-top:12px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div></div>` : "");
+    REC_CHARTS = charts;
+    if (charts.length) {
+      const btn = el.querySelector(".rec-toggle");
+      UNITS.erholungVerlauf = { btn, body: $("#erholungVerlauf-body"), sum: null, host: null, label: (open) => { btn.textContent = open ? "Verläufe ausblenden" : "Verläufe anzeigen"; } };
+      btn.addEventListener("click", () => toggleUnit("erholungVerlauf"));
+      applyUnit("erholungVerlauf", LOPEN.erholungVerlauf !== false, false, false);
+      if (LOPEN.erholungVerlauf !== false) drawRecoveryCharts();
+    }
+    $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Verläufe: letzte 60 Tage.`;
+  }
+
+  let REC_CHARTS = [];
+  function drawRecoveryCharts() {
+    REC_CHARTS.forEach((c, i) => {
       const box = $(`#gchart${i}`);
+      if (!box) return;
       box.innerHTML = paceChart(c.pts, { fmt: c.fmt, color: "var(--recovery)", invert: false, unitLabel: c.label });
       attachPointTips(box, c.pts, "var(--recovery)", (p) => `<div class="t-title">${fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" })}</div>${tRow("var(--recovery)", c.label, c.fmt(p.v))}`);
     });
-    $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Verläufe: letzte 60 Tage.`;
+  }
+
+  /* ---------- Einklappbare Abschnitte (js/layout.js) ---------- */
+  const LAY = window.Layout, LCFG = window.TRAINING.layout || {}, LAY_KEY = "ironman.layout";
+  const LAY_PHASE = LAY ? LAY.phaseOf(FLEX.active) : "normal";
+  const UNITS = {};   // id → { btn, body, sum, host, label }
+  let LOPEN = {}, laySaved = null;
+  const CHEV = `<svg class="sec-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // Diagramme in eingeklappten Abschnitten: beim Aufklappen mit echter Breite neu zeichnen
+  const REDRAW = {
+    zone2: () => { if (Z2DATA) renderZone2(); },
+    umfang: () => { if (!$("#volChart").hidden) volumeChart(); },
+    disziplinen: () => disciplines(),
+    gym: () => gymSection(),
+    saison: () => layoutTimeline(true),
+    erholungVerlauf: () => drawRecoveryCharts(),
+  };
+  const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const loadLayout = () => { try { return JSON.parse(localStorage.getItem(LAY_KEY) || "null"); } catch (e) { return null; } };
+  const saveLayout = (v) => { try { if (v) localStorage.setItem(LAY_KEY, JSON.stringify(v)); else localStorage.removeItem(LAY_KEY); } catch (e) { /* ignore */ } };
+  function layoutState() {
+    const ids = Object.keys(UNITS).concat(["erholungVerlauf"]);
+    if (!LAY) return Object.fromEntries(ids.map((id) => [id, true]));
+    const r = LAY.resolve({ ids, cfg: LCFG, phase: LAY_PHASE, saved: loadLayout() });
+    if (r.reset) saveLayout(null);   // Wahl aus der vorigen Phase verwerfen
+    laySaved = r.saved;
+    return r.open;
+  }
+  function setSum(id, text) {
+    const u = UNITS[id];
+    if (!u || !u.sum) return;
+    u.sum.textContent = text || "";
+    u.sum.hidden = LOPEN[id] !== false || !text;
+  }
+  function setupSections() {
+    document.querySelectorAll("section[data-collapse]").forEach((sec) => {
+      const h2 = sec.querySelector(":scope > h2");
+      if (!h2 || !sec.id) return;
+      const id = sec.id, body = document.createElement("div");
+      body.className = "sec-body"; body.id = `${id}-body`;
+      [...sec.children].filter((c) => c !== h2).forEach((c) => body.appendChild(c));
+      const head = document.createElement("div");
+      head.className = "sec-head";
+      head.innerHTML = `<h2><button type="button" class="sec-toggle" aria-expanded="true" aria-controls="${body.id}"><span class="sec-title">${h2.innerHTML}</span>${CHEV}</button></h2><span class="sec-sum" id="${id}-sum" hidden></span>`;
+      h2.replaceWith(head);
+      sec.appendChild(body);
+      const btn = head.querySelector(".sec-toggle");
+      UNITS[id] = { btn, body, sum: head.querySelector(".sec-sum"), host: sec };
+      btn.addEventListener("click", () => toggleUnit(id));
+    });
+  }
+  // Auf-/Zuklappen; animate: kurze Höhen-Animation (nicht bei „Bewegung reduzieren“), redraw: Diagramme neu zeichnen
+  function applyUnit(id, open, animate = true, redraw = true) {
+    const u = UNITS[id];
+    if (!u) return;
+    LOPEN[id] = open;
+    u.btn.setAttribute("aria-expanded", String(open));
+    if (u.host) u.host.classList.toggle("is-collapsed", !open);
+    if (u.sum) { u.sum.hidden = open || !u.sum.textContent; if (open) u.btn.removeAttribute("aria-describedby"); else u.btn.setAttribute("aria-describedby", u.sum.id); }
+    if (u.label) u.label(open);
+    const body = u.body, tok = (body._tok = {});
+    const done = (fn) => { const f = () => { body.removeEventListener("transitionend", f); if (body._tok === tok) fn(); }; body.addEventListener("transitionend", f); setTimeout(f, 450); };
+    if (!animate || reduceMotion()) {
+      body.hidden = !open; body.style.height = ""; body.classList.remove("animating");
+      if (open && redraw && REDRAW[id]) REDRAW[id]();
+      return;
+    }
+    if (open) {
+      body.hidden = false;
+      if (redraw && REDRAW[id]) REDRAW[id]();   // jetzt sichtbar → richtige Breite
+      const h = body.scrollHeight;
+      body.classList.add("animating"); body.style.height = "0px";
+      void body.offsetHeight;
+      body.style.height = `${h}px`;
+      done(() => { body.style.height = ""; body.classList.remove("animating"); });
+    } else {
+      body.style.height = `${body.scrollHeight}px`; body.classList.add("animating");
+      void body.offsetHeight;
+      body.style.height = "0px";
+      done(() => { body.hidden = true; body.style.height = ""; body.classList.remove("animating"); });
+    }
+  }
+  function toggleUnit(id) {
+    const open = LOPEN[id] === false;
+    applyUnit(id, open, true, true);
+    if (LAY) { laySaved = LAY.remember(laySaved, LAY_PHASE, id, open); saveLayout(laySaved); }
+  }
+  // Navigation / Anker: eingeklappten Abschnitt sofort öffnen (nur für diesen Besuch, nicht gespeichert)
+  function revealSection(id, scroll) {
+    if (!id) return;
+    if (UNITS[id] && LOPEN[id] === false) applyUnit(id, true, false, true);
+    if (scroll) { const el = document.getElementById(id); if (el) el.scrollIntoView({ block: "start" }); }
   }
 
   /* ---------- Init ---------- */
@@ -1404,9 +1527,21 @@
     if (link && heuteLink) heuteLink.after(link);
     if (calLink && link) link.after(calLink);
   }
+  setupSections();
+  LOPEN = layoutState();
+  Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, false));
   today(); recovery(); gymSection(); calendarSection();
   freshBanner();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
+  document.querySelectorAll('.nav a[href^="#"]').forEach((a) => a.addEventListener("click", () => revealSection(a.getAttribute("href").slice(1), false)));
+  window.addEventListener("hashchange", () => revealSection(decodeURIComponent(location.hash.slice(1)), true));
+  if (location.hash) requestAnimationFrame(() => revealSection(decodeURIComponent(location.hash.slice(1)), true));
+  $("#resetView").addEventListener("click", (e) => {
+    e.preventDefault();
+    saveLayout(null);
+    LOPEN = layoutState();
+    Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, true));
+  });
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); layoutTimeline(false); renderWeek(new Date()); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);

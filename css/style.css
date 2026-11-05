@@ -87,6 +87,20 @@ h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.05; margin: 0 0 10px; let
 
 /* Sections */
 section { margin-top: 36px; scroll-margin-top: 64px; }
+/* Einklappbare Abschnitte */
+.sec-head { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; margin: 0 0 4px; }
+.sec-head h2 { margin: 0; }
+.sec-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px 2px 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; border-radius: 6px; min-height: 36px; }
+.sec-toggle:focus-visible { outline: 2px solid var(--recovery); outline-offset: 2px; }
+.sec-chev { flex: none; color: var(--text-3); transition: transform .2s ease; }
+.sec-toggle[aria-expanded="false"] .sec-chev { transform: rotate(-90deg); }
+.sec-toggle:hover .sec-chev { color: var(--text); }
+.sec-sum { font-size: 14px; color: var(--text-2); }
+section.is-collapsed { margin-top: 20px; }
+.sec-body { transition: height .22s ease; }
+.sec-body.animating { overflow: hidden; }
+.rec-more { margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) { .sec-body, .sec-chev { transition: none; } }
 h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 .section-sub { color: var(--text-3); margin: 0 0 14px; font-size: 14px; }
 .grid { display: grid; gap: 12px; }
