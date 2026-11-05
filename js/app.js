@@ -792,13 +792,15 @@
       const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
       const set = (e) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${nf(e.weight, e.weight % 1 ? 1 : 0)} kg`;
       const machine = (GCFG.perPlace || []).includes(ex);
+      const plan = GYM.liftPlan(GYM_SESS, ex, GCFG);
       return `<div class="card lift">
-        <h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}</h3>
+        <h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}${plan.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</h3>
         <div class="stats">
           <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} · ${esc(last.place)}</small></div>
           <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
           <div class="stat"><small>1RM geschätzt${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>Epley</small></div>
         </div>
+        ${goalBox(plan)}
         <div class="chart" data-lift="${esc(ex)}"></div>
         <div class="legend" style="margin-top:4px">${[...new Set(h.map((e) => e.place))].map((p) => `<span><i class="swatch" style="background:${placeColor(p)};border-radius:50%"></i>${esc(p)}</span>`).join("")}${machine ? `<span class="muted">PR nur am selben Ort</span>` : ""}</div>
       </div>`;
@@ -815,6 +817,30 @@
       <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}${c4.ohne ? ` „ohne Split“: Titel ohne Push/Pull/Legs, z. B. „Gym Bali“.` : ""} Quelle: Garmin-Titel, sonst Strava.</p>`;
   }
   const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  /* ---------- Nächstes Ziel (doppelte Progression, Gym.liftPlan) ---------- */
+  const kgTxt = (w) => nf(w, w % 1 ? 1 : 0);
+  const setTxt = (e, unit = true) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${kgTxt(e.weight)}${unit ? " kg" : ""}`;
+  const STAG_TXT = (n) => `Seit ${n} Einheiten kein Fortschritt. Optionen: Gewicht ca. 10 % runter und neu aufbauen, Wiederholungsbereich wechseln oder auf Erholung achten.`;
+  // Zeile unter „Heute“ für die Hauptübung des nächsten Splits
+  function targetLine(split) {
+    const ex = GYM && split && (GCFG.mainExercise || GYM.DEFAULTS.mainExercise)[split];
+    if (!ex) return "";
+    const p = GYM.liftPlan(GYM_SESS, ex, GCFG);
+    const txt = p.target ? `Ziel ${esc(ex)}: <b>${setTxt(p.target)}</b> <span class="muted">(zuletzt ${setTxt(p.last, false)})</span>`
+      : p.noEntryAtPlace ? `Ziel ${esc(ex)}: <span class="muted">Noch kein Eintrag in ${esc(p.place)} – Startgewicht frei wählen.</span>`
+        : `<span class="muted">Noch kein Eintrag für ${esc(ex)} – z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“ als Titel.</span>`;
+    return `<p class="gym-target">${txt}</p>`;
+  }
+  // Block in der Übungskarte
+  function goalBox(p) {
+    const pr = p.prog, range = `${pr.reps[0]}–${pr.reps[1]} Wdh., +${kgTxt(pr.step)} kg`;
+    const head = `<small>Nächstes Ziel${p.perPlace && p.place ? ` (${esc(p.place)})` : ""}</small>`;
+    const body = p.target ? `<b>${setTxt(p.target)}</b><small>zuletzt ${setTxt(p.last, false)} · ${range}</small>`
+      : p.noEntryAtPlace ? `<span class="muted">Noch kein Eintrag in ${esc(p.place)} – Startgewicht frei wählen.</span><small>${range} · Werte anderer Orte werden nicht übernommen</small>`
+        : `<span class="muted">Noch kein Eintrag.</span>`;
+    return `<div class="lift-goal">${head}${body}</div>${p.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}`;
+  }
 
   function liftChart(box, hist, placeColor) {
     const W = Math.max(280, Math.round(box.clientWidth || 340)), H = 150, m = { t: 10, r: 8, b: 22, l: 40 };
@@ -1119,7 +1145,7 @@
         <div class="flex-sug">
           <div><span class="mini-title" style="margin:0">Gym</span>
             <h3 style="font-size:20px;margin:2px 0"><i class="swatch" style="background:var(--strength)"></i>${esc(sg.gym.title)}</h3>
-            <p class="muted" style="margin:0;font-size:14px">${esc(sg.gym.detail)}</p></div>
+            <p class="muted" style="margin:0;font-size:14px">${esc(sg.gym.detail)}</p>${sg.gym.rest ? "" : targetLine(sg.next && sg.next.split)}</div>
           <div><span class="mini-title" style="margin:0">Ausdauer${e && e.done ? "" : " · optional"}${e && e.forMinimum ? " · fürs Wochen-Minimum" : ""}</span>
             ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)} · ${e.minutes} min</h3>
             <p class="muted" style="margin:0;font-size:14px">${esc(e.detail)}</p>` : `<p class="muted" style="margin:2px 0 0;font-size:14px">${rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt."}</p>`}</div>
@@ -1195,7 +1221,7 @@
     const endu = s.sports.filter((x) => x.cat !== "other"), other = s.sports.find((x) => x.cat === "other");
     const pct = s.totalDiffPct;
     const rows = [
-      ["Gym", s.gym.count ? `${s.gym.count}× Gym${splitTxt ? ` · ${splitTxt}` : ""}${s.gym.lifts.length ? `<div class="muted wk-sub">${s.gym.lifts.map((l) => esc(l.text)).join(" · ")}</div>` : ""}` : `<span class="muted">kein Gym</span>`],
+      ["Gym", s.gym.count ? `${s.gym.count}× Gym${splitTxt ? ` · ${splitTxt}` : ""}${s.gym.goals ? ` · Ziele erreicht: ${s.gym.goals.reached}/${s.gym.goals.total}` : ""}${s.gym.lifts.length ? `<div class="muted wk-sub">${s.gym.lifts.map((l) => esc(l.text)).join(" · ")}</div>` : ""}` : `<span class="muted">kein Gym</span>`],
       ["Ausdauer", (endu.length ? endu.map(sport).join("") : `<span class="muted">keine</span>`) + (other ? sport(other) : "")],
       ["Gesamt", `${nf(s.totalSec / 3600, 1)} h · ${s.count} ${s.count === 1 ? "Einheit" : "Einheiten"}${s.avg4Sec ? ` <span class="muted">· Ø der 4 Wochen davor ${nf(s.avg4Sec / 3600, 1)} h (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %)</span>` : ""}`],
     ];

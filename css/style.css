@@ -249,9 +249,14 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .split-row { display: grid; grid-template-columns: 84px 1fr 40px; gap: 10px; align-items: center; font-size: 14px; }
 .split-row b { text-align: right; }
 .lift .stat small:last-child { display: block; color: var(--text-3); font-size: 11px; }
-.lift .stat b { font-size: 15px; white-space: nowrap; }
-.lift .stats { gap: 6px; }
+.lift .stat b { font-size: 15px; overflow-wrap: anywhere; }
+.lift .stats { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .lift .stat { padding: 8px; }
+.lift-goal { display: grid; gap: 2px; margin: -4px 0 10px; padding: 8px 10px; border-radius: 8px; border: 1px dashed var(--border); font-size: 14px; }
+.lift-goal small { color: var(--text-3); font-size: 12px; }
+.lift-goal b { font-size: 16px; }
+.lift-note { margin: -4px 0 10px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); font-size: 13px; }
+.gym-target { margin: 6px 0 0; font-size: 14px; }
 
 /* Kalender */
 .calendar { display: grid; gap: 6px; }

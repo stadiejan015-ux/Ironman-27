@@ -7,6 +7,10 @@
  *                                    in Strava anders eingetragene Einheiten, z. B. Klettern, fallen raus)
  *   exerciseHistory(sessions, exercise, cfg) → Einträge mit 1RM und PR-Markierung
  *   splitCounts(sessions, from, to)  → Einheiten je Split im Zeitraum
+ *   nextTarget(entry, prog)          → nächstes Ziel nach doppelter Progression { sets, reps, weight, rule }
+ *   currentPlace(sessions)           → Ort der letzten Gym-Einheit mit @Ort
+ *   liftPlan(sessions, exercise, cfg) → nächstes Ziel, „Ziel erreicht“, Stagnation (Maschinen: nur aktueller Ort)
+ *   targetChecks(sessions, exercise, cfg) → je Eintrag: Ziel aus dem Eintrag davor und ob es erreicht wurde
  * Formate im Titel (oder in der Beschreibung): „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“,
  * „Push 6x100 @Bali“, „Push“ (Einheit ohne Eintrag). „kg“ optional, Komma-Dezimalen erlaubt.
  * Läuft im Browser (window.Gym) und in Node (require("./js/gym.js")).
@@ -32,6 +36,13 @@
     },
     perPlace: ["Latzug", "Beinpresse"],   // Maschinen: PR nur am selben Ort vergleichen
     unknownPlace: "unbekannt",
+    // Doppelte Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt (kg) je Hauptübung
+    progression: {
+      "Bankdrücken": { reps: [6, 8], step: 2.5 },
+      "Latzug": { reps: [8, 12], step: 5 },
+      "Beinpresse": { reps: [8, 12], step: 10 },
+      stagnation: 3,   // so viele Einträge ohne neues bestes 1RM → Hinweis
+    },
   };
   const conf = (cfg) => ({ ...DEFAULTS, ...(cfg || {}) });
   const esc = (w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -130,5 +141,67 @@
     return out;
   }
 
-  return { DEFAULTS, parseGymTitle, epley, gymSessions, exerciseHistory, splitCounts };
+  /* ---------- Doppelte Progression ---------- */
+  const PROG_FALLBACK = { reps: [8, 12], step: 2.5 };
+  function progOf(exercise, cfg) {
+    const all = { ...DEFAULTS.progression, ...((cfg && cfg.progression) || {}) };
+    return { ...PROG_FALLBACK, ...(DEFAULTS.progression[exercise] || {}), ...(all[exercise] || {}), stagnation: all.stagnation ?? 3 };
+  }
+  const round2 = (x) => Math.round(x * 100) / 100;
+
+  // Basis: ein Eintrag { sets, reps, weight }. Ziel gilt pro Satz, die Satzzahl bleibt.
+  function nextTarget(e, prog) {
+    const [lo, hi] = prog.reps, sets = e.sets || 1;
+    if (e.reps >= hi) return { sets, reps: lo, weight: round2(e.weight + prog.step), rule: "up" };   // oberes Ende → schwerer
+    if (e.reps >= lo) return { sets, reps: e.reps + 1, weight: e.weight, rule: "rep" };              // im Bereich → 1 Wdh. mehr
+    return { sets, reps: lo, weight: e.weight, rule: "low" };                                         // darunter → unteres Ende
+  }
+
+  // Ziel erreicht: gleiches Gewicht mit mindestens den Ziel-Wdh., oder schwerer mit Wdh. im Bereich – jeweils mit allen Sätzen
+  function reachedTarget(e, t, prog) {
+    if (!e || !t || (e.sets || 1) < (t.sets || 1)) return false;
+    return (e.weight === t.weight && e.reps >= t.reps) || (e.weight > t.weight && e.reps >= prog.reps[0]);
+  }
+
+  function currentPlace(sessions) {
+    const withPlace = (sessions || []).filter((s) => s.parsed && s.parsed.place);
+    return withPlace.length ? withPlace[withPlace.length - 1].parsed.place : null;
+  }
+
+  function targetChecks(sessions, exercise, cfg) {
+    const c = conf(cfg), prog = progOf(exercise, cfg);
+    const byPlace = c.perPlace.includes(exercise), prevAt = {};
+    return exerciseHistory(sessions, exercise, cfg).map((e) => {
+      const key = byPlace ? e.place : "alle", prev = prevAt[key];
+      prevAt[key] = e;
+      const target = prev ? nextTarget(prev, prog) : null;
+      return { ...e, target, reached: target ? reachedTarget(e, target, prog) : null };
+    });
+  }
+
+  function liftPlan(sessions, exercise, cfg) {
+    const c = conf(cfg), prog = progOf(exercise, cfg);
+    const perPlace = c.perPlace.includes(exercise);
+    const checks = targetChecks(sessions, exercise, cfg);
+    const cur = currentPlace(sessions);
+    const place = perPlace ? (cur || (checks.length ? checks[checks.length - 1].place : null)) : null;
+    // Maschinen: nur Einträge vom aktuellen Ort, nichts von anderen Orten übertragen
+    const scope = perPlace ? checks.filter((e) => e.place === place) : checks;
+    const last = scope.length ? scope[scope.length - 1] : null;
+    const n = prog.stagnation;
+    return {
+      exercise, perPlace, place, prog,
+      entries: scope,
+      last,
+      target: last ? nextTarget(last, prog) : null,
+      prevTarget: last ? last.target : null,
+      reached: !!(last && last.reached),
+      noEntryAtPlace: perPlace && !last && checks.length > 0,
+      noEntries: checks.length === 0,
+      // kein neues bestes 1RM (bei Maschinen am selben Ort) in den letzten n Einträgen; braucht einen Vergleichswert davor
+      stagnation: scope.length > n && scope.slice(-n).every((e) => !e.pr),
+    };
+  }
+
+  return { DEFAULTS, parseGymTitle, epley, gymSessions, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf };
 });
