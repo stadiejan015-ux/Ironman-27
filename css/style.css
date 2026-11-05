@@ -15,11 +15,12 @@
   --accent-fill: #d71e28;     /* Flächen mit weißer Schrift (angetippte Chips, gedrückte Knöpfe) */
   --on-accent: #ffffff;
   --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  --accent-ink: color-mix(in srgb, var(--accent) 85%, var(--text));   /* Akzent-Schrift auf --accent-soft (hell 4,9:1) */
   --swim: #2a78d6;
   --bike: #eb6834;
   --run: #1baf7a;
   --other: #a8a69f;
-  --strength: #6250d6;        /* Kraft überall einheitlich (Lila) */
+  --strength: #8e2fa6;        /* Kraft überall einheitlich (Rotviolett – klar getrennt von Schwimmen-Blau und Akzent-Rot) */
   --cat1: #2a78d6; --cat2: #eb6834; --cat3: #1baf7a; --cat4: #eda100; --cat5: #e87ba4; --cat6: #6250d6;
   --good: #0f7b3e;
   --warn: #a35f00;
@@ -32,9 +33,9 @@
     color-scheme: dark;
     --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
     --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
-    --accent: #ff5468; --accent-fill: #d71e28; --on-accent: #ffffff;
+    --accent: #ff5468; --accent-fill: #d71e28; --on-accent: #ffffff; --accent-ink: var(--accent);
     --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64;
-    --strength: #9085e9;
+    --strength: #cf8bf0;
     --cat1: #3987e5; --cat2: #d95926; --cat3: #199e70; --cat4: #c98500; --cat5: #d55181; --cat6: #9085e9;
     --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
     --shadow: none;
@@ -44,9 +45,9 @@
   color-scheme: dark;
   --bg: #111110; --surface: #1a1a19; --surface-2: #232321; --border: #2e2e2b; --grid: #2a2a28;
   --text: #f0efec; --text-2: #c3c2b7; --text-3: #8f8e86;
-  --accent: #ff5468; --accent-fill: #d71e28; --on-accent: #ffffff;
+  --accent: #ff5468; --accent-fill: #d71e28; --on-accent: #ffffff; --accent-ink: var(--accent);
   --swim: #3987e5; --bike: #d95926; --run: #199e70; --other: #6b6a64;
-  --strength: #9085e9;
+  --strength: #cf8bf0;
     --cat1: #3987e5; --cat2: #d95926; --cat3: #199e70; --cat4: #c98500; --cat5: #d55181; --cat6: #9085e9;
   --good: #4cc27f; --warn: #e0a33a; --bad: #ef7a72;
   --shadow: none;
@@ -159,7 +160,8 @@ h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 .chart text.ref-label { fill: var(--text-2); }
 .chart text.val { fill: var(--text); font-weight: 600; }
 .chart text.val, .chart text.ref-label { paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
-.chart text.tick.cur, .chart text.tick.sel { fill: var(--text); font-weight: 600; }
+.chart text.tick.cur, .chart text.tick.sel { fill: var(--text); font-weight: 700; }
+.chart .band-sel { stroke: var(--text-3); stroke-width: 1; }
 .chart text.min-ok { fill: var(--good); font-weight: 700; }
 .chart .hit { cursor: pointer; }
 .chart rect.hit.on { fill: color-mix(in srgb, var(--text) 6%, transparent); }
@@ -263,7 +265,9 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 /* Flex-Modus */
 /* Akzent: Fokus-Ring und gedrückte Knöpfe */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.icon-btn:active, #refreshBtn.spin, .week-nav .chip:active:not(:disabled) { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
+.icon-btn:active, #refreshBtn.spin { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
+/* Unter „Heute“: angetippte Chips zart (Akzent-Hintergrund hell, Schrift und Rand im Akzent) */
+#heute .chip[aria-pressed="true"], #heute .week-nav .chip:active:not(:disabled) { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
 
 /* Web-App: Offline-Badge, Aktualisieren */
 .offline-badge { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: 13px; }

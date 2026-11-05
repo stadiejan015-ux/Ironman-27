@@ -175,7 +175,7 @@
   }
 
   // Balkendiagramm (auch gestapelt, auch negative Einzelwerte)
-  // o = { width, height, aria, y: { lo, hi, ticks, fmt }, refs, maxBar, minBands,
+  // o = { width, height, aria, y: { lo, hi, ticks, fmt }, refs, maxBar, minBands, currentBg,
   //       bands: [{ label, stacks:[{v,color}], current, selected, dim, dot, topLabel, below, belowClass }],
   //       groups: [{ from, to, label }] }
   function barChart(o) {
@@ -193,9 +193,11 @@
       s += `<rect x="${f1(gx + 1)}" y="${m.t - 22}" width="${f1(gw - 2)}" height="${ih + 22}" rx="6" fill="var(--surface-2)"/>`;
       groupLabels += `<text class="tick" x="${f1(atEnd ? gx + gw - 4 : gx + 6)}" y="${m.t - 12}" text-anchor="${atEnd ? "end" : "start"}">${escA(g.label)}</text>`;
     });
+    // aktuelle Woche: --accent-soft (oder o.currentBg); ausgewählte andere Woche: neutral mit feinem Rand
     o.bands.forEach((b, i) => {
-      const bg = b.current ? "var(--accent-soft)" : b.selected ? "var(--surface-2)" : null;
-      if (bg) s += `<rect x="${f1(bx(i) + 1)}" y="${m.t - (hasGroup ? 8 : 12)}" width="${f1(band - 2)}" height="${ih + (hasGroup ? 8 : 12)}" rx="6" fill="${bg}"/>`;
+      const bg = b.current ? o.currentBg || "var(--accent-soft)" : b.selected ? "var(--surface-2)" : null;
+      const off = hasGroup ? 8 : 12, x = f1(bx(i) + (b.selected ? 1.5 : 1)), w = f1(band - (b.selected ? 3 : 2));
+      if (bg) s += `<rect${b.selected ? ' class="band-sel"' : ""} x="${x}" y="${m.t - off + (b.selected ? 0.5 : 0)}" width="${w}" height="${ih + off - (b.selected ? 1 : 0)}" rx="6" fill="${bg}"/>`;
     });
     s += groupLabels;
     s += gridY(m, W, ax.ticks, y, ax.fmt) + refLines(o.refs, m, W, y);
