@@ -179,6 +179,22 @@ test("Belastung: Einheiten ohne Garmin-Wert werden gezählt, nicht geschätzt", 
   assert.equal(sum({ acts, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") }).load, null);
 });
 
+test("Belastung: Zuordnung über gleichen Tag + Sportart, wenn die Startzeit nicht passt", () => {
+  // Strava-Lauf 18:55 (von Hand eingetragen), Garmin-Laufband 18:37 → dieselbe Einheit
+  const acts = [act("2026-11-03T18:55", "run", "Laufband", 25), act("2026-11-03T08:45", "strength", "Push", 70, "WeightTraining")];
+  const g = gymSess([["2026-11-03T08:45", "Push", 70]]);
+  const garminLoads = [gl("2026-11-03T18:37", "treadmill_running", 70.7), gl("2026-11-03T08:46", "strength_training", 8)];
+  const s = sum({ acts, gymSessions: g, garminLoads, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(s.load.withoutLoad, 0);
+  assert.equal(s.load.sum, 79);
+  // andere Sportart am gleichen Tag (Garmin-Lauf, Strava-Rad) wird nicht zugeordnet
+  const bike = sum({ acts: [act("2026-11-03T18:55", "bike", "Zwift", 60, "VirtualRide")], garminLoads: [gl("2026-11-03T07:00", "running", 50)], today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(bike.load.withoutLoad, 1); assert.equal(bike.load.sum, 50);
+  // jede Einheit nur einmal: zwei Garmin-Läufe, ein Strava-Lauf → der zweite bleibt Garmin-only (zählt trotzdem zur Summe)
+  const two = W.pairLoads([gl("2026-11-03T07:00", "running", 40), gl("2026-11-03T19:00", "running", 30)], [act("2026-11-03T12:00", "run", "Lauf", 30)], []);
+  assert.equal(two.sessions.filter((x) => x.loaded).length, 1); assert.equal(two.loads.length, 2);
+});
+
 test("Belastung: akut/chronisch mit Garmins Status vom letzten Tag der Woche", () => {
   const garminDays = [day("2026-11-05", { acuteLoad: 280, chronicLoad: 360, loadRatio: 0.78, loadStatus: "LOW" }), day("2026-11-07", { acuteLoad: 299, chronicLoad: 373, loadRatio: 0.8, loadStatus: "OPTIMAL" }), day("2026-11-09", { acuteLoad: 500 })];
   const s = sum({ garminDays, garminLoads: [gl("2026-11-03T10:00", "running", 50)], today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
