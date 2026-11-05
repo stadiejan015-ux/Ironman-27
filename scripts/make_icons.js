@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Erzeugt die App-Icons aus einer SVG (Stil der Seite: dunkler Grund, „27“, Streifen in den Sportfarben).
+ * Erzeugt die App-Icons aus einer SVG (rot-weiß: roter Grund, weißer Punkt, große „27“, Schriftzug „IRONMAN“).
  *   node scripts/make_icons.js
  * Schreibt icons/icon.svg sowie icons/apple-touch-icon.png (180), icon-192.png, icon-512.png und
  * icon-maskable-512.png (Motiv im sicheren Bereich, damit Android es rund/eckig zuschneiden kann).
@@ -11,18 +11,16 @@ const fs = require("fs");
 const path = require("path");
 
 const OUT = path.join(__dirname, "..", "icons");
-const C = { bg: "#111110", text: "#f4f3f0", muted: "#8f8d87", swim: "#3987e5", bike: "#d95926", run: "#199e70" };
+const C = { bg: "#d71e28", text: "#ffffff" };   // Rot-Weiß
 
 // scale < 1 rückt das Motiv in die Mitte (maskable: sicherer Bereich = Kreis mit 80 % Durchmesser)
 function svg(scale = 1) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" fill="${C.bg}"/>
-  <g transform="translate(256 256) scale(${scale}) translate(-256 -256)" font-family="Inter, 'Helvetica Neue', Arial, sans-serif">
-    <text x="256" y="150" text-anchor="middle" font-size="50" font-weight="700" letter-spacing="9" fill="${C.muted}">IRONMAN</text>
-    <text x="256" y="352" text-anchor="middle" font-size="236" font-weight="800" letter-spacing="-10" fill="${C.text}">27</text>
-    <rect x="128" y="384" width="72" height="22" rx="11" fill="${C.swim}"/>
-    <rect x="220" y="384" width="72" height="22" rx="11" fill="${C.bike}"/>
-    <rect x="312" y="384" width="72" height="22" rx="11" fill="${C.run}"/>
+  <g transform="translate(256 256) scale(${scale}) translate(-256 -256)" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" fill="${C.text}">
+    <circle cx="256" cy="108" r="34"/>
+    <text x="256" y="378" text-anchor="middle" font-size="268" font-weight="800" letter-spacing="-12">27</text>
+    <text x="256" y="436" text-anchor="middle" font-size="38" font-weight="700" letter-spacing="10" opacity=".9">IRONMAN</text>
   </g>
 </svg>`;
 }
