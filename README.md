@@ -107,14 +107,16 @@ Titel der Krafteinheit in Garmin Connect: `Push 6x100`, `Pull · Latzug 8x90`, `
 `Push 6x100 @Bali` (mit Gym-Ort) oder nur `Push` (Einheit ohne Eintrag). „kg“ ist optional,
 Komma-Dezimalen (82,5) sind erlaubt, auch die Beschreibung wird geprüft. `scripts/update_garmin.py`
 speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym.js) erkennt Split,
-Übung, Wiederholungen, Gewicht, Sätze und Ort und berechnet das 1RM nach Epley. PRs bei Latzug und
-Beinpresse zählen nur am selben Ort. Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
+Übung, Wiederholungen, Gewicht, Sätze und Ort und berechnet das 1RM nach Epley. Alle Hauptübungen werden
+ortsübergreifend verglichen (PRs, bestes 1RM, Ziele; im Diagramm eine Linie, Punkte nach Ort gefärbt). Wer einzelne
+Übungen nur am selben Ort vergleichen will (z. B. Maschinen), trägt sie in `gym.perPlace` ein – dann zählen dafür nur
+Einträge vom aktuellen Ort (letzte Einheit mit @Ort). Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
 **Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Latzug und
 Beinpresse 5–8 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
-1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Latzug und Beinpresse nur mit Einträgen vom aktuellen
-Ort (letzte Einheit mit @Ort). Badge „Ziel erreicht“ und Hinweis bei Stagnation (3 Einträge ohne neues bestes 1RM).
+1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Badge „Ziel erreicht“ und Hinweis bei Stagnation
+(3 Einträge ohne neues bestes 1RM).
 **1RM-Ziel** je Hauptübung (`gym.goals`, z. B. Bankdrücken 100, Latzug 140, Beinpresse 300 kg): Fortschrittsbalken unter
-dem 1RM (bei Maschinen bestes 1RM am aktuellen Ort) und gestrichelte Ziellinie im Diagramm.
+dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm.
 Tests: `node tests/gym.test.js`.
 
 ## Zuletzt gemacht
@@ -156,7 +158,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `race` | Name, Datum und Ort deines Rennens (aktuell 27.06.2027 laut Presseberichten – offizielle Bestätigung prüfen) |
 | `commitDate` | Start der Vorbereitung (Anmeldung, ein Jahr vor dem Rennen) |
 | `goals` | Zielzeiten für Schwimmen, T1, Rad, T2, Laufen |
-| `gym` | Hauptübung je Split, Aliase, Übungen mit Orts-Vergleich |
+| `gym` | Hauptübung je Split, Aliase, Progression, 1RM-Ziele, `perPlace` (leer = alles ortsübergreifend) |
 | `flex` | Flex-Zeitraum, Wochen-Minimum, Split-Rotation und -Erkennung |
 | `sinceLast` | Ampel-Schwellen (Tage) und Mindestdauern für „Zuletzt gemacht“ |
 | `weekly` | Schwellen der Wochen-Hinweise (HRV-Abfall, Schlaf, Belastungsfaktor), Anzahl Hinweise und Wochen |
