@@ -380,9 +380,9 @@
   }
 
   /* ---------- Disziplinen ---------- */
-  const runPaceZ2 = [1000 / D.zones.run[1][1], 1000 / D.zones.run[1][0]]; // s/km (schnell, langsam)
   function disciplines() {
     const swims = ofCat(acts, "swim"), bikes = ofCat(acts, "bike"), runs = ofCat(acts, "run");
+    const z2b = z2PaceRange();   // grobe Zone-2-Pace [schnell, langsam] aus der Zone-2-Auswertung, sonst null
     setSum("disziplinen", `Schwimmen ${swims.length}× · Rad ${bikes.length}× · Laufen ${runs.length}×`);
     const weeksN = weeks.length;
     const stat = (l, v) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`;
@@ -428,9 +428,9 @@
           ${stat("Einheiten", runs.length)}${stat("Distanz", nf(runKm) + " km")}${stat("Zeit", hm(runSec) + " h")}
           ${stat("Ø Pace", mmss(runSec / runKm) + "/km")}${stat("Längster", nf(longestRun, 1) + " km")}${stat("Höhenmeter", nf(runElev) + " m")}
         </div>
-        <div class="mini-title">Pace pro Lauf (≥ 4 km) · Band = Strava-Zone 2</div>
+        <div class="mini-title">Pace pro Lauf (≥ 4 km)${z2b ? " · Band = grobe Zone-2-Pace" : ""}</div>
         <div class="chart" id="runChart"></div>
-        <p class="muted" style="font-size:12px;margin:6px 0 0">Zone 2 (Ausdauer): ${mmss(runPaceZ2[0])}–${mmss(runPaceZ2[1])} /km.</p>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm aus deinen HF-Zonen – nach Puls, nicht nach Tempo${z2b ? `; grobe Pace laut Zone-2-Auswertung ca. ${mmss(z2b[0])}–${mmss(z2b[1])} /km (Band im Diagramm)` : ""}.</p>
       </div>`;
 
     const sc = $("#swimChart");
@@ -446,7 +446,7 @@
     });
 
     const rc = $("#runChart");
-    rc.innerHTML = paceChart(runPts, { fmt: mmss, band: runPaceZ2, color: "var(--run)", unitLabel: "Lauf-Pace pro Lauf" });
+    rc.innerHTML = paceChart(runPts, { fmt: mmss, band: z2b, color: "var(--run)", unitLabel: "Lauf-Pace pro Lauf" });
     attachPointTips(rc, runPts, "var(--run)", (p) => `<div class="t-title">${esc(p.a.name)}</div>${tRow("var(--run)", fmtDate(p.d), mmss(p.v) + " /km")}<div class="muted">${nf(p.a.km, 1)} km · ${p.a.elev} hm</div>`);
   }
 
@@ -598,7 +598,7 @@
     const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     setSum("zone2", "wird geladen …");
     Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
-      .then(([db, src]) => { Z2DATA = db; HRSRC = src; insights(); renderZone2(); if (FLEX.active) today(); })
+      .then(([db, src]) => { Z2DATA = db; HRSRC = src; insights(); disciplines(); renderZone2(); if (FLEX.active) today(); })
       .catch(() => {
         $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
         setSum("zone2", "nicht verfügbar");
@@ -1146,12 +1146,17 @@
   }
   function saveEquipment(list) { try { localStorage.setItem(EQ_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ } }
   // Grobe Pace aus den letzten gewerteten Zone-2-Läufen (data/z2-metrics.json), falls geladen
-  function paceHint() {
+  // Grobe Zone-2-Pace aus den letzten gewerteten Läufen (Median −10 / +20 s), null solange keine Daten
+  function z2PaceRange() {
     if (!Z2DATA) return null;
     const vals = Z2DATA.activities.filter((r) => r.pace).slice(-5).map((r) => r.pace.sec).sort((a, b) => a - b);
     if (!vals.length) return null;
     const med = vals[Math.floor(vals.length / 2)];
-    return `ca. ${mmss(med - 10)}–${mmss(med + 20)} /km`;
+    return [med - 10, med + 20];
+  }
+  function paceHint() {
+    const r = z2PaceRange();
+    return r ? `ca. ${mmss(r[0])}–${mmss(r[1])} /km` : null;
   }
 
   const standLine = `<p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>`;
