@@ -70,14 +70,13 @@
   });
 
   /* ---------- Statusleisten-Farbe beim manuellen Hell/Dunkel-Wechsel ---------- */
-  const COLORS = { light: "#f4f3f0", dark: "#111110" };
+  // Farbe kommt aus --bg in css/style.css (keine Farben im JS); ohne manuelle Wahl gelten die Werte aus index.html
   const metas = [...document.querySelectorAll('meta[name="theme-color"]')];
+  const original = metas.map((m) => m.getAttribute("content"));
   const applyTheme = () => {
     const t = document.documentElement.dataset.theme;
-    metas.forEach((m) => {
-      if (t === "light" || t === "dark") m.setAttribute("content", COLORS[t]);
-      else m.setAttribute("content", /dark/.test(m.getAttribute("media") || "") ? COLORS.dark : COLORS.light);
-    });
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+    metas.forEach((m, i) => m.setAttribute("content", (t === "light" || t === "dark") && bg ? bg : original[i]));
   };
   new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   applyTheme();
