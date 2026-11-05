@@ -11,6 +11,7 @@
  *   currentPlace(sessions)           → Ort der letzten Gym-Einheit mit @Ort
  *   liftPlan(sessions, exercise, cfg) → nächstes Ziel, „Ziel erreicht“, Stagnation (Maschinen: nur aktueller Ort)
  *   targetChecks(sessions, exercise, cfg) → je Eintrag: Ziel aus dem Eintrag davor und ob es erreicht wurde
+ *   goalProgress(sessions, exercise, cfg) → Fortschritt zum 1RM-Ziel (cfg.goals), null ohne Ziel
  * Formate im Titel (oder in der Beschreibung): „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“,
  * „Push 6x100 @Bali“, „Push“ (Einheit ohne Eintrag). „kg“ optional, Komma-Dezimalen erlaubt.
  * Läuft im Browser (window.Gym) und in Node (require("./js/gym.js")).
@@ -203,5 +204,19 @@
     };
   }
 
-  return { DEFAULTS, parseGymTitle, epley, gymSessions, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf };
+  /* ---------- 1RM-Ziel ---------- */
+  // Aktueller Wert = bestes geschätztes 1RM; bei Maschinen (perPlace) nur am aktuellen Ort
+  function goalProgress(sessions, exercise, cfg) {
+    const goal = cfg && cfg.goals ? Number(cfg.goals[exercise]) : NaN;
+    if (!(goal > 0)) return null;
+    const c = conf(cfg), perPlace = c.perPlace.includes(exercise);
+    const hist = exerciseHistory(sessions, exercise, cfg);
+    const place = perPlace ? (currentPlace(sessions) || (hist.length ? hist[hist.length - 1].place : null)) : null;
+    const scope = perPlace ? hist.filter((e) => e.place === place) : hist;
+    const best = scope.reduce((m, e) => (!m || e.e1rm > m.e1rm ? e : m), null);
+    const current = best ? best.e1rm : null;
+    return { goal, current, best, place, perPlace, pct: current == null ? 0 : Math.round((current / goal) * 100), reached: current != null && current >= goal };
+  }
+
+  return { DEFAULTS, parseGymTitle, epley, gymSessions, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf, goalProgress };
 });

@@ -113,6 +113,8 @@ Beinpresse zählen nur am selben Ort. Zuordnung Split → Hauptübung und Aliase
 Beinpresse 5–8 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
 1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Latzug und Beinpresse nur mit Einträgen vom aktuellen
 Ort (letzte Einheit mit @Ort). Badge „Ziel erreicht“ und Hinweis bei Stagnation (3 Einträge ohne neues bestes 1RM).
+**1RM-Ziel** je Hauptübung (`gym.goals`, z. B. Bankdrücken 100, Latzug 140, Beinpresse 300 kg): Fortschrittsbalken unter
+dem 1RM (bei Maschinen bestes 1RM am aktuellen Ort) und gestrichelte Ziellinie im Diagramm.
 Tests: `node tests/gym.test.js`.
 
 ## Zuletzt gemacht

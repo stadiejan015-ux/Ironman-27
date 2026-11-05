@@ -789,7 +789,8 @@
     const lifts = Object.entries(GCFG.mainExercise || GYM.DEFAULTS.mainExercise);
     $("#gymLifts").innerHTML = lifts.map(([split, ex]) => {
       const h = GYM.exerciseHistory(GYM_SESS, ex, GCFG);
-      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span></h3><p class="muted" style="margin:0;font-size:14px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p></div>`;
+      const gp = GYM.goalProgress(GYM_SESS, ex, GCFG);
+      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span></h3><p class="muted" style="margin:0;font-size:14px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg (geschätztes 1RM)</p>` : ""}</div>`;
       const last = h[h.length - 1];
       const scope = (GCFG.perPlace || []).includes(ex) ? h.filter((e) => e.place === last.place) : h;
       const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
@@ -803,12 +804,13 @@
           <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
           <div class="stat"><small>1RM geschätzt${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>Epley</small></div>
         </div>
+        ${goalBar(gp)}
         ${goalBox(plan)}
         <div class="chart" data-lift="${esc(ex)}"></div>
         <div class="legend" style="margin-top:4px">${[...new Set(h.map((e) => e.place))].map((p) => `<span><i class="swatch" style="background:${placeColor(p)};border-radius:50%"></i>${esc(p)}</span>`).join("")}${machine ? `<span class="muted">PR nur am selben Ort</span>` : ""}</div>
       </div>`;
     }).join("");
-    $("#gymLifts").querySelectorAll("[data-lift]").forEach((box) => liftChart(box, GYM.exerciseHistory(GYM_SESS, box.dataset.lift, GCFG), placeColor));
+    $("#gymLifts").querySelectorAll("[data-lift]").forEach((box) => { const gp = GYM.goalProgress(GYM_SESS, box.dataset.lift, GCFG); liftChart(box, GYM.exerciseHistory(GYM_SESS, box.dataset.lift, GCFG), placeColor, gp ? gp.goal : null); });
 
     // Split-Verteilung der letzten 4 Wochen
     const c4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), todayIso);
@@ -820,6 +822,18 @@
       <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}${c4.ohne ? ` „ohne Split“: Titel ohne Push/Pull/Legs, z. B. „Gym Bali“.` : ""} Quelle: Garmin-Titel, sonst Strava.</p>`;
   }
   const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  /* ---------- 1RM-Ziel (Gym.goalProgress) ---------- */
+  function goalBar(gp) {
+    if (!gp) return "";
+    const where = gp.perPlace && gp.place ? ` in ${esc(gp.place)}` : "";
+    if (gp.current == null) return `<div class="goal-bar"><div class="goal-label"><span>Ziel ${nf(gp.goal)} kg · noch kein Eintrag${gp.place ? ` in ${esc(gp.place)}` : ""}</span></div><div class="ready-track goal-track"></div></div>`;
+    const label = `Ziel ${nf(gp.goal)} kg · aktuell ${nf(Math.round(gp.current))} kg${where} (${gp.pct} %)`;
+    return `<div class="goal-bar">
+      <div class="goal-label"><span>${label}</span>${gp.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</div>
+      <div class="ready-track goal-track" role="progressbar" aria-label="1RM-Ziel" aria-valuemin="0" aria-valuemax="${gp.goal}" aria-valuenow="${Math.round(gp.current)}" aria-valuetext="${label}"><div class="ready-fill" style="width:${Math.min(100, gp.pct)}%;background:${gp.reached ? "var(--good)" : "var(--strength)"}"></div></div>
+    </div>`;
+  }
 
   /* ---------- Nächstes Ziel (doppelte Progression, Gym.liftPlan) ---------- */
   const kgTxt = (w) => nf(w, w % 1 ? 1 : 0);
@@ -845,17 +859,19 @@
     return `<div class="lift-goal">${head}${body}</div>${p.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}`;
   }
 
-  function liftChart(box, hist, placeColor) {
+  function liftChart(box, hist, placeColor, goal) {
     const W = Math.max(280, Math.round(box.clientWidth || 340)), H = 150, m = { t: 10, r: 8, b: 22, l: 40 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const pts = hist.map((e) => ({ d: parse(e.date), v: e.e1rm, e }));
-    let lo = Math.min(...pts.map((p) => p.v)), hi = Math.max(...pts.map((p) => p.v));
+    const scaleVals = pts.map((p) => p.v).concat(goal ? [goal] : []);   // Ziel immer im sichtbaren Bereich
+    let lo = Math.min(...scaleVals), hi = Math.max(...scaleVals);
     const pad = (hi - lo) * 0.2 || Math.max(2, hi * 0.03); lo -= pad; hi += pad;
     let t0 = pts[0].d.getTime(), t1 = pts[pts.length - 1].d.getTime();
     if (t1 - t0 < 14 * DAY) { t0 -= 7 * DAY; t1 += 7 * DAY; }
     const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0)) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Geschätztes 1RM über die Zeit">`;
     for (let i = 0; i <= 2; i++) { const v = lo + ((hi - lo) / 2) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`; }
+    if (goal) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(goal)}" y2="${y(goal)}" stroke="var(--text-3)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W - m.r}" y="${y(goal) - 4}" text-anchor="end">Ziel ${nf(goal)}</text>`;
     const path = (ps) => ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("");
     if (pts.length && pts.every((p) => p.e.compareKey === "alle")) {
       // Ortsübergreifend verglichen (z. B. Bankdrücken): eine durchgehende Linie in neutraler Farbe
