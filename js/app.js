@@ -1251,7 +1251,7 @@
   }
 
   // Trainingsbelastung (Garmin) – nur echte Werte, Einheiten ohne Wert werden genannt statt geschätzt
-  const LOAD_ORDER = ["strength", "other", "endurance"];   // von unten nach oben (Kraft-Lila und Ausdauer-Blau nie nebeneinander)
+  const LOAD_ORDER = ["strength", "other", "endurance"];   // von unten nach oben (Kraft-Violett und Ausdauer-Blau nie nebeneinander)
   const LOAD_COLORS = { strength: "var(--strength)", endurance: "var(--cat1)", other: "var(--other)" };
   const LOAD_LABEL = { strength: "Kraft", endurance: "Ausdauer", other: "Sonstiges" };
   const LOAD_STATUS = { LOW: "niedrig", OPTIMAL: "optimal", HIGH: "hoch", VERY_HIGH: "sehr hoch" };
@@ -1267,7 +1267,7 @@
     };
     mount(box, (W) => {
       box.innerHTML = C.barChart({
-        width: W, height: C.SMALL, aria, maxBar: 26, y: { ...ax, fmt: tickFmt(ax) },
+        width: W, height: C.SMALL, aria, maxBar: 26, currentBg: "var(--surface-2)", y: { ...ax, fmt: tickFmt(ax) },   // aktuelle Woche neutral
         bands: weeks.map((w, i) => ({
           label: dmS(parse(w.monday)), current: i === cur, selected: i === sel && i !== cur, topLabel: i === sel && w.n ? nf(w.total) : null,
           stacks: LOAD_ORDER.map((k) => ({ v: w[k], color: LOAD_COLORS[k] })),
