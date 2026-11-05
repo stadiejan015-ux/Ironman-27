@@ -305,6 +305,13 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .wk-rec b { font-size: 15px; }
 .wk-trend { font-style: normal; color: var(--text-2); font-weight: 600; }
 .wk-hints { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.wk-load-line { margin: 0 0 6px; font-size: 14px; }
+.wk-note { font-size: 12px; margin: 4px 0 0; }
+.wk-legend { font-size: 12px; gap: 12px; margin: 2px 0 6px; }
+.load-chart { display: block; max-width: 100%; height: auto; }
+.load-chart text.load-val { fill: var(--text); font-weight: 600; font-size: 11px; }
+.load-chart text.load-sel { fill: var(--text); font-weight: 600; }
+.load-chart .hit { cursor: pointer; }
 @media (max-width: 600px) {
   .wk-rec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wk-dl { grid-template-columns: 1fr; gap: 2px; }

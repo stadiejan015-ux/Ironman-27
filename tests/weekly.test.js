@@ -139,4 +139,65 @@ test("Hinweis Flex: Wochen bis zum Ende, nur in Flex-Wochen; höchstens 3 Hinwei
   assert.deepEqual(hintKeys(four), ["recovery", "legs", "swim"]);
 });
 
+/* ---------- Teil 2: Trainingsbelastung ---------- */
+const gl = (start, type, load, id = start) => ({ id, start, type, sec: 3600, load });
+// 4 Wochen vor der Zielwoche (02.11.) je 300 Belastung (zum Vergleich)
+const base4 = [5, 12, 19, 26].map((x) => gl(`2026-10-${String(x).padStart(2, "0")}T10:00`, "running", 300));
+
+test("Belastung: Summe Mo–So, Vergleich mit der Vorwoche, Aufteilung nach Ausdauer/Kraft/Sonstiges", () => {
+  const acts = [act("2026-11-02T18:00", "run", "Lauf", 45), act("2026-11-04T10:00", "other", "Klettern", 120, "RockClimbing")];
+  const g = gymSess([["2026-11-03T09:00", "Push", 60]]);
+  const garminLoads = [
+    gl("2026-11-02T18:01", "running", 80), gl("2026-11-03T09:02", "strength_training", 30),
+    gl("2026-11-04T10:05", "strength_training", 40),           // Garmin: Kraft, Strava: Klettern → Sonstiges
+    gl("2026-11-08T23:30", "cycling", 262),                     // Sonntag spät gehört noch dazu
+    gl("2026-11-09T07:00", "cycling", 999),                     // nächste Woche
+    gl("2026-10-28T10:00", "running", 356),                     // Vorwoche
+  ];
+  const s = sum({ acts, gymSessions: g, garminLoads, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(s.load.sum, 412);
+  assert.equal(s.load.prevSum, 356);
+  assert.equal(s.load.diffPct, 16);
+  assert.deepEqual(s.load.byCat, { strength: 30, endurance: 342, other: 40 });
+  assert.equal(s.load.n, 4);
+  // Wochenreihe fürs Diagramm: 8 Wochen, neueste zuerst; Zielwoche = Index 1
+  assert.equal(s.load.weeks.length, 8); assert.equal(s.load.index, 1);
+  assert.equal(s.load.weeks[1].monday, "2026-11-02"); assert.equal(Math.round(s.load.weeks[1].total), 412);
+  assert.equal(s.load.weeks[0].total, 999);
+});
+
+test("Belastung: Einheiten ohne Garmin-Wert werden gezählt, nicht geschätzt", () => {
+  const acts = [act("2026-11-02T18:00", "run", "Lauf", 45), act("2026-11-05T18:00", "bike", "Zwift", 60, "VirtualRide"), act("2026-11-06T07:00", "swim", "Pool", 40, "Swim")];
+  const garminLoads = [gl("2026-11-02T18:00", "running", 80), gl("2026-11-06T07:01", "lap_swimming", null)];
+  const s = sum({ acts, garminLoads, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(s.load.sum, 80);            // nur der echte Wert
+  assert.equal(s.load.withoutLoad, 2);     // Zwift ohne Garmin-Eintrag, Schwimmen ohne Wert
+  // Woche ganz ohne Werte: keine Summe, aber Anzahl ohne Wert
+  const none = sum({ acts, garminLoads: [gl("2026-09-01T10:00", "running", 50)], today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(none.load.sum, null); assert.equal(none.load.withoutLoad, 3); assert.equal(none.load.diffPct, null);
+  // ganz ohne Garmin-Belastungsdaten gibt es keinen Belastungsblock
+  assert.equal(sum({ acts, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") }).load, null);
+});
+
+test("Belastung: akut/chronisch mit Garmins Status vom letzten Tag der Woche", () => {
+  const garminDays = [day("2026-11-05", { acuteLoad: 280, chronicLoad: 360, loadRatio: 0.78, loadStatus: "LOW" }), day("2026-11-07", { acuteLoad: 299, chronicLoad: 373, loadRatio: 0.8, loadStatus: "OPTIMAL" }), day("2026-11-09", { acuteLoad: 500 })];
+  const s = sum({ garminDays, garminLoads: [gl("2026-11-03T10:00", "running", 50)], today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.deepEqual([s.load.acute, s.load.chronic, s.load.ratio, s.load.status, s.load.statusDate], [299, 373, 0.8, "OPTIMAL", "2026-11-07"]);
+});
+
+test("Hinweis Belastung: über dem 1,5-Fachen des 4-Wochen-Schnitts, nur mit Daten in allen 4 Wochen", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00");
+  const legs = gymSess([["2026-11-03T09:00", "Legs", 60]]), swim = [act("2026-11-03T07:00", "swim", "Pool", 40, "Swim")];
+  const run = (load, extra = base4, cfg) => W.weeklySummary({ acts: swim, gymSessions: legs, today, weekStart, garminLoads: extra.concat([gl("2026-11-04T10:00", "running", load)]), cfg: { flex: noFlex, weekly: cfg } });
+  assert.ok(hintKeys(run(451)).includes("load"));     // > 450 = 1,5 × 300
+  assert.ok(!hintKeys(run(450)).includes("load"));
+  assert.ok(!hintKeys(run(451, base4.slice(1))).includes("load"));   // eine der 4 Wochen ohne Werte → keine Aussage
+  assert.ok(!hintKeys(run(451, base4, { loadFactor: 2 })).includes("load"));
+  assert.equal(run(451).hints.find((h) => h.key === "load").text, "Belastung deutlich gestiegen. Umfang langsam aufbauen.");
+  // Reihenfolge: Erholung vor Belastung vor Legs
+  const base = Array.from({ length: 28 }, (_, i) => { const x = new Date(2026, 9, 5 + i); return day(`2026-10-${String(x.getDate()).padStart(2, "0")}`, { hrv: 80, sleepH: 8 }); });
+  const s = W.weeklySummary({ today, weekStart, cfg: { flex: noFlex }, garminDays: base.concat([day("2026-11-03", { hrv: 60, sleepH: 6 })]), garminLoads: base4.concat([gl("2026-11-04T10:00", "running", 600)]) });
+  assert.deepEqual(hintKeys(s), ["recovery", "load", "legs"]);
+});
+
 console.log(`\n${n} Tests bestanden.`);
