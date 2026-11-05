@@ -38,17 +38,37 @@
 
   /* ---------- Trainingsbelastung (Garmin) ---------- */
   const LOAD_CATS = ["strength", "endurance", "other"];   // Stapelreihenfolge von unten
-  const garminCat = (type) => (/swim|cycl|bik|ride|run|row/.test(type || "") ? "endurance" : /strength|fitness_equipment|indoor_cardio/.test(type || "") ? "strength" : "other");
-  const stravaCat = (cat) => (cat === "strength" ? "strength" : ["swim", "bike", "run"].includes(cat) ? "endurance" : "other");
+  // Garmin-Typ → Sportart wie in Strava (swim | bike | run | row | strength | other) → Stapel-Kategorie
+  const garminSport = (type) => { const t = type || ""; return /swim/.test(t) ? "swim" : /cycl|bik|ride/.test(t) ? "bike" : /run/.test(t) ? "run" : /row/.test(t) ? "row" : /strength|fitness_equipment|indoor_cardio/.test(t) ? "strength" : "other"; };
+  const loadCat = (sport) => (sport === "strength" ? "strength" : ["swim", "bike", "run", "row"].includes(sport) ? "endurance" : "other");
 
-  // Belastung je Woche. Kategorie: Sportart der gleichen Einheit in Strava/Gym (±10 min), sonst Garmin-Typ
-  // (Garmin speichert z. B. Klettern als Krafttraining). Einheiten ohne Garmin-Wert zählen nicht mit.
+  // Garmin-Einträge den Strava-/Gym-Einheiten zuordnen – jede Einheit höchstens einmal:
+  //   1) Startzeit höchstens 10 min auseinander (nächster Treffer)
+  //   2) sonst gleicher Tag und gleiche Sportart (z. B. in Strava mit anderer Uhrzeit eingetragen)
+  function pairLoads(garminLoads, acts, gymSessions) {
+    const S = Flex.mergeActs(acts, gymSessions).map((a) => ({ t: toMin(a.date), day: ymd(a.date), sport: a.cat, used: false }));
+    const L = (garminLoads || []).filter((l) => l.start).map((l) => ({ t: toMin(l.start), day: l.start.slice(0, 10), load: l.load, gsport: garminSport(l.type), s: null }))
+      .sort((a, b) => a.t - b.t);
+    for (const l of L) {
+      let best = null;
+      for (const x of S) if (!x.used && Math.abs(x.t - l.t) <= MATCH_MIN && (!best || Math.abs(x.t - l.t) < Math.abs(best.t - l.t))) best = x;
+      if (best) { best.used = true; l.s = best; }
+    }
+    for (const l of L) {
+      if (l.s) continue;
+      const x = S.find((y) => !y.used && y.day === l.day && y.sport === l.gsport);
+      if (x) { x.used = true; l.s = x; }
+    }
+    return {
+      // Kategorie: Sportart der zugeordneten Einheit (Garmin speichert z. B. Klettern als Kraft), sonst Garmin-Typ
+      loads: L.map((l) => ({ day: l.day, load: l.load, cat: loadCat(l.s ? l.s.sport : l.gsport) })),
+      sessions: S.map((x) => ({ day: x.day, loaded: L.some((l) => l.s === x && l.load != null) })),
+    };
+  }
+
+  // Belastung je Woche – nur echte Garmin-Werte, Einheiten ohne Wert zählen nicht mit
   function loadWeeks({ garminLoads = [], acts = [], gymSessions = [], today, weeks = 8 }) {
-    const merged = Flex.mergeActs(acts, gymSessions).map((a) => ({ t: toMin(a.date), cat: stravaCat(a.cat) }));
-    const loads = garminLoads.filter((l) => l.load != null && l.start).map((l) => {
-      const t = toMin(l.start), m = merged.find((x) => Math.abs(x.t - t) <= MATCH_MIN);
-      return { day: l.start.slice(0, 10), load: l.load, cat: m ? m.cat : garminCat(l.type) };
-    });
+    const loads = pairLoads(garminLoads, acts, gymSessions).loads.filter((l) => l.load != null);
     const thisMon = mondayOf(today);
     return Array.from({ length: weeks }, (_, i) => {
       const mon = addDays(thisMon, -7 * i), monIso = ymd(mon), sunIso = ymd(addDays(mon, 6));
@@ -140,8 +160,7 @@
     if (garminLoads && garminLoads.length) {
       const series = loadWeeks({ garminLoads, acts, gymSessions, today, weeks: Math.max(back + 6, c.weeksBack) });
       const cur = series[back], prev = series[back + 1], prev4 = series.slice(back + 1, back + 5);
-      const loadedT = garminLoads.filter((l) => l.load != null && l.start).map((l) => toMin(l.start));
-      const withoutLoad = items.filter((x) => !loadedT.some((t) => Math.abs(t - toMin(x.start)) <= MATCH_MIN)).length;
+      const withoutLoad = pairLoads(garminLoads, acts, gymSessions).sessions.filter((x) => x.day >= monIso && x.day <= sunIso && !x.loaded).length;
       const avg4 = prev4.length === 4 && prev4.every((w) => w.n > 0) ? avg(prev4.map((w) => w.total)) : null;
       const day = garminDays.filter((g) => g.date >= monIso && g.date <= sunIso && g.acuteLoad != null)
         .sort((a, b) => a.date.localeCompare(b.date)).pop() || null;
@@ -189,5 +208,5 @@
     };
   }
 
-  return { DEFAULTS, LOAD_CATS, defaultWeekStart, weeklySummary, loadWeeks, garminAvg };
+  return { DEFAULTS, LOAD_CATS, defaultWeekStart, weeklySummary, loadWeeks, pairLoads, garminAvg };
 });
