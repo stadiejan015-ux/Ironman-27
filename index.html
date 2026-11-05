@@ -2,8 +2,18 @@
 <html lang="de">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ironman 27 Training</title>
+  <!-- Web-App (Home-Bildschirm) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Ironman 27">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f4f3f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
   <meta name="robots" content="noindex, nofollow, noarchive">
   <meta name="description" content="Überblick über mein Ironman-Training: Saisonplan, Umfänge, Disziplinen und Aktivitäten.">
   <meta http-equiv="Cache-Control" content="no-cache">
@@ -30,11 +40,13 @@
         <a href="#rennen">Rennen</a>
         <a href="#aktivitaeten">Aktivitäten</a>
       </nav>
+      <button class="icon-btn" id="refreshBtn" type="button" aria-label="Aktualisieren" title="Aktualisieren"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="display:block"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.6 1.6v3.1H9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="icon-btn" id="themeToggle" type="button" aria-label="Farbschema wechseln" title="Hell / Dunkel"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="display:block"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
     </div>
   </header>
 
   <main class="wrap">
+    <div class="offline-badge" id="offlineBadge" role="status" hidden></div>
     <div class="fresh-banner" id="freshBanner" role="status" hidden></div>
     <div class="flex-banner" id="flexBanner" hidden></div>
 
@@ -238,7 +250,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/app.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten

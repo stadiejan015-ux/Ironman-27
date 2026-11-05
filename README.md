@@ -16,6 +16,18 @@ Eine statische Website, die einen strukturierten Überblick über mein Ironman-T
 Kein Build-Schritt nötig: `index.html` im Browser öffnen. Für GitHub Pages:
 *Settings → Pages → Deploy from branch* und den Branch/Root-Ordner auswählen.
 
+## Als App installieren (iPad / iPhone)
+
+1. Die Seite in **Safari** öffnen: https://stadiejan015-ux.github.io/Ironman-27/
+2. Auf das **Teilen-Symbol** tippen (Quadrat mit Pfeil nach oben).
+3. **„Zum Home-Bildschirm“** wählen und mit **„Hinzufügen“** bestätigen.
+
+Die App „Ironman 27“ startet dann im Vollbild ohne Browser-Leiste. Aktualisieren: Knopf ↻ oben rechts; kommt die
+App nach mehr als 15 Minuten wieder in den Vordergrund, lädt sie die Daten selbst neu. Offline zeigt sie den
+zuletzt geladenen Stand mit einem Hinweis „Offline · Daten: …“.
+Technik: `manifest.webmanifest`, Service Worker `sw.js` (immer zuerst das Netz, offline die gespeicherte
+Kopie), `js/pwa.js`; Icons erzeugt `node scripts/make_icons.js` aus einer SVG (braucht Playwright).
+
 ## Automatische Aktualisierung
 
 Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden mittags und abends

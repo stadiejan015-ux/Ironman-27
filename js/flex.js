@@ -156,7 +156,7 @@
     const today = ymd(now);
     const gymToday = sessions.filter((s) => ymd(s.date) === today);
     const lastLegs = lastWhere(sessions, (s) => s.split === "Legs", now);
-    const legHours = lastLegs ? (now - lastLegs.act.date) / 3600000 : Infinity;
+    const legHours = lastLegs ? Math.max(0, (now - lastLegs.act.date) / 3600000) : Infinity;   // nie negativ (Gerät in anderer Zeitzone)
     const afterLegs = legHours <= (cfg.legDayHours ?? 48);
     const week = weekMinimum(acts, now, cfg);
     const z2 = zones && zones[1] ? `${zones[1][0]}–${zones[1][1]} bpm` : "Zone 2";
