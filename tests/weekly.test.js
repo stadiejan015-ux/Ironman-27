@@ -1,0 +1,142 @@
+/* Tests für js/weekly.js – ausführen mit: node tests/weekly.test.js */
+"use strict";
+const assert = require("node:assert/strict");
+const W = require("../js/weekly.js");
+const Gym = require("../js/gym.js");
+
+let n = 0;
+const test = (name, fn) => { fn(); n++; console.log("✓", name); };
+const d = (s) => new Date(s);
+const flex = { active: true, from: "2026-10-27", until: "2027-01-10", minimum: { gym: 4, endurance: 2, enduranceMinMinutes: 30, swim: 1 } };
+const noFlex = { ...flex, active: false };
+const act = (date, cat, name, min, sport = { swim: "Swim", bike: "Ride", run: "Run", other: "RockClimbing" }[cat]) => ({ date: d(date), cat, sport, name, sec: min * 60 });
+// Gym-Einheiten wie in der App: Titel → Gym.gymSessions (Split, Übung, Eintrag)
+const gymSess = (list) => Gym.gymSessions(list.map(([start, name, min], i) => ({ id: String(i), start, name, desc: "", sec: min * 60 })), [], {});
+const day = (date, o) => ({ date, ...o });
+const sum = (o) => W.weeklySummary({ cfg: { flex: noFlex }, garminDays: [], ...o });
+const hintKeys = (s) => s.hints.map((h) => h.key);
+
+test("Standardwoche: Mo/Di die abgeschlossene Vorwoche, sonst die laufende", () => {
+  const ws = (s) => { const m = W.defaultWeekStart(d(s)); return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`; };
+  assert.equal(ws("2026-11-02T08:00"), "2026-10-26"); // Montag
+  assert.equal(ws("2026-11-03T21:00"), "2026-10-26"); // Dienstag
+  assert.equal(ws("2026-11-04T06:00"), "2026-11-02"); // Mittwoch
+  assert.equal(ws("2026-11-08T23:00"), "2026-11-02"); // Sonntag
+});
+
+test("Wochengrenzen Mo–So nach lokaler Startzeit, „läuft noch“ nur für die laufende Woche", () => {
+  const acts = [act("2026-11-01T23:30", "run", "So spät", 40), act("2026-11-02T00:10", "run", "Mo früh", 30), act("2026-11-08T23:50", "bike", "So", 60), act("2026-11-09T00:05", "bike", "nächste", 60)];
+  const cur = sum({ acts, today: d("2026-11-05T20:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(cur.monday, "2026-11-02"); assert.equal(cur.sunday, "2026-11-08");
+  assert.equal(cur.count, 2); assert.equal(cur.totalSec, 90 * 60); assert.equal(cur.running, true);
+  const prev = sum({ acts, today: d("2026-11-05T20:00"), weekStart: d("2026-10-26T00:00") });
+  assert.equal(prev.count, 1); assert.equal(prev.running, false);
+});
+
+test("Highlight-Priorität: neuer PR vor Wochen-Minimum vor längster Einheit", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00");
+  const g = gymSess([["2026-10-27T09:00", "Push 5x95", 60], ["2026-11-03T09:00", "Push 6x100", 60], ["2026-11-04T09:00", "Pull", 60], ["2026-11-05T09:00", "Legs", 60], ["2026-11-06T09:00", "Push", 60]]);
+  const acts = [act("2026-11-02T08:00", "swim", "Pool", 40), act("2026-11-07T08:00", "run", "Lang", 95)];
+  const cfg = { flex };
+  const pr = W.weeklySummary({ acts, gymSessions: g, today, weekStart, cfg });
+  assert.equal(pr.highlight.type, "pr");
+  assert.equal(pr.highlight.text, "Neuer PR: Bankdrücken 6×100 kg (1RM 120 kg)");
+  assert.equal(pr.minimum.ok, true);
+  // ohne PR (gleiches Gewicht wie zuvor) → Minimum erfüllt
+  const g2 = gymSess([["2026-10-27T09:00", "Push 6x100", 60], ["2026-11-03T09:00", "Push 6x100", 60], ["2026-11-04T09:00", "Pull", 60], ["2026-11-05T09:00", "Legs", 60], ["2026-11-06T09:00", "Push", 60]]);
+  const mi = W.weeklySummary({ acts, gymSessions: g2, today, weekStart, cfg });
+  assert.equal(mi.prs.length, 0); assert.equal(mi.highlight.type, "minimum");
+  // Minimum nicht erfüllt (kein Schwimmen) → längste Einheit
+  const lo = W.weeklySummary({ acts: acts.slice(1), gymSessions: g2, today, weekStart, cfg });
+  assert.equal(lo.minimum.ok, false); assert.deepEqual(lo.minimum.missing, ["1× lockere Ausdauer", "1× Schwimmen"]);
+  assert.equal(lo.highlight.type, "longest"); assert.equal(lo.highlight.text, "Längste Einheit: Lang · 1:35 h");
+  // außerhalb von Flex gibt es kein Minimum
+  assert.equal(W.weeklySummary({ acts, gymSessions: g2, today, weekStart, cfg: { flex: noFlex } }).minimum, null);
+});
+
+test("Training: Gym mit Splits und Einträgen, Ausdauer je Sportart, Vergleich mit Ø der 4 Wochen davor", () => {
+  const g = gymSess([["2026-11-02T09:00", "Push 6x100 @Bali", 70], ["2026-11-03T09:00", "Pull · Latzug 8x90", 60], ["2026-11-04T09:00", "Legs", 80], ["2026-11-05T09:00", "Krafttraining", 50]]);
+  const acts = [act("2026-11-02T18:00", "run", "Laufband", 30), act("2026-11-06T18:00", "run", "Lauf", 45), act("2026-11-07T10:00", "bike", "Zwift", 90, "VirtualRide"),
+    // 4 Wochen davor: je 5 h
+    ...[5, 12, 19, 26].map((x) => act(`2026-10-${String(x).padStart(2, "0")}T10:00`, "bike", "Rad", 300))];
+  const s = sum({ acts, gymSessions: g, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(s.gym.count, 4);
+  assert.deepEqual([s.gym.splits.Push, s.gym.splits.Pull, s.gym.splits.Legs, s.gym.splits.ohne], [1, 1, 1, 1]);
+  assert.deepEqual(s.gym.lifts.map((x) => x.text), ["Bankdrücken 6×100 kg @Bali", "Latzug 8×90 kg"]);
+  assert.deepEqual(s.sports.map((x) => [x.cat, x.count, x.sec / 60]), [["bike", 1, 90], ["run", 2, 75]]);
+  assert.equal(s.totalSec / 60, 70 + 60 + 80 + 50 + 30 + 45 + 90); // 425 min
+  assert.equal(s.avg4Sec, 300 * 60);
+  assert.equal(s.totalDiffPct, 42);
+});
+
+test("Erholung: Wochenschnitt mit Pfeil im Vergleich zur Vorwoche", () => {
+  const garminDays = [
+    day("2026-10-27", { sleepH: 7.0, sleepScore: 70, hrv: 70, rhr: 46 }), day("2026-10-28", { sleepH: 7.2, sleepScore: 74, hrv: 72, rhr: 46 }),
+    day("2026-11-03", { sleepH: 8.0, sleepScore: 72, hrv: 66, rhr: 46 }), day("2026-11-04", { sleepH: 8.2, sleepScore: 72, hrv: 64, rhr: null }),
+  ];
+  const s = sum({ garminDays, today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  const r = Object.fromEntries(s.recovery.map((x) => [x.key, x]));
+  assert.equal(r.sleepH.value, 8.1); assert.equal(r.sleepH.trend, "up");
+  assert.equal(r.sleepScore.trend, "flat");
+  assert.equal(r.hrv.value, 65); assert.equal(r.hrv.trend, "down");
+  assert.equal(r.rhr.value, 46); assert.equal(r.rhr.trend, "flat");
+});
+
+test("Woche ohne Daten", () => {
+  const s = sum({ today: d("2026-11-10T12:00"), weekStart: d("2026-11-02T00:00") });
+  assert.equal(s.empty, true); assert.equal(s.count, 0); assert.equal(s.highlight, null);
+  assert.deepEqual(s.sports, []); assert.equal(s.recovery, null); assert.equal(s.avg4Sec, null); assert.equal(s.totalDiffPct, null);
+  assert.equal(s.gym.count, 0);
+});
+
+test("Hinweis Legs: greift ohne Legs, nicht mit Legs; „bisher“ in der laufenden Woche", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00");
+  const swim = [act("2026-11-03T08:00", "swim", "Pool", 40)];
+  assert.ok(hintKeys(sum({ acts: swim, gymSessions: gymSess([["2026-11-03T09:00", "Push", 60]]), today, weekStart })).includes("legs"));
+  assert.ok(!hintKeys(sum({ acts: swim, gymSessions: gymSess([["2026-11-03T09:00", "Leg Day", 60]]), today, weekStart })).includes("legs"));
+  const running = sum({ acts: swim, today: d("2026-11-04T12:00"), weekStart });
+  assert.equal(running.hints.find((h) => h.key === "legs").text, "Legs kam diese Woche bisher nicht vor.");
+});
+
+test("Hinweis Schwimmen: nur über der gelben Schwelle und wenn Pool/Meer möglich war", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00"), legs = gymSess([["2026-11-03T09:00", "Legs", 60]]);
+  const at = (iso) => sum({ acts: [act(iso, "swim", "Pool", 40)], gymSessions: legs, today, weekStart });
+  assert.ok(!hintKeys(at("2026-10-25T08:00")).includes("swim"));  // 14 Tage bis So 08.11. = gelb, noch kein Hinweis
+  const late = at("2026-10-24T08:00");                              // 15 Tage
+  assert.equal(late.hints.find((h) => h.key === "swim").text, "Schwimmen ist 15 Tage her.");
+  // eigene Schwelle aus sinceLast
+  assert.ok(!hintKeys(W.weeklySummary({ acts: [act("2026-10-24T08:00", "swim", "Pool", 40)], gymSessions: legs, today, weekStart, cfg: { flex: noFlex, sinceLast: { swim: { yellow: 20 } } } })).includes("swim"));
+  // Flex-Woche ohne Pool/Meer in der Ausstattung → kein Hinweis, mit Pool → Hinweis
+  const fx = (equipment) => W.weeklySummary({ acts: [act("2026-10-24T08:00", "swim", "Pool", 40)], gymSessions: legs, today, weekStart, cfg: { flex }, equipment });
+  assert.ok(!hintKeys(fx(["gym", "treadmill"])).includes("swim"));
+  assert.ok(hintKeys(fx(["gym", "pool"])).includes("swim"));
+});
+
+test("Hinweis Erholung: nur wenn HRV > 10 % unter dem 4-Wochen-Schnitt UND Schlaf unter 7 h", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00");
+  const base = Array.from({ length: 28 }, (_, i) => { const x = new Date(2026, 9, 5 + i); return day(`2026-10-${String(x.getDate()).padStart(2, "0")}`, { hrv: 80, sleepH: 8 }); });
+  const week = (hrv, sleepH) => [3, 4, 5].map((x) => day(`2026-11-0${x}`, { hrv, sleepH }));
+  const keys = (hrv, sleepH, cfg) => hintKeys(sum({ garminDays: base.concat(week(hrv, sleepH)), today, weekStart, ...(cfg ? { cfg: { flex: noFlex, weekly: cfg } } : {}) }));
+  assert.ok(keys(70, 6.5).includes("recovery"));    // −12,5 % und 6,5 h
+  assert.ok(!keys(73, 6.5).includes("recovery"));   // nur −8,75 %
+  assert.ok(!keys(70, 7.2).includes("recovery"));   // genug Schlaf
+  assert.ok(!keys(70, 6.5, { hrvDropPct: 15 }).includes("recovery")); // Schwelle anpassbar
+  const h = sum({ garminDays: base.concat(week(70, 6.5)), today, weekStart }).hints[0];
+  assert.equal(h.text, "Erholung im Blick behalten: HRV 13 % unter dem 4-Wochen-Schnitt, Schlaf Ø 6:30 h.");
+});
+
+test("Hinweis Flex: Wochen bis zum Ende, nur in Flex-Wochen; höchstens 3 Hinweise", () => {
+  const today = d("2026-11-10T12:00"), weekStart = d("2026-11-02T00:00");
+  const s = W.weeklySummary({ today, weekStart, cfg: { flex }, equipment: ["gym", "pool"] });
+  assert.deepEqual(hintKeys(s), ["legs", "swim", "flex"]);
+  assert.equal(s.hints[2].text, "Noch 9 Wochen bis zum Ende der Flex-Phase.");   // 08.11. → 10.01.
+  const last = W.weeklySummary({ today: d("2027-01-12T12:00"), weekStart: d("2027-01-04T00:00"), cfg: { flex }, equipment: ["gym"] });
+  assert.equal(last.hints.find((x) => x.key === "flex").text, "Letzte Woche der Flex-Phase.");
+  assert.ok(!hintKeys(W.weeklySummary({ today: d("2027-01-20T12:00"), weekStart: d("2027-01-11T00:00"), cfg: { flex } })).includes("flex"));
+  // mit Erholungs-Hinweis sind es 4 Kandidaten → nur 3, Flex fällt weg
+  const base = Array.from({ length: 28 }, (_, i) => { const x = new Date(2026, 9, 5 + i); return day(`2026-10-${String(x.getDate()).padStart(2, "0")}`, { hrv: 80, sleepH: 8 }); });
+  const four = W.weeklySummary({ today, weekStart, cfg: { flex }, equipment: ["pool"], garminDays: base.concat([day("2026-11-03", { hrv: 60, sleepH: 6 })]) });
+  assert.deepEqual(hintKeys(four), ["recovery", "legs", "swim"]);
+});
+
+console.log(`\n${n} Tests bestanden.`);

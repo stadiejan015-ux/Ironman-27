@@ -9,6 +9,7 @@
  *   suggestFlex({ now, acts, equipment, level, cfg, zones, paceHint }) → Tagesvorschlag
  *   sinceLast({ now, acts, cfg, splitCfg, flexActive, equipment }) → „Zuletzt gemacht“-Kacheln
  *   lastWhere(acts, pred, now)              → letzte passende Einheit + Tage seitdem (gemeinsam genutzt)
+ *   mergeActs(acts, gymSessions)            → Strava ohne Kraft + zusammengeführte Gym-Einheiten
  * acts: [{ date: Date, sport, name, sec, cat }]  (cat: swim | bike | run | strength | other)
  * Läuft im Browser (window.Flex) und in Node (require("./js/flex.js")).
  */
@@ -101,6 +102,15 @@
       else if (flexActive && equipment && !r.needs.some((k) => eq.has(k))) { state = "na"; note = "nicht verfügbar"; }
       return { key, label: c.label, days, text: agoText(days), state, note, last: hit ? hit.act : null, minMinutes: r.long ? c.minMinutes : null };
     });
+  }
+
+  // Eine Einheitenliste für Flex, „Zuletzt gemacht“ und Wochenkarte: Ausdauer & Co. aus Strava,
+  // Kraft ausschließlich aus den zusammengeführten Gym-Einheiten (Gym.gymSessions) → nichts doppelt
+  function mergeActs(acts, gymSess) {
+    return (acts || []).filter((a) => a.cat !== "strength").concat((gymSess || []).map((x) => ({
+      date: new Date(x.start), cat: "strength", sport: "WeightTraining", sec: x.sec, title: x.alt || x.name,
+      name: x.split || [x.name, x.desc, x.alt].filter(Boolean).join(" "),
+    })));
   }
 
   function gymSessions(acts, cfg) {
@@ -208,5 +218,5 @@
     return { gym, endurance, week, next, afterLegs, notes };
   }
 
-  return { flexState, splitOf, gymSessions, nextSplit, weekMinimum, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
+  return { flexState, splitOf, gymSessions, mergeActs, nextSplit, weekMinimum, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
 });
