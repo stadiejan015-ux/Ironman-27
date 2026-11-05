@@ -598,7 +598,7 @@
     const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     setSum("zone2", "wird geladen …");
     Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
-      .then(([db, src]) => { Z2DATA = db; HRSRC = src; renderZone2(); if (FLEX.active) today(); })
+      .then(([db, src]) => { Z2DATA = db; HRSRC = src; insights(); renderZone2(); if (FLEX.active) today(); })
       .catch(() => {
         $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
         setSum("zone2", "nicht verfügbar");
@@ -961,8 +961,14 @@
     const items = [
       ["warn", "Baustelle", "Schwimmen ist der größte Hebel", `Erste Schwimmeinheit erst am ${fmtDate(firstSwim, { day: "2-digit", month: "2-digit" })} – seitdem Ø ${nf(avgSwim, 1)} km pro Einheit, Pace schwankt zwischen ${mmss(Math.min(...paces))} und ${mmss(Math.max(...paces))} /100m. Für 3,8 km im Rennen: regelmäßig 3× pro Woche, Technik vor Umfang, Einheiten schrittweise Richtung 3 km.`],
       ["good", "Stärke", "Rad-Basis ist da", `Längste Fahrt seit der Anmeldung: ${nf(longestBike, 1)} km – bereits über Renndistanz, dazu ${passes} Ausfahrten mit über 1.000 Hm. FTP ${D.zones.ftp} W (${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg). Für dein Ziel „schneller am Berg“: Sweet-Spot- und Bergintervalle im Winter auf Zwift.`],
-      ["good", "Im Plan", "Laufen solide", `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe meist um 5:30–6:00 /km (Zone 2 laut Strava: ${mmss(runPaceZ2[0])}–${mmss(runPaceZ2[1])} /km). Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
-      ["good", "Stärke", "Krafttraining konsequent", `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.`],
+      ["good", "Im Plan", "Laufen solide", `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe in Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm – nach Puls, nicht nach Tempo${paceHint() ? ` (grobe Pace laut Zone-2-Auswertung: ${paceHint()})` : ""}. Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
+      FLEX.active && GYM
+        ? ["good", "Schwerpunkt", "Krafttraining im Fokus", (() => {
+          const now = new Date(), gym4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), ymdLocal(now)).total;
+          const minGym = (FCFG.minimum || {}).gym || 4;
+          return `${gym4} Krafteinheiten in den letzten 4 Wochen (Ø ${nf(gym4 / 4, 1)}/Woche). Bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })} liegt der Schwerpunkt auf dem Gym – Wochen-Minimum ${minGym}× Gym. Danach neben dem Ausdauertraining auf 1–2 Erhaltungseinheiten pro Woche reduzieren.`;
+        })()]
+        : ["good", "Stärke", "Krafttraining konsequent", `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.`],
       FLEX.active
         ? ["neutral", "Flex", FLEX.label, `Bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })} zählt das Wochen-Minimum statt eines Umfangsziels: Schwerpunkt Gym, Ausdauer zur Erhaltung. In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche.`]
         : [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
