@@ -155,6 +155,7 @@ def main():
     ap.add_argument("--activities")
     ap.add_argument("--profile")
     ap.add_argument("--date", default=dt.date.today().isoformat())
+    ap.add_argument("--at", help="Zeitpunkt des Abrufs (ISO mit Zeitzone); Standard: jetzt in UTC")
     args = ap.parse_args()
 
     data = load_existing()
@@ -190,9 +191,12 @@ def main():
             data["bests"] = convert_bests(p["bests"], data.get("bests", {}))
 
     data["snapshotDate"] = args.date
+    # Genauer Zeitpunkt des Abrufs mit Zeitzone (wie "updated" bei Garmin) – daran erkennt die Website veraltete Daten
+    at = args.at or dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes")
+    data = {"snapshotDate": data["snapshotDate"], "snapshotAt": at, **{k: v for k, v in data.items() if k not in ("snapshotDate", "snapshotAt")}}
     n = len(data["activities"])
     write(data)
-    print(f"strava-data.js: {n} Aktivitäten ({n - before:+d}), Stand {args.date}")
+    print(f"strava-data.js: {n} Aktivitäten ({n - before:+d}), Stand {args.date} ({at})")
 
 
 if __name__ == "__main__":

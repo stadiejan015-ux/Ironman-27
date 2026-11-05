@@ -215,6 +215,18 @@ details.how summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font-size: 14px; display: grid; gap: 4px; }
 
 /* Flex-Modus */
+/* Datenstand-Warnung */
+.fresh-banner { display: flex; align-items: flex-start; gap: 12px; margin-top: 16px; padding: 10px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--warn); font-size: 14px; }
+.fresh-banner.bad { border-left-color: var(--bad); }
+.fresh-banner.info { border-left-color: var(--text-3); background: var(--surface-2); color: var(--text-2); }
+.fresh-banner.info b { font-weight: 500; }
+.fresh-list { flex: 1; display: grid; gap: 6px; min-width: 0; }
+.fresh-item { display: flex; align-items: baseline; gap: 8px; margin: 0; }
+.fresh-item .dot { flex: none; transform: translateY(1px); }
+.fresh-tip { color: var(--text-2); }
+.fresh-tip a { color: inherit; text-decoration: underline; }
+.fresh-close { flex: none; min-height: 36px; }
+@media (max-width: 600px) { .fresh-banner { flex-direction: column; } .fresh-close { align-self: flex-end; } }
 .flex-banner { margin-top: 16px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); color: var(--text-2); font-size: 14px; border: 1px dashed var(--border); }
 .flex-banner b { color: var(--text); }
 .flex-reentry { margin-top: 6px; color: var(--text); font-size: 13px; }

@@ -35,6 +35,7 @@
   </header>
 
   <main class="wrap">
+    <div class="fresh-banner" id="freshBanner" role="status" hidden></div>
     <div class="flex-banner" id="flexBanner" hidden></div>
 
     <!-- HERO -->
@@ -230,13 +231,13 @@
     </section>
 
     <footer>
-      Daten: Strava-Snapshot vom <span id="snap"></span>. Rennen, Zielzeiten und Daten lassen sich in <code>js/data.js</code> anpassen.
+      Datenstand: <span id="snap"></span>. Rennen, Zielzeiten und Daten lassen sich in <code>js/data.js</code> anpassen.
     </footer>
   </main>
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/app.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/app.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten
