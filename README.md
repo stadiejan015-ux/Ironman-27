@@ -23,6 +23,15 @@ von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](s
 Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
 Die geplante Aufgabe neu anlegen (unabhängig von einem Chat): [`scripts/STRAVA_AUFGABE.md`](scripts/STRAVA_AUFGABE.md).
 
+## Einklappbare Abschnitte
+
+Alle Abschnitte außer Überblick und Heute lassen sich über ihre Überschrift ein- und ausklappen (Tastatur,
+`aria-expanded`); eingeklappt steht eine Kurzfassung daneben. In „Erholung“ bleiben die Kacheln sichtbar, nur die
+Verläufe sind separat einklappbar. Standard: im Flex-Zeitraum Zone 2, Disziplinen, Rennen und die Erholungs-Verläufe
+zu, sonst nur die Verläufe (`layout` in `js/data.js`). Die eigene Wahl wird gemerkt, bis die Phase wechselt;
+„Ansicht zurücksetzen“ in der Fußzeile. Navigation und Anker öffnen eingeklappte Abschnitte. Logik:
+[`js/layout.js`](js/layout.js), Tests: `node tests/layout.test.js`.
+
 ## Datenstand-Warnung
 
 Ein Banner unter dem Header warnt, wenn ein automatischer Sync ausgefallen ist: Strava gelb ab 20 h, rot ab
@@ -132,6 +141,7 @@ Alles Persönliche steht in [`js/data.js`](js/data.js):
 | `sinceLast` | Ampel-Schwellen (Tage) und Mindestdauern für „Zuletzt gemacht“ |
 | `weekly` | Schwellen der Wochen-Hinweise (HRV-Abfall, Schlaf, Belastungsfaktor), Anzahl Hinweise und Wochen |
 | `freshness` | Ab wie vielen Stunden die Datenstand-Warnung gelb/rot wird, Link zu GitHub Actions |
+| `layout` | Welche Abschnitte im Flex- und im Normalzeitraum standardmäßig eingeklappt sind |
 | `zones`, `z2` | Eigene HF-Zonen und Parameter der Zone-2-Auswertung |
 | `prediction` | Parameter der Rennprognose (CSS-Tests, IF, CdA, Ironman-Faktor …) |
 

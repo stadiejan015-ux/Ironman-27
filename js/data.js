@@ -70,6 +70,13 @@ window.TRAINING = {
     actionsUrl: "https://github.com/stadiejan015-ux/Ironman-27/actions",
   },
 
+  // Einklappbare Abschnitte: was standardmäßig zugeklappt ist (ids der Abschnitte; „erholungVerlauf“ =
+  // Verlaufsdiagramme unter den Erholungs-Kacheln). Eigene Auf-/Zuklapp-Wahl hat Vorrang, bis die Phase wechselt.
+  layout: {
+    flex:   { collapsed: ["zone2", "disziplinen", "rennen", "erholungVerlauf"] },
+    normal: { collapsed: ["erholungVerlauf"] },
+  },
+
   // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,
   // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
   gym: {

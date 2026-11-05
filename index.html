@@ -56,14 +56,14 @@
     </section>
 
     <!-- KPIs -->
-    <section>
+    <section id="letzte4" data-collapse>
       <h2>Die letzten 4 Wochen</h2>
       <p class="section-sub" id="kpiSub"></p>
       <div class="grid g4" id="kpis"></div>
     </section>
 
     <!-- INSIGHTS -->
-    <section>
+    <section id="stand" data-collapse>
       <h2>Wo du gerade stehst</h2>
       <p class="section-sub">Automatisch aus deinen Strava-Daten abgeleitet – Einschätzungen, keine Messwerte.</p>
       <div class="grid g2" id="insights"></div>
@@ -79,7 +79,7 @@
     </section>
 
     <!-- ZONE 2 -->
-    <section id="zone2">
+    <section id="zone2" data-collapse>
       <h2>Zone-2-Entwicklung</h2>
       <p class="section-sub" id="z2Asof">Wird ein Mal pro Tag aus den Strava-Streams berechnet.</p>
       <div class="grid g4" id="z2Tiles"></div>
@@ -129,7 +129,7 @@
     </section>
 
     <!-- GYM -->
-    <section id="gym">
+    <section id="gym" data-collapse>
       <h2>Gym</h2>
       <p class="section-sub">Split und Hauptübung kommen aus dem Titel deiner Krafteinheit in Garmin Connect, z.&nbsp;B. „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“ oder „Push 6x100 @Bali“.</p>
       <div class="grid g4" id="gymWeek"></div>
@@ -138,7 +138,7 @@
     </section>
 
     <!-- KALENDER -->
-    <section id="kalender">
+    <section id="kalender" data-collapse>
       <h2>Kalender</h2>
       <p class="section-sub">Die letzten 10 Wochen – Farbe nach Sportart, kräftiger bei längerer Gesamtdauer. Tippe auf einen Tag für die Details.</p>
       <div class="card">
@@ -148,7 +148,7 @@
     </section>
 
     <!-- SAISON -->
-    <section id="saison">
+    <section id="saison" data-collapse>
       <h2>Saisonplan bis zum Rennen</h2>
       <p class="section-sub">Periodisierung rückwärts vom Renntag gerechnet. Stundenangaben sind Richtwerte pro Woche.</p>
       <div class="card">
@@ -167,7 +167,7 @@
     </section>
 
     <!-- UMFANG -->
-    <section id="umfang">
+    <section id="umfang" data-collapse>
       <h2>Wochenumfang</h2>
       <p class="section-sub">Trainingsstunden pro Woche (Montag–Sonntag), Bewegungszeit laut Strava.</p>
       <div class="card">
@@ -184,14 +184,14 @@
     </section>
 
     <!-- DISZIPLINEN -->
-    <section id="disziplinen">
+    <section id="disziplinen" data-collapse>
       <h2>Disziplinen</h2>
       <p class="section-sub">Alle Einheiten seit der Anmeldung am 27.06.2026 je Sportart.</p>
       <div class="grid g3" id="disciplines"></div>
     </section>
 
     <!-- RENNEN -->
-    <section id="rennen">
+    <section id="rennen" data-collapse>
       <h2>Rennvorbereitung</h2>
       <p class="section-sub">Deine Zielzeiten im Vergleich zur Prognose „Wenn heute Renntag wäre“ – und die längsten Einheiten im Vergleich zur Ironman-Distanz.</p>
       <div class="grid g2">
@@ -217,7 +217,7 @@
     </section>
 
     <!-- AKTIVITÄTEN -->
-    <section id="aktivitaeten">
+    <section id="aktivitaeten" data-collapse>
       <h2>Aktivitäten</h2>
       <p class="section-sub" id="actSub"></p>
       <div class="card">
@@ -232,12 +232,13 @@
 
     <footer>
       Datenstand: <span id="snap"></span>. Rennen, Zielzeiten und Daten lassen sich in <code>js/data.js</code> anpassen.
+      · <a href="#" id="resetView">Ansicht zurücksetzen</a>
     </footer>
   </main>
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/app.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/app.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten
