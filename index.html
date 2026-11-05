@@ -164,6 +164,7 @@
       <h2>Saisonplan bis zum Rennen</h2>
       <p class="section-sub">Periodisierung rückwärts vom Renntag gerechnet. Stundenangaben sind Richtwerte pro Woche.</p>
       <div class="card">
+        <p class="phase-warn" id="phaseWarn" role="status" hidden></p>
         <div class="timeline-scroll"><div class="timeline" id="timeline"></div></div>
         <div class="phase-detail">
           <div>
@@ -250,7 +251,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten

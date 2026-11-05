@@ -70,6 +70,15 @@ window.TRAINING = {
     actionsUrl: "https://github.com/stadiejan015-ux/Ironman-27/actions",
   },
 
+  // Saisonplan nach einem Flex-Zeitraum: Wochen je Phase zwischen Flex-Ende und Peak (Aufbau 2 = Rest bis zum Peak).
+  // Bleiben für Aufbau 2 weniger als minBuild2Weeks, zeigt der Saisonplan eine Warnung.
+  plan: {
+    reentryWeeks: 2,    // Wiedereinstieg (6–9 h/Woche)
+    base2Weeks: 6,      // Grundlage 2 (10–13 h)
+    build1Weeks: 6,     // Aufbau 1 (12–15 h)
+    minBuild2Weeks: 3,  // Aufbau 2 (14–18 h) mindestens
+  },
+
   // Einklappbare Abschnitte: was standardmäßig zugeklappt ist (ids der Abschnitte; „erholungVerlauf“ =
   // Verlaufsdiagramme unter den Erholungs-Kacheln). Eigene Auf-/Zuklapp-Wahl hat Vorrang, bis die Phase wechselt.
   layout: {

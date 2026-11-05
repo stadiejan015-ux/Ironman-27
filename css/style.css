@@ -123,7 +123,7 @@ h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 /* Phase timeline */
 .timeline-scroll { overflow-x: auto; overflow-y: hidden; padding: 24px 2px 26px; margin: -16px -2px -18px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .timeline { display: flex; gap: 3px; height: 54px; position: relative; }
-.phase { border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 8px; overflow: hidden; font-size: 12px; color: var(--text-2); position: relative; min-width: 0; flex: 1 1 0; }
+.phase { border-radius: 6px; background: var(--surface-2); border: 1px solid var(--border); padding: 6px 6px 6px 7px; overflow: hidden; font-size: 12px; color: var(--text-2); position: relative; min-width: 0; flex: 1 1 0; }
 .phase b { display: block; color: var(--text); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .phase span { white-space: nowrap; }
 .phase.current { background: var(--text); color: var(--bg); border-color: var(--text); }
@@ -262,8 +262,10 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .min-list .tick { font-weight: 700; color: var(--text-3); }
 .min-list li.ok .tick { color: var(--good); }
 .neutral-delta { color: var(--text-3); }
-.flex-span { position: absolute; top: -4px; bottom: -4px; border-radius: 8px; border: 2px dashed var(--text-2); background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--text) 10%, transparent) 6px 8px); pointer-events: none; }
-.flex-span span { position: absolute; bottom: -18px; left: 4px; font-size: 11px; font-weight: 600; color: var(--text-2); }
+.phase.flex { border: 2px dashed var(--text-2); background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, color-mix(in srgb, var(--text) 8%, var(--surface-2)) 6px 8px); }
+.phase.flex.current { background: var(--text); border-color: var(--text); }
+.phase-warn { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--warn); background: var(--surface-2); font-size: 14px; }
+.wk-hints li.wk-hint-strong { font-weight: 600; color: var(--text); }
 .phase-list li.flex-li { outline-style: dashed; }
 .chart text.min-ok { fill: var(--good); font-weight: 700; font-size: 13px; }
 
