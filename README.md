@@ -44,6 +44,22 @@ zu, sonst nur die Verläufe (`layout` in `js/data.js`). Die eigene Wahl wird gem
 „Ansicht zurücksetzen“ in der Fußzeile. Navigation und Anker öffnen eingeklappte Abschnitte. Logik:
 [`js/layout.js`](js/layout.js), Tests: `node tests/layout.test.js`.
 
+## Diagramme
+
+Alle Diagramme nutzen einen gemeinsamen Baukasten, [`js/charts.js`](js/charts.js). Darin stecken Achsen,
+Gitterlinien, Linie, Balken (auch gestapelt), Punkte, Ziel- und Schwellenlinien, Legende und Leerzustand. Gezeichnet
+wird in der echten Pixelbreite des Containers. Dadurch bleibt die Schrift immer 11 px groß. Bei Größenänderung,
+beim Drehen und beim Aufklappen eines Abschnitts wird neu gezeichnet. Die Höhen sind einheitlich: 160 px (klein) und
+220 px (groß).
+
+Die Achsen haben runde Schritte (1, 2 oder 5 × 10ⁿ) und 3–5 Ticks. Sleep Score und Body Battery sind auf 0–100
+begrenzt. HRV, Ruhepuls, Gewicht und 1RM beginnen nicht bei 0. Pace wird in m:ss mit Schritten von 10, 15 oder 30 s
+angezeigt, schneller ist oben. Die X-Achse hat höchstens 6 Datumslabels.
+
+Der neueste Wert bekommt einen Punkt in der Akzentfarbe. Die laufende Woche ist hinterlegt. Antippen (iPad) oder
+Hovern zeigt einen Tooltip mit Datum und Wert. Jedes Diagramm hat `role="img"` und eine Kurzbeschreibung.
+Tests: `node tests/charts.test.js`.
+
 ## Datenstand-Warnung
 
 Ein Banner unter dem Header warnt, wenn ein automatischer Sync ausgefallen ist: Strava gelb ab 20 h, rot ab

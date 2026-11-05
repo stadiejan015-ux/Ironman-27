@@ -99,17 +99,17 @@
         <div class="card">
           <h3>Pace bei fester Herzfrequenz</h3>
           <div class="chart" id="z2Pace"></div>
-          <div class="legend" style="margin-top:6px"><span><i class="swatch" style="background:var(--text-2);opacity:.45;border-radius:50%"></i>Brustgurt</span><span><i class="swatch" style="background:var(--surface);border:2px solid var(--text-2);border-radius:50%"></i>Uhr / unbekannt</span><span><i class="swatch" style="background:var(--text-2);opacity:.45;transform:rotate(45deg);border-radius:1px"></i>GAP (hügelig)</span><span><i class="swatch" style="background:var(--text-2);height:3px"></i>Median 4 Wochen</span><span class="muted">schneller = oben</span></div>
+          <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--run);opacity:.45" aria-hidden="true"></i>Brustgurt</span><span><i class="lg lg-hollow" style="--c:var(--run)" aria-hidden="true"></i>Uhr / unbekannt</span><span><i class="lg lg-diamond" style="--c:var(--run);opacity:.45" aria-hidden="true"></i>GAP (hügelig)</span><span><i class="lg lg-line" style="--c:var(--run)" aria-hidden="true"></i>Median 4 Wochen</span><span class="muted">schneller = oben</span></div>
         </div>
         <div class="card">
           <h3>Watt bei fester Herzfrequenz</h3>
           <div class="chart" id="z2Watts"></div>
-          <div class="legend" style="margin-top:6px"><span><i class="swatch" style="background:var(--text-2);opacity:.4;border-radius:50%"></i>Indoor (Zwift)</span><span><i class="swatch" style="background:var(--surface);border:2px solid var(--text-2);border-radius:50%"></i>Outdoor</span><span><i class="swatch" style="background:var(--text-2);height:3px"></i>Median 4 Wochen</span></div>
+          <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--bike);opacity:.45" aria-hidden="true"></i>Indoor (Zwift)</span><span><i class="lg lg-hollow" style="--c:var(--bike)" aria-hidden="true"></i>Outdoor</span><span><i class="lg lg-line" style="--c:var(--bike)" aria-hidden="true"></i>Median Indoor</span><span id="z2OutMedian" hidden><i class="lg lg-dash" style="--c:var(--bike)" aria-hidden="true"></i>Median Outdoor</span></div>
         </div>
         <div class="card">
           <h3>Entkopplung pro langer Einheit</h3>
           <div class="chart" id="z2Dec"></div>
-          <div class="legend" style="margin-top:6px"><span><span class="dot good" aria-hidden="true"></span>unter 5 %</span><span><span class="dot ok" aria-hidden="true"></span>5–10 %</span><span><span class="dot bad" aria-hidden="true"></span>über 10 %</span><span class="muted">antippen für Details</span></div>
+          <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--good)" aria-hidden="true"></i>unter 5 %</span><span><i class="lg lg-dot" style="--c:var(--warn)" aria-hidden="true"></i>5–10 %</span><span><i class="lg lg-dot" style="--c:var(--bad)" aria-hidden="true"></i>über 10 %</span><span class="muted">antippen für Details</span></div>
         </div>
         <div class="card">
           <div class="chart-head" style="margin-bottom:4px">
@@ -121,7 +121,7 @@
             </div>
           </div>
           <div class="chart" id="z2Zones"></div>
-          <div class="legend" id="z2ZoneLegend" style="margin-top:6px"></div>
+          <div class="legend chart-legend" id="z2ZoneLegend"></div>
         </div>
       </div>
       <details class="card how" style="margin-top:12px">
@@ -184,14 +184,14 @@
       <h2>Wochenumfang</h2>
       <p class="section-sub">Trainingsstunden pro Woche (Montag–Sonntag), Bewegungszeit laut Strava.</p>
       <div class="card">
-        <div class="chart-head">
-          <div class="legend" id="volLegend"></div>
+        <div class="chart-head" style="justify-content:flex-end">
           <div class="controls">
             <button class="chip" id="toggleOther" type="button" aria-pressed="false">inkl. Kraft &amp; Sonstiges</button>
             <button class="chip" id="toggleTable" type="button" aria-pressed="false">Tabelle</button>
           </div>
         </div>
         <div class="chart" id="volChart"></div>
+        <div class="legend chart-legend" id="volLegend"></div>
         <div class="table-scroll" id="volTable" hidden></div>
       </div>
     </section>
@@ -251,7 +251,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/charts.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten

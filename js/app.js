@@ -76,8 +76,66 @@
     if (y < window.scrollY + 60) y = ev.pageY + pad;
     tip.style.left = x + "px"; tip.style.top = y + "px";
   }
-  const hideTip = () => { tip.style.opacity = 0; };
+  const hideTip = () => { tip.style.opacity = 0; document.querySelectorAll(".chart .hit.on").forEach((h) => h.classList.remove("on")); };
   const tRow = (color, label, val) => `<div class="t-row"><span><i class="swatch" style="background:${color}"></i> ${label}</span><span>${val}</span></div>`;
+  // Einheitlicher Tooltip: Titel = Datum, Zeilen mit Farbe · Bezeichnung · Wert, optional Summe und Zusatzzeile
+  const tSum = (label, val) => `<div class="t-row t-sum"><span>${label}</span><span>${val}</span></div>`;
+  const tipBox = (title, rows, note) => `<div class="t-title">${title}</div>${rows.join("")}${note ? `<div class="t-note">${note}</div>` : ""}`;
+  const tipDay = (d) => fmtDate(d, { weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit" });
+  const dmS = (d) => fmtDate(d, { day: "2-digit", month: "2-digit" });   // „06.09.“
+
+  /* ---------- Diagramme (js/charts.js): echte Pixelbreite, neu zeichnen bei Größenänderung/Aufklappen ---------- */
+  const C = window.Charts;
+  // draw(width) schreibt das Diagramm in box; versteckte Diagramme (Breite 0) werden beim Aufklappen nachgeholt
+  function mount(box, draw) {
+    if (!box) return;
+    box._draw = draw; box._w = null;
+    paint(box);
+    if (RO) RO.observe(box);
+  }
+  function paint(box, onlyChanged = false) {
+    const w = Math.floor(box.clientWidth);
+    if (!w || !box._draw) return;
+    if (onlyChanged && w === box._w) return;
+    box._w = w;
+    box._draw(w);
+  }
+  function redrawCharts(root = document) {
+    root.querySelectorAll(".chart").forEach((b) => { if (b._draw) paint(b, true); });
+  }
+  const RO = typeof ResizeObserver === "function"
+    ? new ResizeObserver((entries) => requestAnimationFrame(() => entries.forEach((e) => { if (e.target.isConnected) paint(e.target, true); })))
+    : null;
+  function noChart(box, text) { if (!box) return; box._draw = null; box.innerHTML = C.empty(text); }
+  // Antippen (Touch/iPad) oder Hovern (Maus) zeigt den Tooltip; pick(i): Klick wählt etwas aus (z. B. Woche)
+  function bindTips(box, render, pick) {
+    box._tip = render; box._pick = pick || null;
+    if (box._tipBound) return;
+    box._tipBound = true;
+    let ptr = "mouse";
+    const hitOf = (ev) => (ev.target && ev.target.closest ? ev.target.closest(".hit") : null);
+    const show = (h, ev) => {
+      box.querySelectorAll(".hit.on").forEach((x) => x !== h && x.classList.remove("on"));
+      h.classList.add("on");
+      showTip(box._tip(+h.dataset.i), ev);
+    };
+    box.addEventListener("pointerdown", (ev) => { ptr = ev.pointerType || "mouse"; });
+    box.addEventListener("pointermove", (ev) => {
+      if (ev.pointerType && ev.pointerType !== "mouse") return;
+      const h = hitOf(ev);
+      if (h) show(h, ev); else hideTip();
+    });
+    box.addEventListener("pointerleave", (ev) => { if (!ev.pointerType || ev.pointerType === "mouse") hideTip(); });
+    box.addEventListener("click", (ev) => {
+      const h = hitOf(ev);
+      if (!h) return;
+      if (box._pick) { hideTip(); box._pick(+h.dataset.i, ev, ptr); return; }
+      if (ptr !== "mouse") show(h, ev);
+    });
+  }
+  // Antippen außerhalb eines Diagrammpunkts schließt den Tooltip
+  document.addEventListener("pointerdown", (ev) => { if (!(ev.target && ev.target.closest && ev.target.closest(".chart .hit"))) hideTip(); }, { passive: true });
+  const tickFmt = (ax, unit = "") => (v) => nf(v, C.decimals(ax.step)) + unit;
 
   /* ---------- Hero / Countdown ---------- */
   function hero() {
@@ -244,130 +302,66 @@
   }
   let showOther = FLEX.active; // im Flex-Zeitraum Kraft standardmäßig mit anzeigen
 
-  function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v))); const f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; }
-  function niceScale(v, ticks = 4) { const step = niceStep((v || 1) / ticks); return { max: Math.ceil((v || 1) / step) * step, step }; }
-  function roundedTopRect(x, y, w, h, r) {
-    r = Math.min(r, h, w / 2);
-    return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
-  }
-
   function volumeChart() {
     const keys = showOther ? ["swim", "bike", "run", "strength", "other"] : ["swim", "bike", "run"];
-    const lastW = weeks[weeks.length - 1];
-    if (lastW) setSum("umfang", `${lastW.start.getTime() === monday(new Date()).getTime() ? "Diese Woche" : `Woche ab ${fmtDate(lastW.start, { day: "2-digit", month: "2-digit" })}`} ${nf(keys.reduce((a, k) => a + lastW[k], 0), 1)} h`);
+    const lastW = weeks[weeks.length - 1], curMon = monday(new Date()).getTime();
+    const total = (w) => keys.reduce((a, k) => a + w[k], 0);
+    if (lastW) setSum("umfang", `${lastW.start.getTime() === curMon ? "Diese Woche" : `Woche ab ${dmS(lastW.start)}`} ${nf(total(lastW), 1)} h`);
     const colors = { swim: "var(--swim)", bike: "var(--bike)", run: "var(--run)", strength: "var(--strength)", other: "var(--other)" };
     const labels = { swim: "Schwimmen", bike: "Rad", run: "Laufen", strength: "Kraft", other: "Sonstiges" };
-    $("#volLegend").innerHTML = keys.map((k) => `<span><i class="swatch" style="background:${colors[k]}"></i>${labels[k]}</span>`).join("");
+    $("#volLegend").innerHTML = C.legendItems(keys.map((k) => ({ label: labels[k], color: colors[k] })));
 
     const el = $("#volChart");
-    const anyFlex = weeks.some((w) => w.flex);
-    const W = Math.max(300, Math.round(el.clientWidth || 1000)), H = (W < 600 ? 230 : 300) + (anyFlex ? 16 : 0), m = { t: anyFlex ? 22 : 12, r: 8, b: anyFlex ? 46 : 30, l: 34 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const totals = weeks.map((w) => keys.reduce((s, k) => s + w[k], 0));
-    const { max, step } = niceScale(Math.max(...totals) * 1.05);
-    const y = (v) => m.t + ih - (v / max) * ih;
-    const band = iw / weeks.length, bw = Math.min(46, band * 0.62);
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wochenstunden je Disziplin">`;
-    for (let v = 0; v <= max + 1e-9; v += step) {
-      const yy = y(v);
-      svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/><text x="${m.l - 6}" y="${yy + 4}" text-anchor="end">${nf(v)} h</text>`;
-    }
+    const ax = C.zeroAxis(Math.max(...weeks.map(total)));
     const fIdx = weeks.map((w, i) => (w.flex ? i : -1)).filter((i) => i >= 0);
-    if (fIdx.length) {
-      const x0 = m.l + band * fIdx[0], x1 = m.l + band * (fIdx[fIdx.length - 1] + 1);
-      svg += `<rect x="${x0}" y="${m.t - 16}" width="${x1 - x0}" height="${ih + 16}" fill="var(--surface-2)" rx="6"/><text x="${x0 + 6}" y="${m.t - 4}">Flex</text>`;
-    }
-    weeks.forEach((w, i) => {
-      const x = m.l + band * i + (band - bw) / 2;
-      let acc = 0;
-      const segs = keys.filter((k) => w[k] > 0);
-      if (w.flex) svg += `<g opacity=".45">`;
-      segs.forEach((k, j) => {
-        const y0 = y(acc), y1 = y(acc + w[k]);
-        const top = j === segs.length - 1;
-        const gap = j > 0 ? 2 : 0;
-        const hgt = Math.max(0, y0 - y1 - gap);
-        if (top) svg += `<path d="${roundedTopRect(x, y1, bw, hgt, 4)}" fill="${colors[k]}"/>`;
-        else svg += `<rect x="${x}" y="${y1}" width="${bw}" height="${hgt}" fill="${colors[k]}"/>`;
-        acc += w[k];
+    const aria = `Wochenstunden je Disziplin, ${weeks.length} Wochen, ${lastW && lastW.start.getTime() === curMon ? "diese Woche" : "zuletzt"} ${nf(lastW ? total(lastW) : 0, 1)} h`;
+    const tip = (w) => tipBox(`Woche ab ${fmtDate(w.start)}`, keys.map((k) => tRow(colors[k], labels[k], hm(w[k] * 3600) + " h")).concat(tSum("Summe", hm(total(w) * 3600) + " h"))) +
+      (w.min ? `<div class="t-title t-sec">Wochen-Minimum (Flex)</div>` + w.min.items.map((it) => `<div class="t-row"><span>${it.ok ? "✓" : "○"} ${esc(it.label)}</span><span>${it.have}/${it.need}</span></div>`).join("") : "");
+    mount(el, (W) => {
+      const narrow = (W - 50) / weeks.length < 26;   // wenig Platz: ✓ / ○ statt „2/3“
+      el.innerHTML = C.barChart({
+        width: W, height: C.LARGE, aria, y: { ...ax, fmt: tickFmt(ax, " h") },
+        groups: fIdx.length ? [{ from: fIdx[0], to: fIdx[fIdx.length - 1], label: "Flex" }] : [],
+        bands: weeks.map((w) => ({
+          label: dmS(w.start), current: w.start.getTime() === curMon, dim: w.flex,
+          stacks: keys.map((k) => ({ v: w[k], color: colors[k] })),
+          below: w.flex && w.min ? (w.min.ok ? "✓" : narrow ? "○" : `${w.min.items.filter((it) => it.ok).length}/3`) : null,
+          belowClass: w.flex && w.min && w.min.ok ? "min-ok" : "tick",
+        })),
       });
-      if (w.flex) {
-        svg += `</g>`;
-        svg += w.min.ok ? `<text x="${x + bw / 2}" y="${H - 28}" text-anchor="middle" class="min-ok">✓</text>` : `<text x="${x + bw / 2}" y="${H - 28}" text-anchor="middle">${w.min.items.filter((it) => it.ok).length}/3</text>`;
-      }
-      const lbl = fmtDate(w.start, { day: "2-digit", month: "2-digit" });
-      const every = Math.ceil(44 / band);
-      if ((weeks.length - 1 - i) % every === 0) svg += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle">${lbl}</text>`;
-      svg += `<rect class="hit" data-i="${i}" x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
-    });
-    svg += `<line class="axis" x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}"/></svg>`;
-    el.innerHTML = svg;
-    el.querySelectorAll(".hit").forEach((r) => {
-      const w = weeks[+r.dataset.i];
-      const html = () => `<div class="t-title">Woche ab ${fmtDate(w.start)}</div>` +
-        keys.map((k) => tRow(colors[k], labels[k], hm(w[k] * 3600) + " h")).join("") +
-        `<div class="t-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px"><span>Summe</span><span>${hm(keys.reduce((s, k) => s + w[k], 0) * 3600)} h</span></div>` +
-        (w.min ? `<div class="t-title" style="margin-top:6px">Wochen-Minimum (Flex)</div>` + w.min.items.map((it) => `<div class="t-row"><span>${it.ok ? "✓" : "○"} ${esc(it.label)}</span><span>${it.have}/${it.need}</span></div>`).join("") : "");
-      r.addEventListener("mousemove", (ev) => { r.setAttribute("fill", "rgba(127,127,127,.08)"); showTip(html(), ev); });
-      r.addEventListener("mouseleave", () => { r.setAttribute("fill", "transparent"); hideTip(); });
+      bindTips(el, (i) => tip(weeks[i]));
     });
     // Tabelle
     $("#volTable").innerHTML = `<table><thead><tr><th>Woche ab</th><th class="num">Schwimmen</th><th class="num">Rad</th><th class="num">Laufen</th><th class="num">Kraft & Sonst.</th><th class="num">Tri gesamt</th></tr></thead><tbody>` +
       weeks.slice().reverse().map((w) => `<tr><td>${fmtDate(w.start)}</td><td class="num">${hm(w.swim * 3600)}</td><td class="num">${hm(w.bike * 3600)}</td><td class="num">${hm(w.run * 3600)}</td><td class="num">${hm(w.extra * 3600)}</td><td class="num"><b>${hm((w.swim + w.bike + w.run) * 3600)}</b></td></tr>`).join("") + `</tbody></table>`;
   }
 
-  /* ---------- Mini-Charts ---------- */
-  // Punkt-Linien-Chart, y invertiert für Pace (schneller = oben)
-  function paceChart(points, { fmt, band, color, lastColor, invert = true, unitLabel }) {
-    if (points.length < 2) return `<p class="muted">Zu wenig Daten.</p>`;
-    const W = 360, H = 150, m = { t: 10, r: 8, b: 22, l: 44 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const vals = points.map((p) => p.v).concat(band ? band : []);
-    let lo = Math.min(...vals), hi = Math.max(...vals);
-    const pad = (hi - lo) * 0.12 || 5; lo -= pad; hi += pad;
-    const t0 = points[0].d.getTime(), t1 = points[points.length - 1].d.getTime();
-    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0 || 1)) * iw;
-    const y = (v) => invert ? m.t + ((v - lo) / (hi - lo)) * ih : m.t + ih - ((v - lo) / (hi - lo)) * ih;
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(unitLabel)}">`;
-    for (let i = 0; i <= 3; i++) {
-      const v = lo + ((hi - lo) / 3) * i;
-      s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`;
-    }
-    if (band) {
-      const ya = y(band[0]), yb = y(band[1]);
-      s += `<rect x="${m.l}" y="${Math.min(ya, yb)}" width="${iw}" height="${Math.abs(yb - ya)}" fill="${color}" opacity=".12"/>`;
-    }
-    s += `<path d="${points.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-    points.forEach((p, i) => {
-      const isLast = i === points.length - 1;
-      if (points.length <= 30 || isLast) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="${isLast && lastColor ? 4.5 : 4}" fill="${isLast && lastColor ? lastColor : color}" stroke="var(--surface)" stroke-width="2"/>`;
-      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="12" fill="transparent"/>`;
-    });
-    s += `<text x="${m.l}" y="${H - 4}">${fmtDate(points[0].d, { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(points[points.length - 1].d, { day: "2-digit", month: "2-digit" })}</text></svg>`;
-    return s;
-  }
-  function attachPointTips(container, points, color, render) {
-    container.querySelectorAll(".hit").forEach((c) => {
-      const p = points[+c.dataset.i];
-      c.addEventListener("mousemove", (ev) => showTip(render(p), ev));
-      c.addEventListener("mouseleave", hideTip);
+  /* ---------- Zeitverlauf mit einer Linie (Disziplinen, Erholung, Prognose) ---------- */
+  // pts aufsteigend nach Datum; o = { color, axis, fmt, val, aria, tip, band, refs, invert, height, emptyText }
+  function trendLine(box, pts, o) {
+    if (!box) return;
+    if (pts.length < 2) { noChart(box, o.emptyText || "Zu wenig Daten."); return; }
+    const last = pts[pts.length - 1];
+    mount(box, (W) => {
+      box.innerHTML = C.lineChart({
+        width: W, height: o.height || C.SMALL, aria: o.aria, y: { ...o.axis, fmt: o.fmt, invert: !!o.invert },
+        series: [{ pts, color: o.color }], band: o.band, refs: o.refs,
+        latest: { d: last.d, v: last.v, label: o.val(last.v) }, hits: pts,
+      });
+      bindTips(box, (i) => o.tip(pts[i]));
     });
   }
-  function weeklyBars(values, color, unit) {
-    const W = 360, H = 150, m = { t: 10, r: 8, b: 22, l: 36 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const { max, step } = niceScale(Math.max(...values.map((v) => v.v)) * 1.05, 3);
-    const band = iw / values.length, bw = band * 0.6;
-    const y = (v) => m.t + ih - (v / max) * ih;
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Wochenumfang">`;
-    for (let v = 0; v <= max + 1e-9; v += step) { s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`; }
-    values.forEach((w, i) => {
-      const x = m.l + band * i + (band - bw) / 2;
-      if (w.v > 0) s += `<path d="${roundedTopRect(x, y(w.v), bw, y(0) - y(w.v), 3)}" fill="${color}"/>`;
-      s += `<rect class="hit" data-i="${i}" x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
+  // Wochenbalken einer Sportart (Rad-km)
+  function weekBars(box, values, o) {
+    const curMon = monday(new Date()).getTime();
+    const ax = C.zeroAxis(Math.max(...values.map((w) => w.v)));
+    mount(box, (W) => {
+      box.innerHTML = C.barChart({
+        width: W, height: C.SMALL, aria: o.aria, y: { ...ax, fmt: tickFmt(ax) },
+        bands: values.map((w) => ({ label: dmS(w.d), current: w.d.getTime() === curMon, stacks: [{ v: w.v, color: o.color }] })),
+      });
+      bindTips(box, (i) => o.tip(values[i]));
     });
-    s += `<text x="${m.l}" y="${H - 4}">${fmtDate(values[0].d, { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(values[values.length - 1].d, { day: "2-digit", month: "2-digit" })}</text>`;
-    return s + `</svg>`;
   }
 
   /* ---------- Disziplinen ---------- */
@@ -424,21 +418,22 @@
         <p class="muted" style="font-size:12px;margin:6px 0 0">Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm aus deinen HF-Zonen – nach Puls, nicht nach Tempo${z2b ? `; grobe Pace laut Zone-2-Auswertung ca. ${mmss(z2b[0])}–${mmss(z2b[1])} /km (Band im Diagramm)` : ""}.</p>
       </div>`;
 
-    const sc = $("#swimChart");
-    sc.innerHTML = paceChart(swimPts, { fmt: mmss, color: "var(--swim)", unitLabel: "Schwimm-Pace pro Einheit" });
-    attachPointTips(sc, swimPts, "var(--swim)", (p) => `<div class="t-title">${esc(p.a.name)}</div>${tRow("var(--swim)", fmtDate(p.d), mmss(p.v) + " /100m")}<div class="muted">${nf(p.a.km * 1000)} m · ${hm(p.a.sec)} h</div>`);
-
-    const bc = $("#bikeChart");
-    bc.innerHTML = weeklyBars(bikeWeekly, "var(--bike)", "km");
-    bc.querySelectorAll(".hit").forEach((r) => {
-      const w = bikeWeekly[+r.dataset.i];
-      r.addEventListener("mousemove", (ev) => showTip(`<div class="t-title">Woche ab ${fmtDate(w.d)}</div>${tRow("var(--bike)", "Rad", nf(w.v) + " km")}`, ev));
-      r.addEventListener("mouseleave", hideTip);
+    if (swimPts.length) trendLine($("#swimChart"), swimPts, {
+      color: "var(--swim)", axis: C.paceAxis(swimPts.map((p) => p.v)), invert: true, fmt: mmss, val: mmss,
+      aria: `Schwimm-Pace pro Einheit ab 900 m, ${swimPts.length} Einheiten, zuletzt ${mmss(swimPts[swimPts.length - 1].v)} pro 100 m`,
+      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--swim)", "Pace", mmss(p.v) + " /100 m")], `${esc(p.a.name)} · ${nf(p.a.km * 1000)} m · ${hm(p.a.sec)} h`),
+    }); else noChart($("#swimChart"), "Noch keine Einheit ab 900 m.");
+    const lastBike = bikeWeekly[bikeWeekly.length - 1];
+    weekBars($("#bikeChart"), bikeWeekly, {
+      color: "var(--bike)", aria: `Rad-Kilometer pro Woche, ${bikeWeekly.length} Wochen, zuletzt ${nf(lastBike ? lastBike.v : 0)} km`,
+      tip: (w) => tipBox(`Woche ab ${fmtDate(w.d)}`, [tRow("var(--bike)", "Rad", nf(w.v) + " km")]),
     });
-
-    const rc = $("#runChart");
-    rc.innerHTML = paceChart(runPts, { fmt: mmss, band: z2b, color: "var(--run)", unitLabel: "Lauf-Pace pro Lauf" });
-    attachPointTips(rc, runPts, "var(--run)", (p) => `<div class="t-title">${esc(p.a.name)}</div>${tRow("var(--run)", fmtDate(p.d), mmss(p.v) + " /km")}<div class="muted">${nf(p.a.km, 1)} km · ${p.a.elev} hm</div>`);
+    if (runPts.length) trendLine($("#runChart"), runPts, {
+      color: "var(--run)", axis: C.paceAxis(runPts.map((p) => p.v), { include: z2b || [] }), invert: true, fmt: mmss, val: mmss,
+      band: z2b ? { from: z2b[0], to: z2b[1], color: "var(--run)" } : null,
+      aria: `Lauf-Pace pro Lauf ab 4 km, ${runPts.length} Läufe, zuletzt ${mmss(runPts[runPts.length - 1].v)} pro km`,
+      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--run)", "Pace", mmss(p.v) + " /km")], `${esc(p.a.name)} · ${nf(p.a.km, 1)} km · ${p.a.elev} hm`),
+    }); else noChart($("#runChart"), "Noch kein Lauf ab 4 km.");
   }
 
   /* ---------- Rennvorbereitung ---------- */
@@ -545,34 +540,19 @@
       .then((hist) => {
         const pts = (Array.isArray(hist) ? hist : hist.entries || []).filter((e) => e.total).map((e) => ({ d: parse(e.date), v: e.total, e }));
         if (pts.length < 2) {
-          box.innerHTML = `<p class="muted" style="margin:0">Der Verlauf startet mit dem ${pts[0] ? fmtDate(pts[0].d) : "nächsten Sync"} (Prognose ${pts[0] ? hm(pts[0].v) : "–"} h). Ab dem zweiten Tag siehst du hier, wie sich die Prognose entwickelt.</p>`;
+          noChart(box, `Der Verlauf startet mit dem ${pts[0] ? fmtDate(pts[0].d) : "nächsten Sync"} (Prognose ${pts[0] ? hm(pts[0].v) : "–"} h). Ab dem zweiten Tag siehst du hier, wie sich die Prognose entwickelt.`);
           return;
         }
-        box.innerHTML = historyChart(pts, goalTotal, PRED ? PRED.subTarget : 43200);
-        attachPointTips(box, pts, "var(--text-2)", (p) => `<div class="t-title">${fmtDate(p.d)}</div>${tRow("var(--text-2)", "Prognose", hms(p.v))}<div class="muted">Schwimmen ${hm(p.e.swim)} · Rad ${hm(p.e.bike)} · Laufen ${hm(p.e.run)}</div>`);
+        pts.sort((a, b) => a.d - b.d);
+        const sub = PRED ? PRED.subTarget : 43200, last = pts[pts.length - 1];
+        const refs = Math.abs(goalTotal - sub) < 60 ? [{ v: goalTotal, label: "Ziel = Sub-12" }] : [{ v: sub, label: "Sub-12" }, { v: goalTotal, label: "Ziel" }];
+        trendLine(box, pts, {
+          color: "var(--text-2)", axis: C.durationAxis(pts.map((p) => p.v), { include: [goalTotal, sub] }), invert: true, fmt: hm, val: hm, refs,
+          aria: `Verlauf der Gesamtprognose seit ${fmtDate(pts[0].d)}, aktuell ${hm(last.v)} h, Ziel ${hm(goalTotal)} h`,
+          tip: (p) => tipBox(tipDay(p.d), [tRow("var(--text-2)", "Prognose", hms(p.v))], `Schwimmen ${hm(p.e.swim)} · Rad ${hm(p.e.bike)} · Laufen ${hm(p.e.run)}`),
+        });
       })
-      .catch(() => { box.innerHTML = `<p class="muted" style="margin:0">Verlauf nicht verfügbar (nur auf der veröffentlichten Seite).</p>`; });
-  }
-
-  function historyChart(points, goal, sub) {
-    const W = 360, H = 170, m = { t: 12, r: 8, b: 22, l: 44 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const vals = points.map((p) => p.v).concat([goal, sub]);
-    let lo = Math.min(...vals), hi = Math.max(...vals);
-    const pad = (hi - lo) * 0.15 || 600; lo -= pad; hi += pad;
-    const t0 = points[0].d.getTime(), t1 = points[points.length - 1].d.getTime();
-    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0 || 1)) * iw;
-    const y = (v) => m.t + ((v - lo) / (hi - lo)) * ih; // schneller = oben
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf der Gesamtprognose">`;
-    for (let i = 0; i <= 3; i++) { const v = lo + ((hi - lo) / 3) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${hm(v)}</text>`; }
-    [[sub, "Sub-12"], [goal, "Ziel"]].forEach(([v, label]) => { s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--text-3)" stroke-dasharray="4 3"/><text x="${W - m.r}" y="${y(v) - 4}" text-anchor="end">${label}</text>`; });
-    s += `<path d="${points.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linejoin="round"/>`;
-    points.forEach((p, i) => {
-      if (points.length <= 30 || i === points.length - 1) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="4" fill="var(--text-2)" stroke="var(--surface)" stroke-width="2"/>`;
-      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="12" fill="transparent"/>`;
-    });
-    s += `<text x="${m.l}" y="${H - 4}">${fmtDate(points[0].d, { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(points[points.length - 1].d, { day: "2-digit", month: "2-digit" })}</text></svg>`;
-    return s;
+      .catch(() => { noChart(box, "Verlauf nicht verfügbar (nur auf der veröffentlichten Seite)."); });
   }
 
 
@@ -654,21 +634,23 @@
     const toPts = (arr, kind) => arr.map((p) => ({ d: parse(p.date), v: p.v, rec: p.rec, kind,
       hollow: kind === "run" ? p.rec.hrSrc !== "strap" : kind === "outdoor", gap: kind === "run" && !!(p.rec.pace && p.rec.pace.gap) }));
     const roll = (arr) => Z.rollingMedian(arr, cfg.windowDays).map((p) => ({ d: parse(p.date), v: p.v }));
-    const tipRec = (p, valTxt) => `<div class="t-title">${esc(p.rec.name)}</div>${tRow("var(--text-2)", fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" }), valTxt)}<div class="muted">${nf(p.rec.km, 1)} km · ${hm(p.rec.sec)} h${p.rec.pace ? ` · ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? ` · ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}</div><div class="muted">${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? " · steigungsbereinigt (GAP)" : ""}</div>`;
+    const tipRec = (p, color, label, valTxt) => tipBox(tipDay(p.d), [tRow(color, label, valTxt)],
+      `${esc(p.rec.name)} · ${nf(p.rec.km, 1)} km · ${hm(p.rec.sec)} h${p.rec.pace ? ` · ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? ` · ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? " · steigungsbereinigt (GAP)" : ""}`);
     trendChart($("#z2Pace"), toPts(pace, "run"), pace.length >= cfg.minPoints ? [{ pts: roll(pace) }] : [], {
-      invert: true, fmt: mmss, label: `Pace @ ${runMid} bpm`, minPoints: cfg.minPoints,
-      tip: (p) => tipRec(p, `${mmss(p.v)} /km`),
+      invert: true, fmt: mmss, axis: (vs) => C.paceAxis(vs), color: "var(--run)", label: `Pace bei ${runMid} bpm`, unit: " pro km", minPoints: cfg.minPoints,
+      tip: (p) => tipRec(p, "var(--run)", "Pace", `${mmss(p.v)} /km`),
     });
     // Chart 2: Watt @ HF
     trendChart($("#z2Watts"), toPts(wIn, "indoor").concat(toPts(wOut, "outdoor")),
       [wIn.length >= cfg.minPoints ? { pts: roll(wIn) } : null, wOut.length >= cfg.minPoints ? { pts: roll(wOut), dash: true } : null].filter(Boolean), {
-        invert: false, fmt: (v) => nf(v), label: `Watt @ ${rideMid} bpm`, minPoints: cfg.minPoints,
-        tip: (p) => tipRec(p, `${p.v} W · ${p.kind === "indoor" ? "Indoor" : "Outdoor"}`),
+        invert: false, fmt: (v) => nf(v), axis: (vs) => C.padAxis(vs), color: "var(--bike)", label: `Watt bei ${rideMid} bpm`, unit: " W", minPoints: cfg.minPoints,
+        tip: (p) => tipRec(p, "var(--bike)", p.kind === "indoor" ? "Indoor" : "Outdoor", `${p.v} W`),
       });
+    $("#z2OutMedian").hidden = wOut.length < cfg.minPoints;   // gestrichelte Outdoor-Linie nur mit genug Fahrten
     // Chart 3: Entkopplung
     decouplingChart($("#z2Dec"), Z.decouplingSeries(recs), cfg.decoupling.thresholds);
     // Chart 4: Zonenverteilung
-    $("#z2ZoneLegend").innerHTML = hrZ.map((z, i) => `<span><i class="swatch" style="background:${ZCOL[i]}"></i>Z${i + 1} ${i === 0 ? "< " + hrZ[1][0] : z[1] == null ? "≥ " + z[0] : z[0] + "–" + z[1]}</span>`).join("");
+    $("#z2ZoneLegend").innerHTML = C.legendItems(hrZ.map((z, i) => ({ color: ZCOL[i], label: `Z${i + 1} ${i === 0 ? "< " + hrZ[1][0] : z[1] == null ? "≥ " + z[0] : z[0] + "–" + z[1]}` })));
     zoneChart();
 
     // Text der Karte „Zone 2 verbessern“
@@ -679,58 +661,41 @@
     $("#z2SrcStats").innerHTML = `<b>Pulsmesser erkannt:</b> ${cnt("strap")} × Brustgurt, ${cnt("wrist")} × Uhr, ${cnt("unknown")} × unbekannt (von ${withHr.length} Einheiten mit HF). ${HRSRC && HRSRC.updated ? `Garmin-Sensordaten Stand ${new Date(HRSRC.updated).toLocaleDateString("de-DE")}.` : "Noch keine Garmin-Sensordaten – der nächste Garmin-Lauf holt sie."}`;
   }
 
-  // Einzelwerte als blasse Punkte, gleitender Median als Linie
+  // Einzelwerte als blasse Punkte, gleitender Median als Linie (Farbe der Sportart)
   function trendChart(box, pts, lines, o) {
-    if (pts.length < 1) { box.innerHTML = `<p class="muted" style="margin:0">Noch keine gewerteten Einheiten.</p>`; return; }
-    const W = Math.max(300, Math.round(box.clientWidth || 520)), H = W < 500 ? 190 : 210, m = { t: 12, r: 10, b: 24, l: 46 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const vals = pts.map((p) => p.v);
-    let lo = Math.min(...vals), hi = Math.max(...vals);
-    const pad = (hi - lo) * 0.2 || Math.max(5, hi * 0.03); lo -= pad; hi += pad;
-    let t0 = Math.min(...pts.map((p) => p.d.getTime())), t1 = Math.max(...pts.map((p) => p.d.getTime()));
-    if (t1 - t0 < 14 * DAY) { t0 -= 7 * DAY; t1 += 7 * DAY; }
-    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0)) * iw;
-    const y = (v) => (o.invert ? m.t + ((v - lo) / (hi - lo)) * ih : m.t + ih - ((v - lo) / (hi - lo)) * ih);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label)} über die Zeit">`;
-    for (let i = 0; i <= 3; i++) { const v = lo + ((hi - lo) / 3) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${o.fmt(v)}</text>`; }
-    lines.forEach((l) => { const ps = l.pts.filter((p) => p.v != null); if (ps.length > 1) s += `<path d="${ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("")}" fill="none" stroke="var(--text-2)" stroke-width="2" ${l.dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`; });
-    pts.forEach((p, i) => {
-      const cx = x(p.d), cy = y(p.v);
-      const look = p.hollow ? `fill="var(--surface)" stroke="var(--text-2)" stroke-width="2" opacity=".75"` : `fill="var(--text-2)" opacity=".45"`;
-      s += p.gap ? `<path d="M${cx},${cy - 6.5}L${cx + 6.5},${cy}L${cx},${cy + 6.5}L${cx - 6.5},${cy}Z" ${look}/>` : `<circle cx="${cx}" cy="${cy}" r="${p.hollow ? 4.5 : 5}" ${look}/>`;
-      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="13" fill="transparent"/>`;
+    if (pts.length < 1) { noChart(box, "Noch keine gewerteten Einheiten."); return; }
+    const last = pts.reduce((a, p) => (p.d > a.d ? p : a), pts[0]);
+    const ax = o.axis(pts.map((p) => p.v));
+    const note = pts.length < o.minPoints ? `<p class="chart-note">Noch zu wenig Daten für einen Trend (${pts.length} von mind. ${o.minPoints} Werten).</p>` : "";
+    mount(box, (W) => {
+      box.innerHTML = C.lineChart({
+        width: W, height: C.LARGE, aria: `${o.label} über die Zeit, ${pts.length} Einheiten, zuletzt ${o.fmt(last.v)}${o.unit}`,
+        y: { ...ax, fmt: o.fmt, invert: o.invert },
+        series: lines.map((l) => ({ pts: l.pts, color: o.color, dash: l.dash, dots: false })),
+        scatter: pts.map((p) => ({ d: p.d, v: p.v, color: o.color, shape: p.gap ? "diamond" : p.hollow ? "hollow" : "dot", opacity: p.hollow ? 0.8 : 0.45 })),
+        latest: { d: last.d, v: last.v, label: o.fmt(last.v) }, hits: pts,
+      }) + note;
+      bindTips(box, (i) => o.tip(pts[i]));
     });
-    s += `<text x="${m.l}" y="${H - 6}">${fmtDate(new Date(t0), { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 6}" text-anchor="end">${fmtDate(new Date(t1), { day: "2-digit", month: "2-digit" })}</text></svg>`;
-    const note = pts.length < o.minPoints ? `<p class="muted" style="font-size:12px;margin:4px 0 0">Noch zu wenig Daten für einen Trend (${pts.length} von mind. ${o.minPoints} Werten).</p>` : "";
-    box.innerHTML = s + note;
-    attachPointTips(box, pts, "var(--text-2)", o.tip);
   }
 
+  const DEC_BAR = "color-mix(in srgb, var(--text) 30%, var(--surface))";   // neutral, Ampel nur als Punkt
   function decouplingChart(box, list, thr) {
-    if (!list.length) { box.innerHTML = `<p class="muted" style="margin:0">Noch keine ruhigen langen Einheiten (Lauf ≥ 60 min, Rad ≥ 90 min mit echten Watt, ≥ 80 % in Z1–2).</p>`; return; }
-    const items = list.slice().sort((a, b) => a.date.localeCompare(b.date));
-    const W = Math.max(300, Math.round(box.clientWidth || 520)), H = W < 500 ? 190 : 210, m = { t: 14, r: 10, b: 26, l: 40 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const lo = Math.min(0, ...items.map((p) => p.v)) - 1, hi = Math.max(thr[1] + 2, ...items.map((p) => p.v)) + 1;
-    const y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
-    const band = iw / Math.max(items.length, 6), bw = Math.min(36, band * 0.6);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Entkopplung pro langer Einheit">`;
-    [0, thr[0], thr[1]].forEach((v) => { s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${v} %</text>`; });
-    s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(thr[0])}" y2="${y(thr[0])}" stroke="var(--text-2)" stroke-dasharray="5 4"/>`;
-    items.forEach((p, i) => {
-      const st = window.Z2.ampel(p.v, thr), cx = m.l + band * i + band / 2;
-      const top = Math.min(y(p.v), y(0)), h = Math.max(2, Math.abs(y(p.v) - y(0)));
-      s += `<rect x="${cx - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="color-mix(in srgb, var(--text) 30%, var(--surface))"/>`;
-      s += `<circle cx="${cx}" cy="${Math.max(m.t + 4, y(Math.max(p.v, 0)) - 8)}" r="4" fill="${STATUS_COL[st]}"/>`;   // Ampel nur als Punkt
-      s += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${fmtDate(parse(p.date), { day: "2-digit", month: "2-digit" })}</text>`;
-      s += `<rect class="hit" data-i="${i}" x="${cx - band / 2}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
-    });
-    box.innerHTML = s + "</svg>";
-    box.querySelectorAll(".hit").forEach((el) => {
-      const p = items[+el.dataset.i], r = p.rec, st = window.Z2.ampel(p.v, thr);
-      const html = `<div class="t-title">${esc(r.name)}</div>${tRow(STATUS_COL[st], fmtDate(parse(p.date), { weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit" }), `${nf(p.v, 1)} % (${STATUS_TXT[st]})`)}<div class="muted">${r.kind === "run" ? "Lauf" : "Rad"} · ${hm(r.sec)} h · ${nf(r.km, 1)} km · Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? ` · VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? " · GAP" : ""}</div><div class="muted">${SRC_TXT[r.hrSrc] || SRC_TXT.unknown}</div>`;
-      const show = (ev) => showTip(html, ev);
-      el.addEventListener("mousemove", show); el.addEventListener("click", show); el.addEventListener("mouseleave", hideTip);
+    if (!list.length) { noChart(box, "Noch keine ruhigen langen Einheiten (Lauf ≥ 60 min, Rad ≥ 90 min mit echten Watt, ≥ 80 % in Z1–2)."); return; }
+    const items = list.slice().sort((a, b) => a.date.localeCompare(b.date)), vs = items.map((p) => p.v), last = items[items.length - 1];
+    const ax = C.zeroAxis(Math.max(thr[1], ...vs), { min: Math.min(0, ...vs), clamp: [-100, 100] });
+    const tip = (p) => {
+      const r = p.rec, st = window.Z2.ampel(p.v, thr);
+      return tipBox(tipDay(parse(p.date)), [tRow(STATUS_COL[st], "Entkopplung", `${nf(p.v, 1)} % (${STATUS_TXT[st]})`)],
+        `${esc(r.name)} · ${r.kind === "run" ? "Lauf" : "Rad"} · ${hm(r.sec)} h · ${nf(r.km, 1)} km<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? ` · VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? " · GAP" : ""} · ${SRC_TXT[r.hrSrc] || SRC_TXT.unknown}`);
+    };
+    mount(box, (W) => {
+      box.innerHTML = C.barChart({
+        width: W, height: C.LARGE, minBands: 6, aria: `Entkopplung pro langer Einheit, ${items.length} Einheiten, zuletzt ${nf(last.v, 1)} %`,
+        y: { ...ax, fmt: tickFmt(ax, " %") }, refs: [{ v: thr[0], label: `Ziel < ${thr[0]} %` }, { v: thr[1], label: `${thr[1]} %` }],
+        bands: items.map((p) => ({ label: dmS(parse(p.date)), stacks: [{ v: p.v, color: DEC_BAR }], dot: STATUS_COL[window.Z2.ampel(p.v, thr)] })),
+      });
+      bindTips(box, (i) => tip(items[i]));
     });
   }
 
@@ -739,35 +704,20 @@
     const recs = Z2DATA.activities.filter((r) => r.kind);
     const weeksZ = Z.weeklyZones(recs, zoneFilter === "all" ? null : zoneFilter).slice(-16);
     $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", c.dataset.f === zoneFilter));
-    if (!weeksZ.length) { box.innerHTML = `<p class="muted">Keine Daten.</p>`; return; }
-    const W = Math.max(300, Math.round(box.clientWidth || 900)), H = W < 600 ? 220 : 260, m = { t: 12, r: 8, b: 28, l: 36 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const tot = weeksZ.map((w) => w.sec.reduce((a, b) => a + b, 0) / 3600);
-    const { max, step } = niceScale(Math.max(...tot) * 1.05);
-    const y = (v) => m.t + ih - (v / max) * ih;
-    const band = iw / weeksZ.length, bw = Math.min(40, band * 0.62);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Zeit pro Herzfrequenzzone und Woche">`;
-    for (let v = 0; v <= max + 1e-9; v += step) s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)} h</text>`;
-    weeksZ.forEach((w, i) => {
-      const x = m.l + band * i + (band - bw) / 2;
-      let acc = 0;
-      const segs = w.sec.map((sec, z) => ({ z, h: sec / 3600 })).filter((g) => g.h > 0);
-      segs.forEach((g, j) => {
-        const y0 = y(acc), y1 = y(acc + g.h), gap = j > 0 ? 2 : 0, hgt = Math.max(0, y0 - y1 - gap);
-        s += j === segs.length - 1 ? `<path d="${roundedTopRect(x, y1, bw, hgt, 4)}" fill="${ZCOL[g.z]}"/>` : `<rect x="${x}" y="${y1}" width="${bw}" height="${hgt}" fill="${ZCOL[g.z]}"/>`;
-        acc += g.h;
+    if (!weeksZ.length) { noChart(box, "Keine Daten."); return; }
+    const tot = weeksZ.map((w) => w.sec.reduce((a, b) => a + b, 0));
+    const ax = C.zeroAxis(Math.max(...tot) / 3600), curMon = ymdLocal(monday(new Date()));
+    const tip = (i) => {
+      const w = weeksZ[i], total = tot[i];
+      return tipBox(`Woche ab ${fmtDate(parse(w.week))}`, w.sec.map((sec, z) => tRow(ZCOL[z], `Z${z + 1}`, `${hm(sec)} h · ${total ? Math.round((sec / total) * 100) : 0} %`)).concat(tSum("Summe", `${hm(total)} h`)));
+    };
+    mount(box, (W) => {
+      box.innerHTML = C.barChart({
+        width: W, height: C.LARGE, aria: `Zeit pro Herzfrequenzzone und Woche, ${weeksZ.length} Wochen, zuletzt ${hm(tot[tot.length - 1])} h`,
+        y: { ...ax, fmt: tickFmt(ax, " h") },
+        bands: weeksZ.map((w) => ({ label: dmS(parse(w.week)), current: w.week === curMon, stacks: w.sec.map((sec, z) => ({ v: sec / 3600, color: ZCOL[z] })) })),
       });
-      const every = Math.ceil(44 / band);
-      if ((weeksZ.length - 1 - i) % every === 0) s += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle">${fmtDate(parse(w.week), { day: "2-digit", month: "2-digit" })}</text>`;
-      s += `<rect class="hit" data-i="${i}" x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>`;
-    });
-    box.innerHTML = s + "</svg>";
-    box.querySelectorAll(".hit").forEach((el) => {
-      const w = weeksZ[+el.dataset.i], total = w.sec.reduce((a, b) => a + b, 0);
-      const html = `<div class="t-title">Woche ab ${fmtDate(parse(w.week))}</div>` + w.sec.map((sec, z) => tRow(ZCOL[z], `Z${z + 1}`, `${hm(sec)} h · ${total ? Math.round((sec / total) * 100) : 0} %`)).join("") + `<div class="t-row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px"><span>Summe</span><span>${hm(total)} h</span></div>`;
-      const show = (ev) => { el.setAttribute("fill", "rgba(127,127,127,.08)"); showTip(html, ev); };
-      el.addEventListener("mousemove", show); el.addEventListener("click", show);
-      el.addEventListener("mouseleave", () => { el.setAttribute("fill", "transparent"); hideTip(); });
+      bindTips(box, tip);
     });
   }
 
@@ -809,7 +759,7 @@
         ${goalBar(gp)}
         ${goalBox(plan)}
         <div class="chart" data-lift="${esc(ex)}"></div>
-        <div class="legend" style="margin-top:4px">${[...new Set(h.map((e) => e.place))].map((p) => `<span><i class="swatch" style="background:${placeColor(p)};border-radius:50%"></i>${esc(p)}</span>`).join("")}${machine ? `<span class="muted">PR nur am selben Ort</span>` : ""}</div>
+        ${liftLegend(h, placeColor, machine)}
       </div>`;
     }).join("");
     $("#gymLifts").querySelectorAll("[data-lift]").forEach((box) => { const gp = GYM.goalProgress(GYM_SESS, box.dataset.lift, GCFG); liftChart(box, GYM.exerciseHistory(GYM_SESS, box.dataset.lift, GCFG), placeColor, gp ? gp.goal : null); });
@@ -861,39 +811,33 @@
     return `<div class="lift-goal">${head}${body}</div>${p.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}`;
   }
 
+  // Legende unter dem 1RM-Diagramm: Orte nur, wenn es mehrere gibt (dann farbige Punkte), PR-Ring
+  function liftLegend(h, placeColor, machine) {
+    const places = [...new Set(h.map((e) => e.place))];
+    const items = (places.length > 1 ? places.map((p) => ({ label: p, color: placeColor(p), shape: "dot" })) : [])
+      .concat(h.some((e) => e.pr) ? [{ label: "PR", color: "var(--good)", shape: "ring" }] : []);
+    return items.length || machine ? C.legend(items, machine ? `<span class="muted">PR nur am selben Ort</span>` : "") : "";
+  }
   function liftChart(box, hist, placeColor, goal) {
-    const W = Math.max(280, Math.round(box.clientWidth || 340)), H = 150, m = { t: 10, r: 8, b: 22, l: 40 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const pts = hist.map((e) => ({ d: parse(e.date), v: e.e1rm, e }));
-    const scaleVals = pts.map((p) => p.v).concat(goal ? [goal] : []);   // Ziel immer im sichtbaren Bereich
-    let lo = Math.min(...scaleVals), hi = Math.max(...scaleVals);
-    const pad = (hi - lo) * 0.2 || Math.max(2, hi * 0.03); lo -= pad; hi += pad;
-    let t0 = pts[0].d.getTime(), t1 = pts[pts.length - 1].d.getTime();
-    if (t1 - t0 < 14 * DAY) { t0 -= 7 * DAY; t1 += 7 * DAY; }
-    const x = (d) => m.l + ((d.getTime() - t0) / (t1 - t0)) * iw, y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Geschätztes 1RM über die Zeit">`;
-    for (let i = 0; i <= 2; i++) { const v = lo + ((hi - lo) / 2) * i; s += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`; }
-    if (goal) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(goal)}" y2="${y(goal)}" stroke="var(--text-3)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W - m.r}" y="${y(goal) - 4}" text-anchor="end">Ziel ${nf(goal)}</text>`;
-    const path = (ps) => ps.map((p, i) => `${i ? "L" : "M"}${x(p.d)},${y(p.v)}`).join("");
-    if (pts.length && pts.every((p) => p.e.compareKey === "alle")) {
-      // Ortsübergreifend verglichen (z. B. Bankdrücken): eine durchgehende Linie in neutraler Farbe
-      const ps = pts.slice().sort((a, b) => a.d - b.d);
-      if (ps.length > 1) s += `<path d="${path(ps)}" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linejoin="round"/>`;
-    } else {
-      // Linie je Ort (Maschinen nicht ortsübergreifend verbinden)
-      [...new Set(pts.map((p) => p.e.place))].forEach((pl) => {
-        const ps = pts.filter((p) => p.e.place === pl);
-        if (ps.length > 1) s += `<path d="${path(ps)}" fill="none" stroke="${placeColor(pl)}" stroke-width="2" opacity=".7"/>`;
+    const pts = hist.map((e) => ({ d: parse(e.date), v: e.e1rm, e })), byDate = (a, b) => a.d - b.d;
+    const ax = C.padAxis(pts.map((p) => p.v), { include: goal ? [goal] : [] });   // Ziel immer im sichtbaren Bereich
+    const last = pts.reduce((a, p) => (p.d >= a.d ? p : a), pts[0]);
+    const places = [...new Set(pts.map((p) => p.e.place))], multi = places.length > 1;
+    // Ein Ort oder ortsübergreifend verglichen: eine neutrale Linie; sonst Linie je Ort (Maschinen nicht verbinden) + farbige Punkte
+    const series = !multi || pts.every((p) => p.e.compareKey === "alle")
+      ? [{ pts: pts.slice().sort(byDate), color: "var(--text-2)", dots: !multi }]
+      : places.map((pl) => ({ pts: pts.filter((p) => p.e.place === pl).sort(byDate), color: placeColor(pl), dots: false }));
+    const aria = `Geschätztes 1RM ${box.dataset.lift || ""}, ${pts.length} ${pts.length === 1 ? "Eintrag" : "Einträge"}, aktuell ${nf(last.v)} kg${goal ? `, Ziel ${nf(goal)} kg` : ""}`;
+    mount(box, (W) => {
+      box.innerHTML = C.lineChart({
+        width: W, height: C.SMALL, aria, y: { ...ax, fmt: tickFmt(ax) }, series,
+        scatter: multi ? pts.map((p) => ({ d: p.d, v: p.v, color: placeColor(p.e.place), shape: "dot", r: 3.5 })) : [],
+        marks: pts.filter((p) => p.e.pr).map((p) => ({ d: p.d, v: p.v, color: "var(--good)" })),
+        refs: goal ? [{ v: goal, label: `Ziel ${nf(goal)}` }] : [],
+        latest: { d: last.d, v: last.v, label: nf(last.v) }, hits: pts,
       });
-    }
-    pts.forEach((p, i) => {
-      s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="${p.e.pr ? 6 : 4.5}" fill="${placeColor(p.e.place)}" stroke="var(--surface)" stroke-width="2"/>`;
-      if (p.e.pr) s += `<circle cx="${x(p.d)}" cy="${y(p.v)}" r="9" fill="none" stroke="var(--good)" stroke-width="2"/>`;
-      s += `<circle class="hit" data-i="${i}" cx="${x(p.d)}" cy="${y(p.v)}" r="13" fill="transparent"/>`;
+      bindTips(box, (i) => { const p = pts[i]; return tipBox(`${tipDay(p.d)} · ${esc(p.e.place)}`, [tRow(multi ? placeColor(p.e.place) : "var(--text-2)", setTxt(p.e), `1RM ${nf(p.v, 1)} kg`)], p.e.pr ? `<b class="t-good">PR</b>` : ""); });
     });
-    s += `<text x="${m.l}" y="${H - 4}">${fmtDate(new Date(t0), { day: "2-digit", month: "2-digit" })}</text><text x="${W - m.r}" y="${H - 4}" text-anchor="end">${fmtDate(new Date(t1), { day: "2-digit", month: "2-digit" })}</text></svg>`;
-    box.innerHTML = s;
-    attachPointTips(box, pts, "var(--strength)", (p) => `<div class="t-title">${fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" })} · ${esc(p.e.place)}</div>${tRow(placeColor(p.e.place), `${p.e.sets > 1 ? p.e.sets + "×" : ""}${p.e.reps}×${nf(p.e.weight, p.e.weight % 1 ? 1 : 0)} kg`, `1RM ${nf(p.v, 1)} kg`)}${p.e.pr ? `<div style="color:var(--good);font-weight:600">PR</div>` : ""}`);
   }
 
 
@@ -1292,7 +1236,7 @@
       ${s.running ? `<div class="wk-running"><span class="badge neutral">läuft noch</span></div>` : ""}
       ${s.highlight ? `<p class="wk-hl"><span aria-hidden="true">★</span><span>${esc(s.highlight.text)}</span></p>` : `<p class="muted" style="margin:10px 0 0">Keine Einheiten in dieser Woche.</p>`}
       ${s.empty ? "" : `<div class="mini-title">Training</div><dl class="wk-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`}
-      ${loadBlock(s, box.clientWidth - 32)}
+      ${loadBlock(s)}
       ${s.recovery ? `<div class="mini-title">Erholung · Garmin, Ø der Woche</div>
         <div class="wk-rec">${s.recovery.map((r) => `<div><span>${r.label}</span><b>${r.value == null ? "–" : REC_FMT[r.key](r.value)}</b>${r.trend ? ` <em class="wk-trend" title="${TREND[r.trend][1]}">${TREND[r.trend][0]}</em><span class="sr-only">${TREND[r.trend][1]}</span>` : ""}</div>`).join("")}</div>` : ""}
       ${s.hints.length ? `<div class="mini-title">Hinweise</div><ul class="wk-hints">${s.hints.map((h) => `<li${h.strong ? ' class="wk-hint-strong"' : ""}>${h.strong ? `<span class="badge warn">Wiedereinstieg</span> ` : ""}${esc(h.text)}</li>`).join("")}</ul>` : ""}`;
@@ -1303,16 +1247,7 @@
       if (again && !again.disabled) again.focus({ preventScroll: true });
     }));
     // Belastungsdiagramm: Tooltip je Woche, Antippen wählt die Woche
-    const lw = s.load && s.load.weeks;
-    box.querySelectorAll(".load-chart .hit").forEach((h) => {
-      const w = lw[+h.dataset.i];
-      const html = () => `<b>${dm(w.monday)} – ${dm(ymdOf(addDays(parse(w.monday), 6)))}</b>` + (w.n
-        ? LOAD_ORDER.slice().reverse().map((k) => tRow(LOAD_COLORS[k], LOAD_LABEL[k], nf(w[k]))).join("") + tRow("transparent", "Summe", nf(w.total))
-        : `<div class="muted">keine Belastungswerte</div>`);
-      h.addEventListener("mousemove", (ev) => showTip(html(), ev));
-      h.addEventListener("mouseleave", hideTip);
-      h.addEventListener("click", () => { hideTip(); wkOffset = +h.dataset.i; renderWeek(now); });
-    });
+    if (s.load) loadChart(box.querySelector(".load-box"), s.load, now);
   }
 
   // Trainingsbelastung (Garmin) – nur echte Werte, Einheiten ohne Wert werden genannt statt geschätzt
@@ -1320,40 +1255,29 @@
   const LOAD_COLORS = { strength: "var(--strength)", endurance: "var(--cat1)", other: "var(--other)" };
   const LOAD_LABEL = { strength: "Kraft", endurance: "Ausdauer", other: "Sonstiges" };
   const LOAD_STATUS = { LOW: "niedrig", OPTIMAL: "optimal", HIGH: "hoch", VERY_HIGH: "sehr hoch" };
-  const ymdOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  function loadChart(L, width) {
-    const weeks = L.weeks.slice().reverse(), sel = weeks.length - 1 - L.index;   // älteste links
-    const W = Math.round(Math.max(260, Math.min(720, width || 360))), H = 120, m = { t: 18, r: 4, b: 18, l: 38 };
-    const iw = W - m.l - m.r, ih = H - m.t - m.b, band = iw / weeks.length, bw = Math.min(26, band * 0.62);
-    const { max, step } = niceScale(Math.max(1, ...weeks.map((w) => w.total)) * 1.05, 2);
-    const y = (v) => m.t + ih - (v / max) * ih;
-    const dmS = (iso) => fmtDate(parse(iso), { day: "2-digit", month: "2-digit" });
-    const label = weeks.map((w) => `${dmS(w.monday)}: ${w.n ? nf(w.total) : "keine Werte"}`).join(", ");
-    let svg = `<svg class="chart load-chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Trainingsbelastung der letzten ${weeks.length} Wochen (Garmin): ${label}">`;
-    const cur = weeks.length - 1;   // aktuelle Woche (rechts): Akzent zur Orientierung
-    svg += `<rect x="${m.l + band * cur + 1}" y="${m.t - 16}" width="${band - 2}" height="${ih + 16}" rx="6" fill="var(--accent-soft)"/>`;
-    if (sel >= 0 && sel < weeks.length && sel !== cur) svg += `<rect x="${m.l + band * sel + 1}" y="${m.t - 16}" width="${band - 2}" height="${ih + 16}" rx="6" fill="var(--surface-2)"/>`;
-    for (let v = step; v <= max + 1e-9; v += step) svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end">${nf(v)}</text>`;
-    svg += `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${y(0)}" y2="${y(0)}"/>`;
-    weeks.forEach((w, i) => {
-      const x = m.l + band * i + (band - bw) / 2;
-      const segs = LOAD_ORDER.filter((k) => w[k] > 0);
-      let base = 0;
-      segs.forEach((k, j) => {
-        const y0 = y(base), y1 = y(base + w[k]), gap = j > 0 ? 2 : 0;   // 2 px Abstand zwischen den Segmenten
-        const h = Math.max(0, y0 - y1 - gap);
-        svg += j === segs.length - 1 ? `<path d="${roundedTopRect(x, y1, bw, h, Math.min(4, h))}" fill="${LOAD_COLORS[k]}"/>` : `<rect x="${x}" y="${y1 + gap}" width="${bw}" height="${h}" fill="${LOAD_COLORS[k]}"/>`;
-        base += w[k];
+  function loadChart(box, L, now) {
+    if (!box) return;
+    const weeks = L.weeks.slice().reverse(), sel = weeks.length - 1 - L.index, cur = weeks.length - 1;   // älteste links, aktuelle Woche rechts
+    const ax = C.zeroAxis(Math.max(1, ...weeks.map((w) => w.total)));
+    const aria = `Trainingsbelastung der letzten ${weeks.length} Wochen (Garmin): ${weeks.map((w) => `${dmS(parse(w.monday))} ${w.n ? nf(w.total) : "keine Werte"}`).join(", ")}`;
+    const tip = (i) => {
+      const w = weeks[i];
+      return tipBox(`${dmS(parse(w.monday))} – ${dmS(addDays(parse(w.monday), 6))}`,
+        w.n ? LOAD_ORDER.slice().reverse().map((k) => tRow(LOAD_COLORS[k], LOAD_LABEL[k], nf(w[k]))).concat(tSum("Summe", nf(w.total))) : [], w.n ? "" : "keine Belastungswerte");
+    };
+    mount(box, (W) => {
+      box.innerHTML = C.barChart({
+        width: W, height: C.SMALL, aria, maxBar: 26, y: { ...ax, fmt: tickFmt(ax) },
+        bands: weeks.map((w, i) => ({
+          label: dmS(parse(w.monday)), current: i === cur, selected: i === sel && i !== cur, topLabel: i === sel && w.n ? nf(w.total) : null,
+          stacks: LOAD_ORDER.map((k) => ({ v: w[k], color: LOAD_COLORS[k] })),
+        })),
       });
-      if (i === sel && w.n) svg += `<text class="load-val" x="${x + bw / 2}" y="${y(w.total) - 5}" text-anchor="middle">${nf(w.total)}</text>`;
-      // wenig Platz (Handy): nur jede zweite Woche beschriften, die gewählte immer
-      const tight = band < 40, anchor = (weeks.length - 1) % 2;
-      if (!tight || i === sel || i === cur || (i % 2 === anchor && Math.abs(i - sel) !== 1)) svg += `<text x="${m.l + band * i + band / 2}" y="${H - 4}" text-anchor="middle"${i === cur ? ' class="load-cur"' : i === sel ? ' class="load-sel"' : ""}>${dmS(w.monday)}</text>`;
-      svg += `<rect class="hit" data-i="${weeks.length - 1 - i}" x="${m.l + band * i}" y="0" width="${band}" height="${H}" fill="transparent"><title>${dmS(w.monday)}</title></rect>`;
+      // Antippen/Klicken wählt die Woche; auf dem Touchscreen danach kurz den Tooltip zeigen
+      bindTips(box, tip, (i, ev, ptr) => { wkOffset = weeks.length - 1 - i; renderWeek(now); if (ptr !== "mouse") showTip(tip(i), ev); });
     });
-    return svg + `</svg>`;
   }
-  function loadBlock(s, width) {
+  function loadBlock(s) {
     const L = s.load;
     if (!L) return G.loads ? "" : `<div class="mini-title">Belastung · Garmin</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
     const pct = L.diffPct;
@@ -1362,8 +1286,8 @@
     const ac = L.acute != null ? `<p class="wk-load-line">Akut ${nf(L.acute)} · Chronisch ${nf(L.chronic)}${L.ratio != null ? ` · Verhältnis ${nf(L.ratio, 1)}` : ""}${L.status && LOAD_STATUS[L.status] ? ` · Garmin: <b>${LOAD_STATUS[L.status]}</b>` : ""} <span class="muted">(Stand ${fmtDate(parse(L.statusDate), { day: "2-digit", month: "2-digit" })})</span></p>` : "";
     return `<div class="mini-title">Belastung · Garmin</div>
       <p class="wk-load-line">${head}</p>
-      ${loadChart(L, width)}
-      <div class="legend wk-legend">${LOAD_ORDER.slice().reverse().map((k) => `<span><i class="swatch" style="background:${LOAD_COLORS[k]}"></i>${LOAD_LABEL[k]}</span>`).join("")}</div>
+      <div class="chart load-box"></div>
+      ${C.legend(LOAD_ORDER.slice().reverse().map((k) => ({ label: LOAD_LABEL[k], color: LOAD_COLORS[k] })))}
       ${ac}
       ${L.withoutLoad ? `<p class="muted wk-note">${L.withoutLoad} ${L.withoutLoad === 1 ? "Einheit" : "Einheiten"} ohne Belastungswert</p>` : ""}
       <p class="muted wk-note">Garmin berechnet die Belastung aus dem Puls. Krafttraining wird dabei nur schwach abgebildet.</p>`;
@@ -1427,14 +1351,15 @@
       tile("Gewicht", v(last("weight"), 1, "kg"), last("bodyFat") != null ? `Körperfett ${nf(last("bodyFat"), 1)} %` : ""),
       tile("Schritte", v(last("steps")), a("steps")),
     ];
+    // Titel, Name/Einheit für Tooltip und aria-label, Nachkommastellen, feste Grenzen (Sleep Score, Body Battery: 0–100)
     const charts = [
-      ["sleepScore", "Sleep Score", (x) => nf(x)],
-      ["hrv", "HRV (ms)", (x) => nf(x)],
-      ["rhr", "Ruhepuls (bpm)", (x) => nf(x)],
-      ["bbHigh", "Body Battery (Tageshoch)", (x) => nf(x)],
-      ["vo2run", "VO2max Laufen", (x) => nf(x, 1)],
-      ["weight", "Gewicht (kg)", (x) => nf(x, 1)],
-    ].map(([k, label, fmt]) => ({ k, label, fmt, pts: gDays.slice(-60).filter((d) => d[k] != null).map((d) => ({ d: parse(d.date), v: d[k], raw: d })) }))
+      ["sleepScore", "Sleep Score", "Sleep Score", "", 0, [0, 100]],
+      ["hrv", "HRV (ms)", "HRV", " ms", 0, null],
+      ["rhr", "Ruhepuls (bpm)", "Ruhepuls", " bpm", 0, null],
+      ["bbHigh", "Body Battery (Tageshoch)", "Body Battery", "", 0, [0, 100]],
+      ["vo2run", "VO2max Laufen", "VO2max Laufen", "", 1, null],
+      ["weight", "Gewicht (kg)", "Gewicht", " kg", 1, null],
+    ].map(([k, label, name, unit, dec, clamp]) => ({ k, label, name, unit, fmt: (x) => nf(x, dec), clamp, pts: gDays.slice(-60).filter((d) => d[k] != null).map((d) => ({ d: parse(d.date), v: d[k], raw: d })) }))
       .filter((c) => c.pts.length >= 2);
     el.innerHTML = `<div class="grid g4">${tiles.join("")}</div>` +
       (charts.length ? `<div class="rec-more"><button type="button" class="chip rec-toggle" aria-expanded="true" aria-controls="erholungVerlauf-body">Verläufe ausblenden</button></div>
@@ -1445,7 +1370,7 @@
       UNITS.erholungVerlauf = { btn, body: $("#erholungVerlauf-body"), sum: null, host: null, label: (open) => { btn.textContent = open ? "Verläufe ausblenden" : "Verläufe anzeigen"; } };
       btn.addEventListener("click", () => toggleUnit("erholungVerlauf"));
       applyUnit("erholungVerlauf", LOPEN.erholungVerlauf !== false, false, false);
-      if (LOPEN.erholungVerlauf !== false) drawRecoveryCharts();
+      drawRecoveryCharts();   // eingeklappt: wird beim Aufklappen in echter Breite gezeichnet
     }
     $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Verläufe: letzte 60 Tage.`;
   }
@@ -1453,10 +1378,12 @@
   let REC_CHARTS = [];
   function drawRecoveryCharts() {
     REC_CHARTS.forEach((c, i) => {
-      const box = $(`#gchart${i}`);
-      if (!box) return;
-      box.innerHTML = paceChart(c.pts, { fmt: c.fmt, color: "var(--text-2)", lastColor: "var(--accent)", invert: false, unitLabel: c.label });
-      attachPointTips(box, c.pts, "var(--text-2)", (p) => `<div class="t-title">${fmtDate(p.d, { weekday: "short", day: "2-digit", month: "2-digit" })}</div>${tRow("var(--text-2)", c.label, c.fmt(p.v))}`);
+      const ax = C.padAxis(c.pts.map((p) => p.v), { clamp: c.clamp }), last = c.pts[c.pts.length - 1];
+      trendLine($(`#gchart${i}`), c.pts, {
+        color: "var(--text-2)", axis: ax, fmt: tickFmt(ax), val: c.fmt,
+        aria: `${c.name} letzte 60 Tage, aktuell ${c.fmt(last.v)}${c.unit}`,
+        tip: (p) => tipBox(tipDay(p.d), [tRow("var(--text-2)", c.name, c.fmt(p.v) + c.unit)]),
+      });
     });
   }
 
@@ -1466,15 +1393,11 @@
   const UNITS = {};   // id → { btn, body, sum, host, label }
   let LOPEN = {}, laySaved = null;
   const CHEV = `<svg class="sec-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  // Diagramme in eingeklappten Abschnitten: beim Aufklappen mit echter Breite neu zeichnen
+  // Beim Aufklappen: Diagramme im Abschnitt mit echter Breite zeichnen (redrawCharts), dazu Sonderfälle
   const REDRAW = {
-    zone2: () => { if (Z2DATA) renderZone2(); },
-    umfang: () => { if (!$("#volChart").hidden) volumeChart(); },
-    disziplinen: () => disciplines(),
-    gym: () => gymSection(),
     saison: () => layoutTimeline(true),
-    erholungVerlauf: () => drawRecoveryCharts(),
   };
+  const redrawUnit = (id, body) => { redrawCharts(body); if (REDRAW[id]) REDRAW[id](); };
   const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const loadLayout = () => { try { return JSON.parse(localStorage.getItem(LAY_KEY) || "null"); } catch (e) { return null; } };
   const saveLayout = (v) => { try { if (v) localStorage.setItem(LAY_KEY, JSON.stringify(v)); else localStorage.removeItem(LAY_KEY); } catch (e) { /* ignore */ } };
@@ -1522,12 +1445,12 @@
     const done = (fn) => { const f = () => { body.removeEventListener("transitionend", f); if (body._tok === tok) fn(); }; body.addEventListener("transitionend", f); setTimeout(f, 450); };
     if (!animate || reduceMotion()) {
       body.hidden = !open; body.style.height = ""; body.classList.remove("animating");
-      if (open && redraw && REDRAW[id]) REDRAW[id]();
+      if (open && redraw) redrawUnit(id, body);
       return;
     }
     if (open) {
       body.hidden = false;
-      if (redraw && REDRAW[id]) REDRAW[id]();   // jetzt sichtbar → richtige Breite
+      if (redraw) redrawUnit(id, body);   // jetzt sichtbar → richtige Breite
       const h = body.scrollHeight;
       body.classList.add("animating"); body.style.height = "0px";
       void body.offsetHeight;
@@ -1581,7 +1504,8 @@
     LOPEN = layoutState();
     Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, true));
   });
-  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (!$("#volChart").hidden) volumeChart(); if (Z2DATA) renderZone2(); layoutTimeline(false); renderWeek(new Date()); }, 150); });
+  // Größenänderung (Drehen, Fenster): Diagramme mit neuer Breite zeichnen (zusätzlich zum ResizeObserver)
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { hideTip(); redrawCharts(); layoutTimeline(false); }, 150); });
   $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });

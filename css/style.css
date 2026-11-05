@@ -149,11 +149,32 @@ h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 .controls { display: flex; gap: 6px; flex-wrap: wrap; }
 .chip { border: 1px solid var(--border); background: var(--surface); color: var(--text-2); border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; }
 .chip[aria-pressed="true"] { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
-.chart { position: relative; width: 100%; }
-.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.chart text { fill: var(--text-3); font-size: 11px; }
+/* Diagramme (js/charts.js): in echter Pixelbreite gezeichnet – Schrift bleibt immer 11 px */
+.chart { position: relative; width: 100%; min-width: 0; }
+.chart svg { display: block; max-width: 100%; height: auto; overflow: visible; -webkit-tap-highlight-color: transparent; }
+.chart text { fill: var(--text-3); font-size: 11px; font-variant-numeric: tabular-nums; }
 .chart .gridline { stroke: var(--grid); stroke-width: 1; }
-.chart .axis { stroke: var(--border); }
+.chart .ln { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .ref { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 4 3; }
+.chart text.ref-label { fill: var(--text-2); }
+.chart text.val { fill: var(--text); font-weight: 600; }
+.chart text.val, .chart text.ref-label { paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
+.chart text.tick.cur, .chart text.tick.sel { fill: var(--text); font-weight: 600; }
+.chart text.min-ok { fill: var(--good); font-weight: 700; }
+.chart .hit { cursor: pointer; }
+.chart rect.hit.on { fill: color-mix(in srgb, var(--text) 6%, transparent); }
+.chart-legend { margin-top: 8px; font-size: 12px; gap: 12px; }
+.chart-empty { margin: 0; padding: 6px 0; color: var(--text-3); font-size: 13px; }
+.chart-note { margin: 4px 0 0; color: var(--text-3); font-size: 12px; }
+/* Legenden-Symbole – überall gleich */
+.lg { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 2px; background: var(--c); }
+.lg-dot { border-radius: 50%; }
+.lg-hollow { border-radius: 50%; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--c); }
+.lg-ring { border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px var(--c); }
+.lg-diamond { width: 8px; height: 8px; margin: 0 1px; border-radius: 1px; transform: rotate(45deg); }
+.lg-line { width: 16px; height: 2px; border-radius: 1px; }
+.lg-dash, .lg-ref { width: 16px; height: 0; border-radius: 0; background: none; border-top: 2px dashed var(--c); }
+.lg-ref { border-top-width: 1px; }
 .tooltip {
   position: absolute; pointer-events: none; background: var(--surface); color: var(--text);
   border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 13px;
@@ -162,6 +183,10 @@ h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -.01em; }
 .tooltip .t-row { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
 .tooltip .t-row span:last-child { font-weight: 600; margin-left: 12px; }
 .tooltip .t-title { font-weight: 600; margin-bottom: 4px; }
+.tooltip .t-title.t-sec { margin: 6px 0 2px; }
+.tooltip .t-sum { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 4px; }
+.tooltip .t-note { color: var(--text-2); font-size: 12px; margin-top: 2px; }
+.tooltip .t-good { color: var(--good); }
 
 /* Readiness bars */
 .ready-row { display: grid; grid-template-columns: 90px 1fr 170px; gap: 10px; align-items: center; margin: 10px 0; font-size: 14px; }
@@ -239,7 +264,6 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 /* Akzent: Fokus-Ring und gedrückte Knöpfe */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon-btn:active, #refreshBtn.spin, .week-nav .chip:active:not(:disabled) { background: var(--accent-fill); color: var(--on-accent); border-color: var(--accent-fill); }
-.load-chart text.load-cur { fill: var(--accent); font-weight: 600; }
 
 /* Web-App: Offline-Badge, Aktualisieren */
 .offline-badge { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: 13px; }
@@ -276,7 +300,6 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .phase-warn { margin: 0 0 10px; padding: 8px 12px; border-radius: 8px; border-left: 4px solid var(--warn); background: var(--surface-2); font-size: 14px; }
 .wk-hints li.wk-hint-strong { font-weight: 600; color: var(--text); }
 .phase-list li.flex-li { outline-style: dashed; }
-.chart text.min-ok { fill: var(--good); font-weight: 700; font-size: 13px; }
 
 /* Gym */
 .split-bars { display: grid; gap: 8px; }
@@ -362,11 +385,6 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .wk-hints { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .wk-load-line { margin: 0 0 6px; font-size: 14px; }
 .wk-note { font-size: 12px; margin: 4px 0 0; }
-.wk-legend { font-size: 12px; gap: 12px; margin: 2px 0 6px; }
-.load-chart { display: block; max-width: 100%; height: auto; }
-.load-chart text.load-val { fill: var(--text); font-weight: 600; font-size: 11px; }
-.load-chart text.load-sel { fill: var(--text); font-weight: 600; }
-.load-chart .hit { cursor: pointer; }
 @media (max-width: 600px) {
   .wk-rec { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wk-dl { grid-template-columns: 1fr; gap: 2px; }
@@ -429,4 +447,4 @@ footer { margin-top: 48px; color: var(--text-3); font-size: 13px; border-top: 1p
   .phase span { display: none; }
   .brand span { display: none; }
 }
-@media (forced-colors: active) { .swatch, .ready-fill { forced-color-adjust: none; } }
+@media (forced-colors: active) { .swatch, .ready-fill, .lg { forced-color-adjust: none; } }
