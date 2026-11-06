@@ -479,17 +479,17 @@
     const select = (i) => {
       const w = weeks[i];
       return { label: w.flex ? "Woche, Flex" : "Woche", value: hv(hm(total(w) * 3600), "h"), period: range(w.start, addDays(w.start, 6)),
-        detail: selRows(keys.filter((k) => w[k] > 0).map((k) => [colors[k], labels[k], `${hm(w[k] * 3600)} h`])) + (w.min ? `<div>Minimum ${w.min.items.filter((it) => it.ok).length}/3</div>` : "") };
+        detail: selRows(keys.filter((k) => w[k] > 0).map((k) => [colors[k], labels[k], `${hm(w[k] * 3600)} h`])) + (w.min ? `<div>Minimum ${w.min.items.filter((it) => it.ok).length}/${w.min.items.length}</div>` : "") };
     };
     mount(el, (W) => {
-      const narrow = (W - 50) / weeks.length < 26;   // wenig Platz: ✓ / ○ statt „2/3“
+      const narrow = (W - 50) / weeks.length < 26;   // wenig Platz: ✓ / ○ statt „1/2“
       el.innerHTML = C.barChart({
         width: W, height: C.LARGE, aria, y: { ...ax, fmt: tickFmt(ax, " h") },
         groups: fIdx.length ? [{ from: fIdx[0], to: fIdx[fIdx.length - 1], label: "Flex" }] : [],
         bands: weeks.map((w) => ({
           label: dmS(w.start), current: w.start.getTime() === curMon, dim: w.flex,
           stacks: keys.map((k) => ({ v: w[k], color: colors[k] })),
-          below: w.flex && w.min ? (w.min.ok ? "✓" : narrow ? "○" : `${w.min.items.filter((it) => it.ok).length}/3`) : null,
+          below: w.flex && w.min ? (w.min.ok ? "✓" : narrow ? "○" : `${w.min.items.filter((it) => it.ok).length}/${w.min.items.length}`) : null,
           belowClass: w.flex && w.min && w.min.ok ? "min-ok" : "tick",
         })),
       });

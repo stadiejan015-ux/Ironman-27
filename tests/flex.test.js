@@ -172,4 +172,19 @@ test("Wochen-Minimum: „Fehlt noch“ nennt den tatsächlichen Rest, nicht das 
   assert.equal(F.minimumRest(F.weekMinimum(week, d("2026-11-06T12:00"), {})), "1× lockere Ausdauer, davon Schwimmen");
 });
 
+test("Wochen-Minimum ohne Schwimmen (swim: 0) und mit kürzerer Mindestdauer", () => {
+  const d = (s) => new Date(s);
+  const a = (iso, cat, name, min = 45) => ({ date: d(iso), cat, name, sec: min * 60 });
+  const cfg = { minimum: { gym: 4, endurance: 2, enduranceMinMinutes: 20, swim: 0 } };
+  const week = [a("2026-11-02T10:00", "strength", "Legs"), a("2026-11-03T08:00", "strength", "Push"), a("2026-11-04T16:00", "strength", "Pull"),
+    a("2026-11-05T09:00", "strength", "Legs"), a("2026-11-03T18:55", "run", "Laufband", 25), a("2026-11-04T08:52", "run", "Laufband", 31)];
+  const w = F.weekMinimum(week, d("2026-11-06T12:00"), cfg);
+  assert.deepEqual(w.items.map((x) => x.key), ["gym", "endurance"]);     // kein Schwimm-Eintrag → kein Ring
+  assert.equal(w.items[1].have, 2);                                        // 25-min-Lauf zählt ab 20 min
+  assert.ok(w.ok); assert.equal(F.minimumRest(w), "");
+  const w19 = F.weekMinimum(week.concat([a("2026-11-06T07:00", "run", "kurz", 19)]), d("2026-11-06T12:00"), cfg);
+  assert.equal(w19.items[1].have, 2);                                      // 19 min zählt nicht
+  assert.equal(F.minimumRest(F.weekMinimum(week.slice(0, 4), d("2026-11-06T12:00"), cfg)), "2× lockere Ausdauer");
+});
+
 console.log(`\n${n} Tests bestanden.`);
