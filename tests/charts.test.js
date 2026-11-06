@@ -119,6 +119,15 @@ test("Diagramme: echte Pixelgröße, role=img, aria-label, Akzent nur für den a
   assert.match(C.empty("Zu wenig Daten."), /chart-empty/);
 });
 
+test("Liniendiagramm über den ganzen Zeitraum (xRange), auch bei einem einzigen Wert", () => {
+  const one = [{ d: new Date(2026, 10, 5), v: 253 }], y = { ...C.padAxis([253], { include: [300] }), fmt: String };
+  const ticks = (svg) => [...svg.matchAll(/<text class="tick" x="[\d.]+" y="\d+" text-anchor="\w+">(\d\d)\.(\d\d)\.<\/text>/g)].map((m) => new Date(2026, m[2] - 1, +m[1]));
+  const short = ticks(C.lineChart({ width: 360, y, series: [{ pts: one, color: "var(--text-2)" }], hits: one }));
+  const full = ticks(C.lineChart({ width: 360, y, series: [{ pts: one, color: "var(--text-2)" }], hits: one, xRange: [new Date(2026, 8, 8), new Date(2026, 10, 6)] }));
+  assert.ok(short[0] >= new Date(2026, 9, 22));                // ohne Zeitraum: nur die letzten 2 Wochen
+  assert.ok(full[0] < new Date(2026, 9, 1) && full[full.length - 1] <= new Date(2026, 10, 6), `${full}`);   // 60 T: Achse reicht bis in den September
+});
+
 test("Ringe (Wochen-Minimum): Fortschritt begrenzt, bei 100 % geschlossen, bei 0 kein Bogen", () => {
   const r = 50, circ = 2 * Math.PI * r;
   const half = C.ringArc(0.5, r);
