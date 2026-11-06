@@ -88,11 +88,15 @@ Wiederkehrende Bausteine:
 
 Startbildschirm „Heute“ wie in Apple Fitness:
 
-- **Kopf:** oben die Datumszeile, darunter der große Titel und die Zeile mit Rennen, Countdown und Flex-Ende.
-- **Wochen-Minimum (im Flex-Zeitraum):** drei Ringe, außen Gym, in der Mitte Ausdauer, innen Schwimmen. Sie ziehen
-  sich beim Laden kurz auf, bei „Bewegung reduzieren“ nicht.
-- **Tagesvorschlag:** zwei Kacheln.
-- **Renninfos:** Countdown, Distanzen und Fortschritt stehen in „Rennvorbereitung“.
+- **Kopf:** oben die Datumszeile, darunter der große Titel und eine ruhige Zeile, z. B. „Noch 233 Tage bis Frankfurt
+  · Flex bis 10. Januar“.
+- **Haupt-Karte:** Im Flex-Zeitraum zeigt sie das Wochen-Minimum als drei Ringe, außen Gym, in der Mitte Ausdauer,
+  innen Schwimmen. Die Ringe sind 160 px groß auf dem iPhone und 200 px auf dem iPad. Daneben stehen die Werte in
+  Ringfarbe, darunter, was tatsächlich noch fehlt.
+- **Heute dran:** zwei kompakte Zeilen für Gym-Split und Ausdauer. Antippen klappt die Details auf.
+- **Vor Ort:** Die Zeile öffnet ein Blatt mit Schaltern für die Ausstattung.
+- **Darunter:** „Zuletzt gemacht“ und die Wochenkarte. Auf dem iPad quer stehen Haupt-Karte und Woche nebeneinander.
+- **Renninfos:** Countdown, Distanzen und Fortschritt stehen im Tab Plan unter „Rennvorbereitung“.
 
 Das App-Icon erzeugt `node scripts/make_icons.js`.
 
