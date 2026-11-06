@@ -28,7 +28,7 @@ window.TRAINING = {
     until: "2027-01-10",
     label: "Gym-Block & Reisen",
     focus: "Gym-Block, Ausdauer zur Erhaltung",   // ersetzt im Header den Strava-Fokus, solange Flex läuft
-    minimum: { gym: 4, endurance: 2, enduranceMinMinutes: 30, swim: 1 },   // pro Woche (Mo–So)
+    minimum: { gym: 4, endurance: 2, enduranceMinMinutes: 20, swim: 0 },   // pro Woche (Mo–So); swim: 0 = Schwimmen keine Pflicht
     rotation: ["Push", "Pull", "Legs"],
     legDayHours: 48,            // so lange nach Leg Day kein harter Lauf
     reentryDays: 14,            // Hinweis zum Wiedereinstieg vor dem Ende

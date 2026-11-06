@@ -139,7 +139,8 @@
     const items = [
       { key: "gym", label: `${min.gym}× Gym`, have: gym, need: min.gym },
       { key: "endurance", label: `${min.endurance}× lockere Ausdauer (≥ ${min.enduranceMinMinutes} min)`, have: endu.length, need: min.endurance },
-      { key: "swim", label: `davon ${min.swim}× Schwimmen`, have: swim, need: min.swim },
+      // Schwimmen nur, wenn es im Minimum verlangt ist (swim: 0 → kein Eintrag, kein Ring)
+      ...((min.swim || 0) > 0 ? [{ key: "swim", label: `davon ${min.swim}× Schwimmen`, have: swim, need: min.swim }] : []),
     ].map((x) => ({ ...x, ok: x.have >= x.need }));
     return { weekStart: start, items, ok: items.every((x) => x.ok), missing: items.filter((x) => !x.ok).map((x) => x.key) };
   }

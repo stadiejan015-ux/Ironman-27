@@ -90,8 +90,9 @@ Startbildschirm „Heute“ wie in Apple Fitness:
 
 - **Kopf:** oben die Datumszeile, darunter der große Titel und eine ruhige Zeile, z. B. „Noch 233 Tage bis Frankfurt
   · Flex bis 10. Januar“.
-- **Haupt-Karte:** Im Flex-Zeitraum zeigt sie das Wochen-Minimum als drei Ringe, außen Gym, in der Mitte Ausdauer,
-  innen Schwimmen. Die Ringe sind 160 px groß auf dem iPhone und 200 px auf dem iPad. Daneben stehen die Werte in
+- **Haupt-Karte:** Im Flex-Zeitraum zeigt sie das Wochen-Minimum als Ringe, außen Gym, innen Ausdauer. Ein
+  Schwimm-Ring kommt nur dazu, wenn Schwimmen im Minimum verlangt ist. Die Ringe sind 160 px groß auf dem iPhone und
+  200 px auf dem iPad. Daneben stehen die Werte in
   Ringfarbe, darunter, was tatsächlich noch fehlt.
 - **Heute dran:** zwei kompakte Zeilen für Gym-Split und Ausdauer. Antippen klappt die Details auf.
 - **Vor Ort:** Die Zeile öffnet ein Blatt mit Schaltern für die Ausstattung.
@@ -172,7 +173,8 @@ steigungsbereinigter Pace (GAP, Minetti-Modell) gewertet. Ob Brustgurt oder Uhr 
 Bis zum Datum `flex.until` in `js/data.js` (aktuell 10.01.2027) läuft die Seite im Flex-Modus
 ([`js/flex.js`](js/flex.js)): „Heute“ zeigt den nächsten Gym-Split (Rotation Push → Pull → Legs)
 und eine optionale lockere Ausdauereinheit passend zur gewählten Ausstattung vor Ort; statt
-Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 30 min, davon 1× Schwimmen).
+Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 20 min; Schwimmen ist keine Pflicht,
+`flex.minimum.swim: 0`).
 `flex.active: false` schaltet alles zurück. Tests: `node tests/flex.test.js`.
 
 Der **Saisonplan** passt sich an ([`js/phases.js`](js/phases.js)): Phasen beginnen montags (wie das Wochenraster),
