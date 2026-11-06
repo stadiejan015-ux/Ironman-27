@@ -144,6 +144,22 @@
     return { weekStart: start, items, ok: items.every((x) => x.ok), missing: items.filter((x) => !x.ok).map((x) => x.key) };
   }
 
+  // Was beim Wochen-Minimum tatsächlich noch fehlt, z. B. „1× lockere Ausdauer, davon Schwimmen“ (leer = erfüllt).
+  // Schwimmen zählt als Ausdauer: fehlen beide, ist die fehlende Ausdauer „davon Schwimmen“.
+  function minimumRest(week) {
+    const by = Object.fromEntries(((week && week.items) || []).map((x) => [x.key, x]));
+    const rest = (k) => (by[k] ? Math.max(0, by[k].need - by[k].have) : 0);
+    const g = rest("gym"), e = rest("endurance"), sw = rest("swim"), parts = [];
+    if (g) parts.push(`${g}× Gym`);
+    if (e) parts.push(`${e}× lockere Ausdauer`);
+    if (sw && e) {
+      const d = Math.min(sw, e);
+      parts.push(d === 1 ? "davon Schwimmen" : `davon ${d}× Schwimmen`);
+      if (sw > e) parts.push(`dazu ${sw - e}× Schwimmen`);
+    } else if (sw) parts.push(`${sw}× Schwimmen`);
+    return parts.join(", ");
+  }
+
   /* ---------- Tagesvorschlag ---------- */
   const EQUIPMENT = {
     pool: "Pool/Meer", treadmill: "Laufband", runOutside: "Draußen laufen", bike: "Rad/Zwift", gym: "Gym", heat: "Hitze (> 25 °C)",
@@ -218,5 +234,5 @@
     return { gym, endurance, week, next, afterLegs, notes };
   }
 
-  return { flexState, splitOf, gymSessions, mergeActs, nextSplit, weekMinimum, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
+  return { flexState, splitOf, gymSessions, mergeActs, nextSplit, weekMinimum, minimumRest, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
 });

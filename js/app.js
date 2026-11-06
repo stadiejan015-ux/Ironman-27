@@ -92,7 +92,8 @@
     document.documentElement.classList.remove("sheet-open");
     const done = () => { if (!bd.classList.contains("open")) bd.hidden = true; };
     if (reduceMotionNow()) done(); else setTimeout(done, 300);
-    if (sheetOpener && sheetOpener.isConnected && sheetOpener.focus) sheetOpener.focus({ preventScroll: true });
+    const back = sheetOpener && (sheetOpener.isConnected ? sheetOpener : sheetOpener.id && document.getElementById(sheetOpener.id));
+    if (back && back.focus) back.focus({ preventScroll: true });
   }
   function setupSheet(bd) {
     if (!bd || bd._sheet) return;
@@ -290,9 +291,9 @@
     const dayNo = Math.min(totalDays, Math.max(0, Math.floor((now - commit) / DAY) + 1));
     const pct = Math.round((dayNo / totalDays) * 100);
     $("#todayDate").textContent = fmtDate(now, { weekday: "long", day: "numeric", month: "short" });
-    const shortName = D.race.name.replace(/\s*\d{4}$/, "");
-    $("#todayLine").innerHTML = [`<a href="#rennen">${esc(shortName)}</a>`, `noch ${days} Tage`,
-      FLEX.active ? `Flex bis ${dmS(FLEX.until)}` : cp ? `Phase ${esc(cp.short)}` : ""].filter(Boolean).map((t) => `<span>${t}</span>`).join("");
+    const city = D.race.name.replace(/^Ironman\s+/i, "").replace(/\s*\d{4}$/, "");
+    $("#todayLine").textContent = [`Noch ${days} ${days === 1 ? "Tag" : "Tage"} bis ${city}`,
+      FLEX.active ? `Flex bis ${fmtDate(FLEX.until, { day: "numeric", month: "long" })}` : cp ? `Phase ${cp.short}` : ""].filter(Boolean).join(" · ");
     const note = $("#todayNote");
     note.hidden = !(FLEX.active && FLEX.reentry);
     if (!note.hidden) note.textContent = `Noch ${FLEX.daysLeft} ${FLEX.daysLeft === 1 ? "Tag" : "Tage"} Flex: Wiedereinstieg vorbereiten. Ausdauer wieder auf 3–4 Einheiten pro Woche steigern, je eine längere lockere Rad- und Laufeinheit einbauen und Gym auf 2–3× reduzieren.`;
@@ -1310,39 +1311,58 @@
 
   const standLine = `<p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>`;
 
-  // Wochen-Minimum als drei konzentrische Ringe (außen Gym, Mitte Ausdauer, innen Schwimmen)
+  // Wochen-Minimum als drei konzentrische Ringe (außen Gym, Mitte Ausdauer, innen Schwimmen), daneben die Werte in Ringfarbe
   // Aufziehen nur in der ersten Sekunde nach dem Laden; wird „Heute“ währenddessen neu gezeichnet
   // (z. B. wenn die Zone-2-Daten eintreffen), läuft die Animation an derselben Stelle weiter.
   const RING_MS = 1000;
   let ringsT0 = null;
-  function ringsCard(wk) {
+  function ringsBlock(wk) {
     const by = Object.fromEntries(wk.items.map((x) => [x.key, x]));
     const R = [["gym", "Gym", "strength"], ["endurance", "Ausdauer", "run"], ["swim", "Schwimmen", "swim"]].filter(([k]) => by[k]);
     if (ringsT0 == null) ringsT0 = performance.now();
     const elapsed = performance.now() - ringsT0;
     const svg = C.rings({
-      size: 150, animate: elapsed < RING_MS, animDelay: elapsed,
+      size: 200, stroke: 16, gap: 4, animate: elapsed < RING_MS, animDelay: elapsed,
       items: R.map(([k, , cat]) => ({ frac: by[k].need ? by[k].have / by[k].need : 1, color: `var(--${cat})` })),
       aria: `Wochen-Minimum: ${R.map(([k, l]) => `${l} ${by[k].have} von ${by[k].need}`).join(", ")}`,
     });
-    return `<div class="card today-rings">
-      <div class="rings-head"><h3>Wochen-Minimum</h3><span class="ht-time">${wk.ok ? "erfüllt ✓" : `Woche ab ${dmS(wk.weekStart)}`}</span></div>
+    const rest = FX.minimumRest(wk);
+    return `<div class="rings-head"><h3>Wochen-Minimum</h3><span class="ht-time">${wk.ok ? "erfüllt ✓" : `Woche ab ${dmS(wk.weekStart)}`}</span></div>
       <div class="rings-body">${svg}
         <div class="ring-legend">${R.map(([k, l, cat]) => `<div class="c-${cat}"><span class="rl-name">${l}</span><span class="rl-val"><b>${by[k].have}</b>/${by[k].need}</span></div>`).join("")}</div>
       </div>
-      ${wk.ok ? "" : `<p class="ring-note">Fehlt noch: ${wk.items.filter((x) => !x.ok).map((x) => esc(x.label)).join(", ")}</p>`}
-    </div>`;
+      ${rest ? `<p class="ring-note">Fehlt noch: ${esc(rest)}</p>` : ""}`;
   }
-  // Tagesvorschlag im Flex-Zeitraum: Gym-Split und Ausdauer als zwei Kacheln
-  function flexTiles(sg, rd) {
-    const e = sg.endurance, ecat = e ? (e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run") : "run";
-    return `<div class="today-tiles">
-      ${htile({ cat: "strength", label: "Gym", time: sg.gym.rest ? "" : "nächster Split", value: `<span class="tile-word">${esc(sg.gym.title)}</span>`,
-        sub: `${esc(sg.gym.detail)}${sg.gym.rest ? "" : targetLine(sg.next && sg.next.split)}` })}
-      ${htile({ cat: ecat, label: "Ausdauer", time: e && e.done ? "erledigt" : e && e.forMinimum ? "fürs Minimum" : "optional",
-        value: e ? `${e.minutes}<small>min</small>` : "–",
-        sub: e ? `<b class="tile-what">${esc(e.title)}</b><br>${esc(e.detail)}` : rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt." })}
-    </div>`;
+  // „Heute dran“: kompakte Zeilen (Titel, Wert, eine Zeile); Antippen klappt die Details auf
+  let todayOpen = null;
+  const PIN = '<path d="M8 14.5s-4.6-4.3-4.6-7.9a4.6 4.6 0 0 1 9.2 0c0 3.6-4.6 7.9-4.6 7.9z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="6.6" r="1.7" fill="currentColor"/>';
+  function dueRows(rows) {
+    return rows.map((r) => `<li>
+        <button type="button" class="ios-row due-row" data-open="${r.key}" aria-expanded="${todayOpen === r.key}" aria-controls="due-${r.key}">
+          ${rowIcon(r.cat)}
+          <span class="row-main"><span class="row-cat c-${r.cat}">${r.label}</span><span class="row-title">${r.value}</span>${r.line ? `<span class="row-sub">${r.line}</span>` : ""}</span>${CHEV_R}
+        </button>
+        <div class="due-detail" id="due-${r.key}"${todayOpen === r.key ? "" : " hidden"}>${r.detail}</div></li>`).join("");
+  }
+  // Ausstattung in fester Reihenfolge (Gym zuerst), Bezeichnungen aus js/flex.js
+  const EQ_ORDER = ["gym", "pool", "treadmill", "runOutside", "bike", "heat"];
+  const EQ_LABEL = () => {
+    const all = FX ? FX.EQUIPMENT : {};
+    return Object.fromEntries(EQ_ORDER.filter((k) => all[k]).map((k) => [k, all[k]]).concat(Object.entries(all).filter(([k]) => !EQ_ORDER.includes(k))));
+  };
+  function equipRow(eq) {
+    const names = Object.entries(EQ_LABEL()).filter(([k]) => eq.includes(k)).map(([, l]) => l);
+    return `<li><button type="button" class="ios-row" id="equipBtn" aria-haspopup="dialog" aria-controls="equipSheet">
+        <span class="row-ic c-other"><svg class="ic" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">${PIN}</svg></span>
+        <span class="row-main"><span class="row-title">Vor Ort: <span class="muted">${esc(names.join(", ") || "nichts gewählt")}</span></span></span>${CHEV_R}
+      </button></li>`;
+  }
+  // Blatt „Vor Ort“: Schalter je Ausstattung (mindestens eine bleibt an)
+  function renderEquipList() {
+    const eq = loadEquipment();
+    $("#equipList").innerHTML = Object.entries(EQ_LABEL()).map(([k, label]) => `<li class="ios-row eq-row" data-eq-row="${k}">
+        <span class="row-main"><span class="row-title" id="eqlbl-${k}">${esc(label)}</span></span>
+        <button type="button" class="switch" role="switch" aria-checked="${eq.includes(k)}" aria-labelledby="eqlbl-${k}" data-eq="${k}"><span class="knob"></span></button></li>`).join("");
   }
 
   function today() {
@@ -1351,27 +1371,39 @@
     const done = acts.filter((a) => a.date.toDateString() === now.toDateString());
     const lv = rd ? LEVELS[rd.level] : null;
     const isOld = rd && (now - rd.date) / DAY > 1.5;
-    let top, planTop = "";
+    let main;
     if (FLEX.active && FX) {
       const eq = loadEquipment();
       const sg = FX.suggestFlex({ now, acts: flexActs, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
-      top = ringsCard(sg.week) + flexTiles(sg, rd);
-      const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip check" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
-      planTop = `<div class="mini-title" style="margin-top:0">Ausstattung vor Ort</div>
-        <div class="equip" role="group" aria-label="Ausstattung vor Ort">${chips}</div>
-        ${sg.notes.length ? `<p class="today-notes">${sg.notes.map(esc).join("<br>")}</p>` : ""}`;
+      const e = sg.endurance, ecat = e ? (e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run") : "run";
+      const g = sg.gym;
+      const rows = [
+        { key: "gym", cat: "strength", label: "Gym", value: esc(g.title),
+          line: g.rest ? "Regeneration" : g.done ? "heute erledigt" : g.skip ? "kein Gym vor Ort" : "nächster Split",
+          detail: `<p>${esc(g.detail)}</p>${g.rest ? "" : targetLine(sg.next && sg.next.split)}` },
+        { key: "endu", cat: ecat, label: "Ausdauer",
+          value: e ? `${esc(e.title)} · ${e.minutes} min` : rd && rd.level >= 3 ? "Heute keine Ausdauer" : "Keine passende Ausstattung",
+          line: e ? (e.done ? "erledigt" : e.forMinimum ? "fürs Wochen-Minimum" : "optional") : "",
+          detail: `${e ? `<p>${esc(e.detail)}</p>` : `<p>${rd && rd.level >= 3 ? "Heute regenerieren." : "Unter „Vor Ort“ auswählen, was du heute nutzen kannst."}</p>`}${sg.notes.length ? `<p class="due-note">${sg.notes.map(esc).join("<br>")}</p>` : ""}` },
+      ];
+      main = `<div class="card today-main-card">${ringsBlock(sg.week)}
+        <div class="mini-title">Heute dran</div>
+        <ul class="ios-list ic due-list">${dueRows(rows)}${equipRow(eq)}</ul></div>`;
     } else {
       const s = suggestion(now, rd), cp = currentPhase(now);
       const left = cp ? Math.ceil((cp.end - now) / DAY / 7) : 0;
-      top = `<div class="today-tiles">
-        ${htile({ cat: CATS[s.sport] ? s.sport : "other", label: s.type === "rest" ? "Ruhetag" : "Training", time: s.type === "hard" ? "intensiv" : s.type === "rest" ? "" : "locker",
-          value: s.type === "rest" ? `<span class="tile-word">Erholung</span>` : s.min >= 90 ? `${hm(s.min * 60)}<small>h</small>` : `${s.min}<small>min</small>`,
-          sub: `<b class="tile-what">${esc(s.title)}</b><br>${esc(s.detail)}${s.changed ? `<br><b>angepasst: ${esc(s.changed)}</b>` : ""}` })}
-        ${cp ? htile({ cat: "activity", label: "Phase", value: `<span class="tile-word">${esc(cp.short)}</span>`, sub: `noch ${left} ${left === 1 ? "Woche" : "Wochen"}, Ziel ${cp.hours} pro Woche` }) : ""}
-      </div>`;
+      const rows = [
+        { key: "session", cat: CATS[s.sport] ? s.sport : "other", label: s.type === "rest" ? "Ruhetag" : CATS[s.sport] ? CATS[s.sport].label : "Training",
+          value: s.type === "rest" ? esc(s.title) : `${esc(s.title)} · ${fmtMin(s.min)}`,
+          line: `${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.changed ? ", angepasst" : ""}`,
+          detail: `<p>${esc(s.detail)}</p>${s.changed ? `<p class="due-note">Angepasst: ${esc(s.changed)}</p>` : ""}` },
+      ];
+      if (cp) rows.push({ key: "phase", cat: "activity", label: "Phase", value: esc(cp.short), line: `noch ${left} ${left === 1 ? "Woche" : "Wochen"}`,
+        detail: `<p>Ziel ${esc(cp.hours)} pro Woche.</p>${cp.focus && cp.focus.length ? `<ul class="due-focus">${cp.focus.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}` });
+      main = `<div class="card today-main-card"><div class="mini-title" style="margin-top:0">Heute dran</div><ul class="ios-list ic due-list">${dueRows(rows)}</ul></div>`;
     }
-    const doneHtml = done.length ? `<div class="mini-title"${planTop ? "" : ' style="margin-top:0"'}>Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(a.name), val: `${hm(a.sec)} h` })).join("")}</ul>` : "";
-    const planCard = `<div class="card today-plan">${planTop}${doneHtml}<div id="sinceBox"></div>${standLine}</div>`;
+    const doneHtml = done.length ? `<div class="mini-title" style="margin-top:0">Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(a.name), val: `${hm(a.sec)} h` })).join("")}</ul>` : "";
+    const sinceCard = `<div class="card today-since">${doneHtml}<div id="sinceBox"></div>${standLine}</div>`;
     const formCard = `
       <div class="card today-form">
         <div class="mini-title" style="margin-top:0">Form heute</div>
@@ -1382,13 +1414,17 @@
           <div class="muted" style="font-size:13px;line-height:18px;margin-top:8px">${esc(rd.source)}<br>Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
         : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
       </div>`;
-    $("#today").innerHTML = `<div class="today-col">${top}${planCard}</div><div class="today-col"><div class="card week-card" id="weekCard" aria-live="polite"></div>${formCard}</div>`;
-    $("#today").querySelectorAll("[data-eq]").forEach((b) => b.addEventListener("click", () => {
-      const cur = loadEquipment(), k = b.dataset.eq;
-      const next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
-      saveEquipment(next.length ? next : cur); today();
-      const again = $(`[data-eq="${k}"]`); if (again) again.focus({ preventScroll: true });
+    $("#today").innerHTML = `<div class="today-col">${main}${sinceCard}</div><div class="today-col"><div class="card week-card" id="weekCard" aria-live="polite"></div>${formCard}</div>`;
+    // Details auf-/zuklappen (ohne neu zu zeichnen)
+    $("#today").querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+      const key = b.dataset.open, open = todayOpen !== key;
+      $("#today").querySelectorAll("[data-open]").forEach((x) => { x.setAttribute("aria-expanded", "false"); const d = $(`#due-${x.dataset.open}`); if (d) d.hidden = true; });
+      todayOpen = open ? key : null;
+      b.setAttribute("aria-expanded", String(open));
+      const d = $(`#due-${key}`); if (d) d.hidden = !open;
     }));
+    const eqBtn = $("#equipBtn");
+    if (eqBtn) eqBtn.addEventListener("click", (e) => { renderEquipList(); openSheet("equipSheet", e.currentTarget); });
     renderSince(now);
     renderWeek(now);
   }
@@ -1728,6 +1764,20 @@
     if (t.getAttribute("href") === `#${curTab}` && location.hash === `#${curTab}`) { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); }
   }));
   route();
+
+  // Vor Ort (Blatt mit Schaltern): Änderung gilt sofort für den Vorschlag
+  setupSheet($("#equipSheet"));
+  $("#equipList").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-eq-row]");
+    if (!row) return;
+    const k = row.dataset.eqRow, cur = loadEquipment();
+    const next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
+    if (!next.length) return;   // mindestens eine Ausstattung bleibt an
+    saveEquipment(next);
+    renderEquipList();
+    today();
+    const sw = $(`#equipList [data-eq="${k}"]`); if (sw) sw.focus({ preventScroll: true });
+  });
 
   // Einstellungen (Zahnrad neben „Heute“)
   const settings = $("#settingsSheet");

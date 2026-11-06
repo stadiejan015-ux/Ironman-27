@@ -157,4 +157,19 @@ test("Vorschlag: Hitze-Hinweis, Garmin-Bereitschaft und fehlendes Gym", () => {
   assert.equal(fallback.endurance.type, "runOutside"); // Fallback-Ausstattung: Gym, Laufband, Draußen laufen
 });
 
+test("Wochen-Minimum: „Fehlt noch“ nennt den tatsächlichen Rest, nicht das ganze Minimum", () => {
+  const wk = (g, e, s) => ({ items: [{ key: "gym", have: g, need: 4 }, { key: "endurance", have: e, need: 2 }, { key: "swim", have: s, need: 1 }] });
+  assert.equal(F.minimumRest(wk(4, 1, 0)), "1× lockere Ausdauer, davon Schwimmen");
+  assert.equal(F.minimumRest(wk(4, 2, 0)), "1× Schwimmen");                 // Ausdauer erfüllt, Schwimmen fehlt zusätzlich
+  assert.equal(F.minimumRest(wk(2, 0, 0)), "2× Gym, 2× lockere Ausdauer, davon Schwimmen");
+  assert.equal(F.minimumRest(wk(3, 1, 1)), "1× Gym, 1× lockere Ausdauer");
+  assert.equal(F.minimumRest(wk(5, 3, 1)), "");                            // erfüllt (auch übererfüllt)
+  // echte Woche über weekMinimum
+  const d = (s) => new Date(s);
+  const a = (iso, cat, name, min = 45) => ({ date: d(iso), cat, name, sec: min * 60 });
+  const week = [a("2026-11-02T10:00", "strength", "Legs"), a("2026-11-03T08:00", "strength", "Push"), a("2026-11-04T16:00", "strength", "Pull"),
+    a("2026-11-05T09:00", "strength", "Legs"), a("2026-11-04T08:00", "run", "Laufband", 31)];
+  assert.equal(F.minimumRest(F.weekMinimum(week, d("2026-11-06T12:00"), {})), "1× lockere Ausdauer, davon Schwimmen");
+});
+
 console.log(`\n${n} Tests bestanden.`);
