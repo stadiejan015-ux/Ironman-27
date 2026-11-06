@@ -67,6 +67,14 @@ Wiederkehrende Bausteine:
 - **Kapseln mit Häkchen** für Auswahl.
 - **Text-Knöpfe** in Akzentfarbe.
 
+Startbildschirm „Heute“ wie in Apple Fitness:
+
+- **Kopf:** oben die Datumszeile, darunter der große Titel und die Zeile mit Rennen, Countdown und Flex-Ende.
+- **Wochen-Minimum (im Flex-Zeitraum):** drei Ringe, außen Gym, in der Mitte Ausdauer, innen Schwimmen. Sie ziehen
+  sich beim Laden kurz auf, bei „Bewegung reduzieren“ nicht.
+- **Tagesvorschlag:** zwei Kacheln.
+- **Renninfos:** Countdown, Distanzen und Fortschritt stehen in „Rennvorbereitung“.
+
 Das App-Icon erzeugt `node scripts/make_icons.js`.
 
 ## Diagramme

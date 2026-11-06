@@ -48,22 +48,15 @@
   <main class="wrap">
     <div class="offline-badge" id="offlineBadge" role="status" hidden></div>
     <div class="fresh-banner" id="freshBanner" role="status" hidden></div>
-    <div class="flex-banner" id="flexBanner" hidden></div>
 
-    <!-- HERO -->
-    <section class="hero" id="ueberblick">
-      <div>
-        <p class="eyebrow" id="raceMeta"></p>
-        <h1 id="raceName"></h1>
-        <p class="sub" id="heroSub"></p>
-      </div>
-      <div class="countdown" id="countdown" aria-live="polite"></div>
-    </section>
-
-    <!-- HEUTE -->
+    <!-- HEUTE: Datumszeile, großer Titel, schlanke Infozeile (wie Apple Fitness) -->
     <section id="heute">
-      <h2>Heute</h2>
-      <p class="section-sub">Trainingsvorschlag nach Saisonphase, angepasst an deine Erholung (Garmin).</p>
+      <header class="today-head">
+        <p class="eyebrow" id="todayDate"></p>
+        <h1>Heute</h1>
+        <p class="today-line" id="todayLine"></p>
+        <p class="today-note" id="todayNote" role="status" hidden></p>
+      </header>
       <div class="grid today-grid" id="today"></div>
     </section>
 
@@ -207,6 +200,7 @@
       <h2>Rennvorbereitung</h2>
       <p class="section-sub">Deine Zielzeiten im Vergleich zur Prognose „Wenn heute Renntag wäre“ – und die längsten Einheiten im Vergleich zur Ironman-Distanz.</p>
       <div class="grid g2">
+        <div class="card span-2 race-card" id="raceCard"></div>
         <div class="card span-2" id="predCard">
           <div class="chart-head">
             <h3 style="margin:0">Ziel vs. Prognose</h3>
