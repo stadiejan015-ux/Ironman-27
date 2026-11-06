@@ -77,7 +77,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 /* Große Zahlen (Kennzahlen, kg, bpm, Zeiten): SF Pro Rounded, gleich breite Ziffern */
-.kpi .value, .countdown > div > b, .form-score b, .stat b, .pbar-label b,
+.kpi .value, .form-score b, .stat b, .pbar-label b, .rl-val,
 .lift-goal b, .split-row b, .pred-table .delta, .week-range {
   font-family: var(--font-rounded); font-variant-numeric: tabular-nums;
 }
@@ -107,18 +107,51 @@ a:hover { text-decoration: underline; }
 .icon-btn:hover { background: var(--fill); }
 
 /* Hero */
-.hero { padding: 8px 0 0; display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; align-items: end; }
 /* Datumszeile über dem großen Titel – einzige Stelle mit Großbuchstaben (wie in Fitness) */
 .eyebrow { text-transform: uppercase; letter-spacing: .02em; font-size: 13px; line-height: 18px; color: var(--text-2); font-weight: 600; margin: 0 0 2px; }
 h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0 0 8px; }   /* Large Title */
-.hero p.sub { margin: 0; color: var(--text-2); max-width: 56ch; }
-.countdown { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.countdown > div { background: var(--surface); border-radius: var(--radius); padding: 16px; text-align: center; }
-.countdown > div > b { display: block; font-size: 34px; line-height: 41px; font-weight: 700; }
-.countdown .journey { grid-column: 1 / -1; text-align: left; padding: 12px 16px; }
-.journey-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
-.journey-head b { display: inline; font-size: 12px; line-height: 16px; color: var(--text); font-family: var(--font); }
-.countdown small { color: var(--text-2); font-size: 13px; }
+/* Startbildschirm „Heute“ (wie Apple Fitness): Datumszeile, Large Title, schlanke Infozeile */
+#heute { margin-top: 16px; }
+.today-head { margin: 0 0 16px; }
+.today-head h1 { margin: 0; }
+.today-line { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 4px 0 0; font-size: 15px; line-height: 20px; color: var(--text-2); }
+.today-note { margin: 12px 0 0; padding: 12px 16px; border-radius: var(--radius); background: var(--surface); font-size: 15px; line-height: 20px; }
+.today-note::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); margin-right: 8px; vertical-align: 1px; }
+.today-grid { grid-template-columns: minmax(0, 1fr); align-items: start; }
+.today-col { display: grid; gap: 16px; align-content: start; min-width: 0; }
+@media (min-width: 1024px) { .today-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+/* Wochen-Minimum als Aktivitätsringe */
+.rings-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rings-head h3 { margin: 0; }
+.rings-head .ht-time { color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.rings-body { display: flex; align-items: center; gap: 24px; margin-top: 12px; }
+.rings { flex: none; display: block; }
+.ring-legend { display: grid; gap: 10px; min-width: 0; }
+.ring-legend > div { display: flex; flex-direction: column; }
+.rl-name { color: var(--ci); font-size: 15px; line-height: 20px; font-weight: 600; }
+.rl-val { font-size: 15px; line-height: 28px; color: var(--text-2); }
+.rl-val b { font-size: 28px; font-weight: 600; color: var(--text); }
+.ring-note { margin: 12px 0 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
+.rings .ring-arc.anim { animation: ring-in 1s cubic-bezier(.2, .7, .2, 1) both; }
+@keyframes ring-in { from { stroke-dashoffset: var(--c); } }
+@media (prefers-reduced-motion: reduce) { .rings .ring-arc.anim { animation: none; } }
+/* Tagesvorschlag als zwei Kacheln */
+.today-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+@media (max-width: 560px) { .today-tiles { grid-template-columns: minmax(0, 1fr); } }
+.tile-word { font-size: 28px; line-height: 34px; }
+.today-tiles .kpi .delta { font-size: 15px; line-height: 20px; margin-top: 4px; }
+.tile-what { display: inline-block; color: var(--text); font-weight: 600; margin-bottom: 2px; }
+.today-tiles .gym-target { font-size: 15px; color: var(--text); }
+.today-notes { margin: 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
+/* Renn-Karte in „Rennvorbereitung“ */
+.race-title { font-size: 22px !important; line-height: 28px; font-weight: 700 !important; margin: 0 0 4px !important; }
+.race-meta { margin: 0; color: var(--text-2); font-size: 15px; line-height: 20px; }
+.race-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 16px; }
+@media (max-width: 600px) { .race-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.journey { margin-top: 16px; }
+.journey-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 18px; color: var(--text-2); margin-bottom: 8px; }
+.journey-head b { color: var(--text); font-weight: 600; }
+.race-focus { margin: 12px 0 0; font-size: 15px; line-height: 20px; color: var(--text-2); }
 
 /* Sections */
 section { margin-top: 40px; scroll-margin-top: 72px; }
@@ -386,12 +419,7 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .fresh-tip a { color: inherit; text-decoration: underline; }
 .fresh-close { flex: none; }
 @media (max-width: 600px) { .fresh-banner { flex-direction: column; } .fresh-close { align-self: flex-end; } }
-.flex-banner { margin-top: 16px; padding: 12px 16px; border-radius: var(--radius); background: var(--surface); color: var(--text-2); font-size: 15px; line-height: 20px; }
-.flex-banner b { color: var(--text); }
-.flex-reentry { margin-top: 6px; color: var(--text); font-size: 13px; }
 .equip { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
-.flex-sug { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 600px) { .flex-sug { grid-template-columns: 1fr; } }
 .neutral-delta { color: var(--text-2); }
 .phase.flex { background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, color-mix(in srgb, var(--text) 8%, var(--surface-2)) 6px 8px); }
 .phase.flex.current { background: var(--text); }
@@ -450,14 +478,12 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 }
 
 /* Heute */
-.today-grid { grid-template-columns: 1.5fr 1fr; }
 .form-score { display: flex; align-items: center; gap: 12px; }
 .form-score b { font-size: 48px; line-height: 1; font-weight: 700; }
 .dot { width: 10px; height: 10px; border-radius: 50%; }
 .dot.good { background: var(--good); } .dot.ok { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.na { background: var(--other); }
 
 /* Wochenzusammenfassung */
-.today-main { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .week-nav { display: flex; align-items: center; gap: 8px; }
 .week-nav .chip { min-width: 44px; min-height: 44px; padding: 0 12px; font-size: 17px; line-height: 1; color: var(--accent-ink); }
@@ -486,14 +512,6 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 #sinceBox { container-type: inline-size; }
 .since-detail { margin: 0 0 10px 22px; font-size: 15px; line-height: 20px; color: var(--text-2); }
 .since-row.na .row-title, .since-row.info .row-title { color: var(--text-2); }
-@media (max-width: 900px) { .today-grid { grid-template-columns: 1fr; } }
-@media (min-width: 1024px) {
-  .today-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "plan week" "form week"; align-items: start; }
-  .today-main { display: contents; }
-  .today-grid .today-plan { grid-area: plan; }
-  .today-grid .week-card { grid-area: week; }
-  .today-grid .today-form { grid-area: form; }
-}
 
 /* Insights */
 .insight { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
@@ -513,7 +531,6 @@ footer { margin-top: 48px; color: var(--text-2); font-size: 13px; line-height: 1
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 @media (max-width: 900px) {
-  .hero { grid-template-columns: 1fr; }
   .g4 { grid-template-columns: repeat(2, 1fr); }
   .g3, .g2, .phase-detail { grid-template-columns: 1fr; }
 }
@@ -521,7 +538,6 @@ footer { margin-top: 48px; color: var(--text-2); font-size: 13px; line-height: 1
   .stats { grid-template-columns: repeat(2, 1fr); }
   .ready-row { grid-template-columns: 74px 1fr; }
   .ready-row .num { grid-column: 2; text-align: left; margin-top: -6px; }
-  .countdown b.phase-name { font-size: 14px !important; }
   .phase span { display: none; }
   .brand span { display: none; }
 }

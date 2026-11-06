@@ -11,7 +11,7 @@
  *   labelIndices(count, max)             → welche Balken eine Datumsbeschriftung bekommen (der neueste immer)
  *   dateTicks(t0, t1, width)             → 2–6 Datumspositionen (auf Mitternacht gerundet)
  * Zeichnen (SVG als Text, in echter Pixelbreite des Containers – Schrift bleibt 11 px):
- *   lineChart(o), barChart(o), legend(items), legendItems(items), empty(text)
+ *   lineChart(o), barChart(o), rings(o) (Aktivitätsringe), legend(items), legendItems(items), empty(text)
  * Farben ausschließlich über CSS-Variablen. Läuft im Browser (window.Charts) und in Node (Tests).
  */
 (function (root, factory) {
@@ -231,10 +231,28 @@
     return s + "</svg>";
   }
 
+  // Konzentrische Ringe wie die Aktivitätsringe in Apple Fitness. items von außen nach innen: [{ frac, color }].
+  // Fortschritt = frac (0–1, darüber wird gekappt); bei 100 % schließt sich der Ring. animate: einmaliges Aufziehen (CSS).
+  function ringArc(frac, r) {
+    const C = 2 * Math.PI * r, f = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : 0));
+    return { C, frac: f, offset: C * (1 - f) };
+  }
+  // animDelay: bereits verstrichene Zeit der Animation (ms) – beim Neuzeichnen läuft sie an derselben Stelle weiter
+  function rings({ size = 150, stroke = 16, gap = 3, items, aria, animate = false, animDelay = 0 }) {
+    const c = size / 2;
+    let s = `<svg class="rings" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${escA(aria || "Ringe")}">`;
+    items.forEach((it, i) => {
+      const r = c - stroke / 2 - i * (stroke + gap), a = ringArc(it.frac, r);
+      s += `<circle cx="${c}" cy="${c}" r="${f1(r)}" fill="none" stroke="${it.color}" stroke-opacity=".24" stroke-width="${stroke}"/>`;
+      if (a.frac > 0) s += `<circle class="ring-arc${animate ? " anim" : ""}" cx="${c}" cy="${c}" r="${f1(r)}" fill="none" stroke="${it.color}" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${f1(a.C)}" stroke-dashoffset="${f1(a.offset)}" style="--c:${f1(a.C)}${animate && animDelay ? `;animation-delay:-${Math.round(animDelay)}ms` : ""}" transform="rotate(-90 ${c} ${c})"/>`;
+    });
+    return s + "</svg>";
+  }
+
   // Legende unter dem Diagramm – gleiche Symbole überall: square, dot, hollow, diamond, line, dash, ref, ring
   const legendItems = (items) => items.map((it) => `<span><i class="lg lg-${it.shape || "square"}" style="--c:${it.color}${it.opacity != null ? `;opacity:${it.opacity}` : ""}" aria-hidden="true"></i>${escA(it.label)}</span>`).join("");
   const legend = (items, extra = "") => `<div class="legend chart-legend">${legendItems(items)}${extra}</div>`;
   const empty = (text) => `<p class="chart-empty">${escA(text)}</p>`;
 
-  return { SMALL, LARGE, PACE_STEPS, DURATION_STEPS, ticksIn, zeroAxis, padAxis, paceAxis, durationAxis, decimals, labelIndices, maxLabelsFor, dateTicks, dm, lineChart, barChart, legend, legendItems, empty };
+  return { SMALL, LARGE, PACE_STEPS, DURATION_STEPS, ticksIn, zeroAxis, padAxis, paceAxis, durationAxis, decimals, labelIndices, maxLabelsFor, dateTicks, dm, lineChart, barChart, ringArc, rings, legend, legendItems, empty };
 });

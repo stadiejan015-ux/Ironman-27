@@ -168,30 +168,37 @@
   const tickFmt = (ax, unit = "") => (v) => nf(v, C.decimals(ax.step)) + unit;
 
   /* ---------- Hero / Countdown ---------- */
+  // Kopf von „Heute“ (Datumszeile, großer Titel, schlanke Infozeile) und Renn-Karte in „Rennvorbereitung“
   function hero() {
-    $("#raceName").textContent = D.race.name;
-    $("#raceMeta").textContent = `${fmtDate(race, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${D.race.location && D.race.location !== "tbd" ? ", " + D.race.location : ""}`;
-    $("#heroSub").textContent = `${nf(D.race.swimKm, 1)} km Schwimmen, ${D.race.bikeKm} km Rad, ${nf(D.race.runKm, 1)} km Laufen. Fokus aktuell: ${FLEX.active && FCFG.focus ? FCFG.focus : D.athlete.focus}.`;
     const now = new Date();
     const days = Math.max(0, Math.ceil((race - now) / DAY));
     const weeks = Math.floor(days / 7);
-    const phase = currentPhase(now);
+    const cp = currentPhase(now);
     const totalDays = Math.round((race - commit) / DAY);
     const dayNo = Math.min(totalDays, Math.max(0, Math.floor((now - commit) / DAY) + 1));
     const pct = Math.round((dayNo / totalDays) * 100);
-    $("#countdown").innerHTML = `
-      <div><b>${days}</b><small>Tage</small></div>
-      <div><b>${weeks}</b><small>Wochen</small></div>
-      <div><b class="phase-name" style="font-size:17px;line-height:32px">${phase ? esc(phase.short) : "–"}</b><small>Phase</small></div>
-      <div class="journey"><div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} (${pct} %)</span><span>Rennen</span></div>
-        <div class="ready-track" role="img" aria-label="${pct} % der Vorbereitung vergangen"><div class="ready-fill" style="width:${pct}%;background:var(--text)"></div></div></div>`;
-    const banner = $("#flexBanner");
-    if (FLEX.active) {
-      const until = fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" });
-      banner.hidden = false;
-      banner.innerHTML = `<b>Flex-Phase bis ${until}</b><div>${esc(FLEX.label)}, danach strukturiertes Training</div>` +
-        (FLEX.reentry ? `<div class="flex-reentry">Noch ${FLEX.daysLeft} ${FLEX.daysLeft === 1 ? "Tag" : "Tage"}: Wiedereinstieg vorbereiten – Ausdauer wieder auf 3–4 Einheiten pro Woche steigern, je eine längere lockere Rad- und Laufeinheit einbauen und Gym auf 2–3× reduzieren.</div>` : "");
-    }
+    $("#todayDate").textContent = fmtDate(now, { weekday: "long", day: "numeric", month: "short" });
+    const shortName = D.race.name.replace(/\s*\d{4}$/, "");
+    $("#todayLine").innerHTML = [`<a href="#rennen">${esc(shortName)}</a>`, `noch ${days} Tage`,
+      FLEX.active ? `Flex bis ${dmS(FLEX.until)}` : cp ? `Phase ${esc(cp.short)}` : ""].filter(Boolean).map((t) => `<span>${t}</span>`).join("");
+    const note = $("#todayNote");
+    note.hidden = !(FLEX.active && FLEX.reentry);
+    if (!note.hidden) note.textContent = `Noch ${FLEX.daysLeft} ${FLEX.daysLeft === 1 ? "Tag" : "Tage"} Flex: Wiedereinstieg vorbereiten. Ausdauer wieder auf 3–4 Einheiten pro Woche steigern, je eine längere lockere Rad- und Laufeinheit einbauen und Gym auf 2–3× reduzieren.`;
+    const loc = D.race.location && D.race.location !== "tbd" ? D.race.location : "";
+    $("#raceCard").innerHTML = `
+      <h3 class="race-title">${esc(D.race.name)}</h3>
+      <p class="race-meta">${fmtDate(race, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${loc ? `<br>${esc(loc)}` : ""}</p>
+      <div class="mtiles race-tiles">
+        ${htile({ mini: true, cat: "activity", label: "Countdown", value: `${days}<small>Tage</small>`, sub: `${weeks} Wochen` })}
+        ${htile({ mini: true, cat: "swim", label: "Schwimmen", value: `${nf(D.race.swimKm, 1)}<small>km</small>` })}
+        ${htile({ mini: true, cat: "bike", label: "Rad", value: `${nf(D.race.bikeKm)}<small>km</small>` })}
+        ${htile({ mini: true, cat: "run", label: "Laufen", value: `${nf(D.race.runKm, 1)}<small>km</small>` })}
+      </div>
+      <div class="journey">
+        <div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} (${pct}&nbsp;%)</span><span>Rennen</span></div>
+        <div class="ready-track" role="img" aria-label="${pct} % der Vorbereitung vergangen"><div class="ready-fill" style="width:${pct}%;background:var(--accent)"></div></div>
+      </div>
+      <p class="race-focus">Fokus aktuell: ${esc(FLEX.active && FCFG.focus ? FCFG.focus : D.athlete.focus)}</p>`;
   }
 
   /* ---------- KPIs ---------- */
@@ -1174,53 +1181,69 @@
 
   const standLine = `<p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>`;
 
-  function flexPlan(now, rd) {
-    const eq = loadEquipment();
-    const sg = FX.suggestFlex({ now, acts: flexActs, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
-    const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip check" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
-    const e = sg.endurance;
-    return `
-      <div class="card today-plan">
-        <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })} (Flex)</div>
-        <div class="equip" role="group" aria-label="Ausstattung vor Ort">${chips}</div>
-        <div class="flex-sug">
-          <div><span class="mini-title" style="margin:0">Gym</span>
-            <h3 style="font-size:22px;margin:2px 0"><i class="swatch" style="background:var(--strength)"></i>${esc(sg.gym.title)}</h3>
-            <p class="muted" style="margin:0;font-size:15px">${esc(sg.gym.detail)}</p>${sg.gym.rest ? "" : targetLine(sg.next && sg.next.split)}</div>
-          <div><span class="mini-title" style="margin:0">Ausdauer${e && e.done ? "" : ", optional"}${e && e.forMinimum ? ", fürs Wochen-Minimum" : ""}</span>
-            ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)}, ${e.minutes} min</h3>
-            <p class="muted" style="margin:0;font-size:15px">${esc(e.detail)}</p>` : `<p class="muted" style="margin:2px 0 0;font-size:15px">${rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt."}</p>`}</div>
-        </div>
-        ${sg.notes.length ? `<p class="muted" style="font-size:13px;line-height:18px;margin:12px 0 0">${sg.notes.map(esc).join("<br>")}</p>` : ""}
-        <div class="mini-title">Wochen-Minimum</div>
-        ${minList(sg.week)}
-        <div id="sinceBox"></div>
-        ${standLine}
-      </div>`;
+  // Wochen-Minimum als drei konzentrische Ringe (außen Gym, Mitte Ausdauer, innen Schwimmen)
+  // Aufziehen nur in der ersten Sekunde nach dem Laden; wird „Heute“ währenddessen neu gezeichnet
+  // (z. B. wenn die Zone-2-Daten eintreffen), läuft die Animation an derselben Stelle weiter.
+  const RING_MS = 1000;
+  let ringsT0 = null;
+  function ringsCard(wk) {
+    const by = Object.fromEntries(wk.items.map((x) => [x.key, x]));
+    const R = [["gym", "Gym", "strength"], ["endurance", "Ausdauer", "run"], ["swim", "Schwimmen", "swim"]].filter(([k]) => by[k]);
+    if (ringsT0 == null) ringsT0 = performance.now();
+    const elapsed = performance.now() - ringsT0;
+    const svg = C.rings({
+      size: 150, animate: elapsed < RING_MS, animDelay: elapsed,
+      items: R.map(([k, , cat]) => ({ frac: by[k].need ? by[k].have / by[k].need : 1, color: `var(--${cat})` })),
+      aria: `Wochen-Minimum: ${R.map(([k, l]) => `${l} ${by[k].have} von ${by[k].need}`).join(", ")}`,
+    });
+    return `<div class="card today-rings">
+      <div class="rings-head"><h3>Wochen-Minimum</h3><span class="ht-time">${wk.ok ? "erfüllt ✓" : `Woche ab ${dmS(wk.weekStart)}`}</span></div>
+      <div class="rings-body">${svg}
+        <div class="ring-legend">${R.map(([k, l, cat]) => `<div class="c-${cat}"><span class="rl-name">${l}</span><span class="rl-val"><b>${by[k].have}</b>/${by[k].need}</span></div>`).join("")}</div>
+      </div>
+      ${wk.ok ? "" : `<p class="ring-note">Fehlt noch: ${wk.items.filter((x) => !x.ok).map((x) => esc(x.label)).join(", ")}</p>`}
+    </div>`;
+  }
+  // Tagesvorschlag im Flex-Zeitraum: Gym-Split und Ausdauer als zwei Kacheln
+  function flexTiles(sg, rd) {
+    const e = sg.endurance, ecat = e ? (e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run") : "run";
+    return `<div class="today-tiles">
+      ${htile({ cat: "strength", label: "Gym", time: sg.gym.rest ? "" : "nächster Split", value: `<span class="tile-word">${esc(sg.gym.title)}</span>`,
+        sub: `${esc(sg.gym.detail)}${sg.gym.rest ? "" : targetLine(sg.next && sg.next.split)}` })}
+      ${htile({ cat: ecat, label: "Ausdauer", time: e && e.done ? "erledigt" : e && e.forMinimum ? "fürs Minimum" : "optional",
+        value: e ? `${e.minutes}<small>min</small>` : "–",
+        sub: e ? `<b class="tile-what">${esc(e.title)}</b><br>${esc(e.detail)}` : rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt." })}
+    </div>`;
   }
 
   function today() {
     const now = new Date();
     const rd = readiness();
-    const s = suggestion(now, rd);
     const done = acts.filter((a) => a.date.toDateString() === now.toDateString());
-    const color = CATS[s.sport]?.color || "var(--other)";
     const lv = rd ? LEVELS[rd.level] : null;
     const isOld = rd && (now - rd.date) / DAY > 1.5;
-    const planHtml = FLEX.active ? flexPlan(now, rd) : null;
-    const sub = document.querySelector("#heute .section-sub");
-    if (sub && FLEX.active) sub.textContent = "Flex-Phase: nächster Gym-Split und optionale lockere Ausdauer – passend zu dem, was du vor Ort hast.";
-    const planCard = planHtml || `
-      <div class="card today-plan">
-        <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })}</div>
-        <h3 style="font-size:22px;margin:4px 0 2px"><i class="swatch" style="background:${color}"></i>${esc(s.title)}</h3>
-        <div class="muted" style="font-size:15px;line-height:20px;margin-bottom:12px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)}, ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? `, Phase ${esc(s.phase.short)}` : ""}${s.changed ? `<br><b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
-        <p style="margin:0">${esc(s.detail)}</p>
-        ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(a.name), val: `${hm(a.sec)} h` })).join("")}</ul>` : ""}
-        <div id="sinceBox"></div>
-        ${standLine}
+    let top, planTop = "";
+    if (FLEX.active && FX) {
+      const eq = loadEquipment();
+      const sg = FX.suggestFlex({ now, acts: flexActs, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
+      top = ringsCard(sg.week) + flexTiles(sg, rd);
+      const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip check" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
+      planTop = `<div class="mini-title" style="margin-top:0">Ausstattung vor Ort</div>
+        <div class="equip" role="group" aria-label="Ausstattung vor Ort">${chips}</div>
+        ${sg.notes.length ? `<p class="today-notes">${sg.notes.map(esc).join("<br>")}</p>` : ""}`;
+    } else {
+      const s = suggestion(now, rd), cp = currentPhase(now);
+      const left = cp ? Math.ceil((cp.end - now) / DAY / 7) : 0;
+      top = `<div class="today-tiles">
+        ${htile({ cat: CATS[s.sport] ? s.sport : "other", label: s.type === "rest" ? "Ruhetag" : "Training", time: s.type === "hard" ? "intensiv" : s.type === "rest" ? "" : "locker",
+          value: s.type === "rest" ? `<span class="tile-word">Erholung</span>` : s.min >= 90 ? `${hm(s.min * 60)}<small>h</small>` : `${s.min}<small>min</small>`,
+          sub: `<b class="tile-what">${esc(s.title)}</b><br>${esc(s.detail)}${s.changed ? `<br><b>angepasst: ${esc(s.changed)}</b>` : ""}` })}
+        ${cp ? htile({ cat: "activity", label: "Phase", value: `<span class="tile-word">${esc(cp.short)}</span>`, sub: `noch ${left} ${left === 1 ? "Woche" : "Wochen"}, Ziel ${cp.hours} pro Woche` }) : ""}
       </div>`;
-    $("#today").innerHTML = `<div class="today-main">${planCard}<div class="card week-card" id="weekCard" aria-live="polite"></div></div>` + `
+    }
+    const doneHtml = done.length ? `<div class="mini-title"${planTop ? "" : ' style="margin-top:0"'}>Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(a.name), val: `${hm(a.sec)} h` })).join("")}</ul>` : "";
+    const planCard = `<div class="card today-plan">${planTop}${doneHtml}<div id="sinceBox"></div>${standLine}</div>`;
+    const formCard = `
       <div class="card today-form">
         <div class="mini-title" style="margin-top:0">Form heute</div>
         ${rd ? `
@@ -1230,10 +1253,12 @@
           <div class="muted" style="font-size:13px;line-height:18px;margin-top:8px">${esc(rd.source)}<br>Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
         : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
       </div>`;
+    $("#today").innerHTML = `<div class="today-col">${top}${planCard}</div><div class="today-col"><div class="card week-card" id="weekCard" aria-live="polite"></div>${formCard}</div>`;
     $("#today").querySelectorAll("[data-eq]").forEach((b) => b.addEventListener("click", () => {
       const cur = loadEquipment(), k = b.dataset.eq;
       const next = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat(k);
       saveEquipment(next.length ? next : cur); today();
+      const again = $(`[data-eq="${k}"]`); if (again) again.focus({ preventScroll: true });
     }));
     renderSince(now);
     renderWeek(now);

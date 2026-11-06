@@ -117,4 +117,18 @@ test("Diagramme: echte Pixelgröße, role=img, aria-label, Akzent nur für den a
   assert.match(C.empty("Zu wenig Daten."), /chart-empty/);
 });
 
+test("Ringe (Wochen-Minimum): Fortschritt begrenzt, bei 100 % geschlossen, bei 0 kein Bogen", () => {
+  const r = 50, circ = 2 * Math.PI * r;
+  const half = C.ringArc(0.5, r);
+  assert.ok(Math.abs(half.C - circ) < 1e-9 && Math.abs(half.offset - circ / 2) < 1e-9 && half.frac === 0.5);
+  const full = C.ringArc(5 / 4, r);   // 5 von 4 Gym → voll, nicht mehr
+  assert.equal(full.frac, 1); assert.ok(Math.abs(full.offset) < 1e-9);
+  assert.equal(C.ringArc(NaN, r).frac, 0);
+  const svg = C.rings({ size: 150, items: [{ frac: 1, color: "var(--strength)" }, { frac: 0.5, color: "var(--run)" }, { frac: 0, color: "var(--swim)" }], aria: "Wochen-Minimum: Gym 4 von 4" });
+  assert.match(svg, /role="img" aria-label="Wochen-Minimum: Gym 4 von 4"/);
+  assert.equal((svg.match(/class="ring-arc/g) || []).length, 2);         // 0 % → nur die Spur, kein Bogen
+  assert.equal((svg.match(/stroke-opacity=".24"/g) || []).length, 3);    // drei Spuren
+  assert.doesNotMatch(svg, /#[0-9a-f]{3,6}\b/i);
+});
+
 console.log(`\n${n} Tests bestanden.`);
