@@ -251,6 +251,15 @@
     </div>
   </div>
 
+  <!-- Detailansicht einer Kennzahl (wie Apple Health): Zeitraum, großer Wert, Diagramm, Statistik; Hash z. B. #erholung-hrv -->
+  <div class="sheet-backdrop" id="metricSheet" hidden>
+    <div class="sheet sheet-detail" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-head"><h2 id="mdTitle" class="md-title"></h2><button type="button" class="btn-text sheet-done">Fertig</button></div>
+      <div class="sheet-body" id="mdBody"></div>
+    </div>
+  </div>
+
   <!-- Vor Ort (Ausstattung): Schalter, danach richtet sich der Ausdauer-Vorschlag -->
   <div class="sheet-backdrop" id="equipSheet" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="equipTitle">
@@ -265,7 +274,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/charts.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/charts.js", "js/metrics.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten

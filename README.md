@@ -135,6 +135,40 @@ Uhr nicht synchronisiert hat. Die Fußzeile zeigt beide Zeitstempel in Geräteze
 Berechnung: [`js/freshness.js`](js/freshness.js), Schwellen: `freshness` in `js/data.js`.
 Tests: `node tests/freshness.test.js`.
 
+## Detailansichten (wie Apple Health)
+
+Tippen auf eine Kennzahl öffnet eine eigene Ansicht. Sie enthält:
+
+- den Zeitraum-Umschalter 7 T / 30 T / 60 T / Alle, wobei nur Zeiträume mit Daten erscheinen
+- den großen Wert, z. B. „Durchschnitt 73 ms“, und den Zeitraum
+- das Diagramm: Antippen oder Ziehen zeigt den Tageswert, Loslassen setzt zurück
+- eine Liste mit Durchschnitt, Minimum, Maximum, Veränderung zum Vorzeitraum und letztem Wert
+- ganz unten „Über diese Werte“
+
+Darstellung und Bedienung:
+
+- **Blatt:** Auf dem iPhone geht es über die ganze Höhe, auf dem iPad ist es ein 700 px breites, mittiges Blatt.
+- **Adresse:** Jede Ansicht hat einen eigenen Hash, z. B. `#erholung-hrv`. „Zurück“ im Browser schließt sie, ein
+  Link führt direkt hin.
+- **Erholung-Tab:** Die 4 großen Kacheln zeigen eine Mini-Linie der letzten 7 Tage. Alle Kacheln und Listenzeilen
+  öffnen ihre Detailansicht.
+
+Register und Berechnungen (Zeitraumfilter, Durchschnitt/Min/Max/Summe/letzter Wert, Vorzeitraum, fehlende Tage,
+Achsengrenzen) stehen in [`js/metrics.js`](js/metrics.js). Tests: `node tests/metrics.test.js`.
+
+**Wie weit die Daten zurückreichen** (Stand 06.11.2026):
+
+| Daten | Zeitraum |
+|---|---|
+| Garmin-Tageswerte | seit 06.08.2026, 93 Tage |
+| VO2max Rad | seit 29.09. |
+| Gewicht | 5 Einträge |
+| Strava | seit der Anmeldung (27.06.) |
+| Zone 2 | seit 01.07. |
+
+Die Garmin-Daten wachsen auf bis zu 400 Tage (`KEEP_DAYS`). Älteres lässt sich einmalig über die Action
+„Garmin-Update“ mit `days` nachladen.
+
 ## Garmin (Erholung & Form, Tagesvorschlag)
 
 Die GitHub Action [`.github/workflows/garmin.yml`](.github/workflows/garmin.yml) holt alle 3 Stunden

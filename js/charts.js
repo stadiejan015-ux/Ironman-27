@@ -256,10 +256,20 @@
     return s + "</svg>";
   }
 
+  // Mini-Linie ohne Achsen (z. B. letzte 7 Tage in einer Kachel); values in Tagesreihenfolge, null = Lücke
+  function sparkline(values, { w = 64, h = 28, color = "var(--text-2)" } = {}) {
+    const vs = values.filter(Number.isFinite);
+    if (vs.length < 2) return "";
+    const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1, n = values.length;
+    const pts = values.map((v, i) => (Number.isFinite(v) ? [2 + (i / Math.max(1, n - 1)) * (w - 4), h - 3 - ((v - lo) / span) * (h - 6)] : null)).filter(Boolean);
+    const lastP = pts[pts.length - 1];
+    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><path d="${pts.map((p, i) => `${i ? "L" : "M"}${f1(p[0])},${f1(p[1])}`).join("")}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${f1(lastP[0])}" cy="${f1(lastP[1])}" r="2.5" fill="${color}"/></svg>`;
+  }
+
   // Legende unter dem Diagramm – gleiche Symbole überall: square, dot, hollow, diamond, line, dash, ref, ring
   const legendItems = (items) => items.map((it) => `<span><i class="lg lg-${it.shape || "square"}" style="--c:${it.color}${it.opacity != null ? `;opacity:${it.opacity}` : ""}" aria-hidden="true"></i>${escA(it.label)}</span>`).join("");
   const legend = (items, extra = "") => `<div class="legend chart-legend">${legendItems(items)}${extra}</div>`;
   const empty = (text) => `<p class="chart-empty">${escA(text)}</p>`;
 
-  return { SMALL, LARGE, PACE_STEPS, DURATION_STEPS, ticksIn, zeroAxis, padAxis, paceAxis, durationAxis, decimals, labelIndices, maxLabelsFor, dateTicks, dm, lineChart, barChart, ringArc, rings, legend, legendItems, empty };
+  return { SMALL, LARGE, PACE_STEPS, DURATION_STEPS, ticksIn, zeroAxis, padAxis, paceAxis, durationAxis, decimals, labelIndices, maxLabelsFor, dateTicks, dm, lineChart, barChart, ringArc, rings, sparkline, legend, legendItems, empty };
 });

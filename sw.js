@@ -5,11 +5,11 @@
  * (die Seite hängt ?v=<Zeit> an, damit Browser nichts Altes verwenden).
  * Neue Version: CACHE erhöhen – sie übernimmt sofort, die Seite lädt einmal neu (js/pwa.js).
  */
-const CACHE = "ironman27-v4";
+const CACHE = "ironman27-v5";
 const CORE = [
   "./", "index.html", "manifest.webmanifest", "css/style.css",
   "js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js",
-  "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/charts.js", "js/app.js", "js/pwa.js",
+  "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/charts.js", "js/metrics.js", "js/app.js", "js/pwa.js",
   "data/prediction-history.json", "data/z2-metrics.json", "data/hr-sources.json",
   "icons/icon.svg", "icons/apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png",
 ];
