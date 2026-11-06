@@ -44,6 +44,22 @@ zu, sonst nur die Verläufe (`layout` in `js/data.js`). Die eigene Wahl wird gem
 „Ansicht zurücksetzen“ in der Fußzeile. Navigation und Anker öffnen eingeklappte Abschnitte. Logik:
 [`js/layout.js`](js/layout.js), Tests: `node tests/layout.test.js`.
 
+## Design
+
+Das Design orientiert sich an Apple Health und Apple Fitness. Alle Farben, Flächen und Schriftgrößen stehen als
+Variablen am Anfang von [`css/style.css`](css/style.css).
+
+- **Flächen:** Karten ohne Rahmen und Schatten, getrennt nur durch Flächenkontrast. Der Dunkelmodus nutzt echtes
+  Schwarz.
+- **Farben:** Apple-Systemfarben, das Akzent-Rot entspricht dem App-Icon.
+- **Schrift:** die Systemschrift (auf iPad und iPhone SF Pro), große Zahlen in SF Pro Rounded, Größen nach der
+  iOS-Skala.
+- **Kontrast:** Jeder Text hat mindestens 4,5:1. Wo eine Systemfarbe als Schrift zu hell wäre, gibt es eine dunklere
+  Schrift-Variante (`--accent-ink`, `--good-ink`, `--warn-ink`, `--bad-ink`, Sekundärgrau im hellen Modus). Flächen,
+  Balken und Punkte nutzen die Systemfarben unverändert.
+
+Das App-Icon erzeugt `node scripts/make_icons.js`.
+
 ## Diagramme
 
 Alle Diagramme nutzen einen gemeinsamen Baukasten, [`js/charts.js`](js/charts.js). Darin stecken Achsen,

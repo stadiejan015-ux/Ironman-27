@@ -98,7 +98,7 @@
         : lastWhere(acts, (a) => a.cat === r.cat && (a.sec || 0) >= minSec, now);
       const days = hit ? hit.days : null;
       let state = days == null ? "bad" : days <= c.green ? "good" : days <= c.yellow ? "warn" : "bad", note = "";
-      if (flexActive && r.long) { state = "info"; note = "Info · Flex"; }
+      if (flexActive && r.long) { state = "info"; note = "Info im Flex"; }
       else if (flexActive && equipment && !r.needs.some((k) => eq.has(k))) { state = "na"; note = "nicht verfügbar"; }
       return { key, label: c.label, days, text: agoText(days), state, note, last: hit ? hit.act : null, minMinutes: r.long ? c.minMinutes : null };
     });
@@ -168,7 +168,7 @@
     if (level >= 3) gym = { title: "Gym-Pause", detail: "Heute regenerieren: Spaziergang, 20 min Mobility, früh schlafen.", rest: true };
     else if (!eq.has("gym")) gym = { title: `Kein Gym verfügbar – ${next.split} verschieben`, detail: "Optional 20–30 min Körpergewicht (Liegestütze, Ausfallschritte, Rumpf).", skip: true };
     else if (gymToday.length) gym = { title: `${gymToday[gymToday.length - 1].split || "Gym"} erledigt`, detail: `Als Nächstes dran: ${next.split}.`, done: true };
-    else gym = { title: next.split, detail: level === 2 ? "Leichter Tag: Technik, 1 Satz weniger, nicht ans Limit." : `Rotation ${((cfg.rotation) || ["Push", "Pull", "Legs"]).join(" → ")}${next.basis ? ` · zuletzt ${next.basis.split}` : ""}.` };
+    else gym = { title: next.split, detail: level === 2 ? "Leichter Tag: Technik, 1 Satz weniger, nicht ans Limit." : `Rotation ${((cfg.rotation) || ["Push", "Pull", "Legs"]).join(" → ")}${next.basis ? `, zuletzt ${next.basis.split}` : ""}.` };
 
     // Ausdauer – heute schon erledigt? Sonst bevorzugt, was beim Minimum fehlt
     let endurance = null;
