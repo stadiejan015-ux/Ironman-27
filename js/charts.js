@@ -79,7 +79,12 @@
     const span = hi - lo;
     lo -= span * pad; hi += span * pad;
     if (clamp) { lo = Math.max(lo, clamp[0]); hi = Math.min(hi, clamp[1]); }
-    const t = ticksIn(lo, hi, { steps });
+    let t = ticksIn(lo, hi, { steps });
+    if (t.ticks.length < 3) {   // zu wenige runde Werte im Bereich (z. B. 45, 50): bis zum nächsten runden Wert erweitern
+      lo = Math.floor(lo / t.step + EPS) * t.step; hi = Math.ceil(hi / t.step - EPS) * t.step;
+      if (clamp) { lo = Math.max(lo, clamp[0]); hi = Math.min(hi, clamp[1]); }
+      t = ticksIn(lo, hi, { steps });
+    }
     return { lo, hi, step: t.step, ticks: t.ticks };
   }
   const PACE_STEPS = [10, 15, 30, 60, 120, 300];
@@ -115,18 +120,19 @@
   const dm = (d) => { const x = new Date(d); return `${pad2(x.getDate())}.${pad2(x.getMonth() + 1)}.`; };
   const escA = (s) => String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   const textW = (s) => String(s).length * 6.6;   // 11 px, gleich breite Ziffern
-  const leftMargin = (labels) => Math.ceil(Math.max(16, ...labels.map(textW))) + 10;
+  const axisWidth = (labels) => Math.ceil(Math.max(16, ...labels.map(textW))) + 10;   // Y-Beschriftung rechts (wie Health)
   const f1 = (v) => Math.round(v * 10) / 10;
   const crisp = (v) => Math.round(v) + 0.5;      // 1-px-Linien scharf
-  // Balken mit Radius r am freien Ende (oben bei positiven, unten bei negativen Werten)
-  function barPath(x, w, yBase, yEnd, r) {
-    const h = Math.abs(yBase - yEnd);
-    r = Math.max(0, Math.min(r, h, w / 2));
-    if (yEnd <= yBase) return `M${f1(x)},${f1(yBase)}V${f1(yEnd + r)}Q${f1(x)},${f1(yEnd)} ${f1(x + r)},${f1(yEnd)}H${f1(x + w - r)}Q${f1(x + w)},${f1(yEnd)} ${f1(x + w)},${f1(yEnd + r)}V${f1(yBase)}Z`;
-    return `M${f1(x)},${f1(yBase)}V${f1(yEnd - r)}Q${f1(x)},${f1(yEnd)} ${f1(x + r)},${f1(yEnd)}H${f1(x + w - r)}Q${f1(x + w)},${f1(yEnd)} ${f1(x + w)},${f1(yEnd - r)}V${f1(yBase)}Z`;
+  // Balken mit voll abgerundeten Enden: rTop/rBottom (je höchstens halbe Breite und halbe Höhe)
+  function capsule(x, w, yTop, yBottom, rTop, rBottom) {
+    const h = Math.max(0, yBottom - yTop);
+    const rt = Math.max(0, Math.min(rTop, w / 2, h / 2)), rb = Math.max(0, Math.min(rBottom, w / 2, h / 2));
+    return `M${f1(x)},${f1(yTop + rt)}Q${f1(x)},${f1(yTop)} ${f1(x + rt)},${f1(yTop)}H${f1(x + w - rt)}Q${f1(x + w)},${f1(yTop)} ${f1(x + w)},${f1(yTop + rt)}`
+      + `V${f1(yBottom - rb)}Q${f1(x + w)},${f1(yBottom)} ${f1(x + w - rb)},${f1(yBottom)}H${f1(x + rb)}Q${f1(x)},${f1(yBottom)} ${f1(x)},${f1(yBottom - rb)}Z`;
   }
-  const open = (W, H, aria) => `<svg class="cv" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escA(aria || "Diagramm")}">`;
-  const gridY = (m, W, ticks, y, fmt) => ticks.map((v) => { const yy = crisp(y(v)); return `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/><text class="tick" x="${m.l - 8}" y="${f1(yy + 3.5)}" text-anchor="end">${escA(fmt(v))}</text>`; }).join("");
+  const open = (W, H, aria, m) => `<svg class="cv" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escA(aria || "Diagramm")}"${m ? ` data-pt="${m.t}" data-pb="${H - m.b}"` : ""}>`;
+  // Fein gestrichelte waagerechte Gitterlinien, Beschriftung rechts außen
+  const gridY = (m, W, ticks, y, fmt) => ticks.map((v) => { const yy = crisp(y(v)); return `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${yy}" y2="${yy}"/><text class="tick" x="${W - m.r + 8}" y="${f1(yy + 3.5)}" text-anchor="start">${escA(fmt(v))}</text>`; }).join("");
   // Ziel-/Schwellenlinie: gestrichelt, Beschriftung rechts am Ende (über der Linie; unter der Linie, wenn dort der aktuelle Punkt sitzt)
   const refLines = (refs, m, W, y, avoid) => (refs || []).map((r) => {
     const yy = crisp(y(r.v)), hit = avoid && avoid.x > W - m.r - textW(r.label || "") - 20 && Math.abs(avoid.y - (yy - 8)) < 14;
@@ -144,14 +150,14 @@
   //       refs: [{ v, label }], latest: { d, v, label }, hits: [{ d, v }] }
   function lineChart(o) {
     const W = Math.round(o.width), H = o.height || SMALL, ax = o.y;
-    const m = { t: 16, r: 12, b: 22, l: leftMargin(ax.ticks.map(ax.fmt)) };
+    const m = { t: 16, r: axisWidth(ax.ticks.map(ax.fmt)), b: 22, l: 8 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const all = [].concat(...(o.series || []).map((s) => s.pts), o.scatter || [], o.hits || []).map((p) => +p.d);
     let t0 = Math.min(...all), t1 = Math.max(...all);
     if (t1 - t0 < 14 * DAY) t0 = t1 - 14 * DAY;   // mind. 2 Wochen, der neueste Wert bleibt rechts
     const x = (d) => m.l + ((+d - t0) / (t1 - t0 || 1)) * iw;
     const y = (v) => (ax.invert ? m.t + ((v - ax.lo) / (ax.hi - ax.lo)) * ih : m.t + ih - ((v - ax.lo) / (ax.hi - ax.lo)) * ih);
-    let s = open(W, H, o.aria) + gridY(m, W, ax.ticks, y, ax.fmt);
+    let s = open(W, H, o.aria, m) + gridY(m, W, ax.ticks, y, ax.fmt);
     if (o.band) { const ya = y(o.band.from), yb = y(o.band.to); s += `<rect x="${m.l}" y="${f1(Math.min(ya, yb))}" width="${iw}" height="${f1(Math.abs(yb - ya))}" fill="${o.band.color}" opacity=".14"/>`; }
     s += refLines(o.refs, m, W, y, o.latest ? { x: x(o.latest.d), y: y(o.latest.v) } : null);
     (o.series || []).forEach((sr) => {
@@ -181,12 +187,12 @@
   function barChart(o) {
     const W = Math.round(o.width), H = o.height || SMALL, ax = o.y, n = o.bands.length;
     const hasBelow = o.bands.some((b) => b.below), hasGroup = (o.groups || []).length > 0;
-    const m = { t: hasGroup ? 26 : 16, r: 8, b: hasBelow ? 38 : 22, l: leftMargin(ax.ticks.map(ax.fmt)) };
+    const m = { t: hasGroup ? 26 : 16, r: axisWidth(ax.ticks.map(ax.fmt)), b: hasBelow ? 38 : 22, l: 4 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
-    const slots = Math.max(n, o.minBands || 1), band = iw / slots, bw = Math.max(3, Math.min(o.maxBar || 34, band * 0.62));
+    const slots = Math.max(n, o.minBands || 1), band = iw / slots, bw = Math.max(3, Math.min(o.maxBar || 22, band * 0.56));
     const y = (v) => m.t + ih - ((v - ax.lo) / (ax.hi - ax.lo)) * ih;
     const bx = (i) => m.l + band * i;
-    let s = open(W, H, o.aria);
+    let s = open(W, H, o.aria, m);
     let groupLabels = "";
     (o.groups || []).forEach((g) => {
       const gx = bx(g.from), gw = band * (g.to - g.from + 1), atEnd = gx + textW(g.label) + 6 > W - m.r;   // am rechten Rand: rechtsbündig
@@ -211,12 +217,13 @@
       const segs = (b.stacks || []).filter((st) => st.v);
       let g = "";
       if (segs.length === 1 && segs[0].v < 0) {
-        g += `<path d="${barPath(x, bw, y(0), y(segs[0].v), 3)}" fill="${segs[0].color}"/>`;
+        g += `<path d="${capsule(x, bw, y(0), y(segs[0].v), bw / 2, bw / 2)}" fill="${segs[0].color}"/>`;
       } else {
         let acc = 0;
         segs.forEach((st, j) => {
           const y0 = y(acc), y1 = y(acc + st.v), gap = j > 0 ? 1 : 0, h = Math.max(0, y0 - y1 - gap);
-          g += j === segs.length - 1 ? `<path d="${barPath(x, bw, y1 + h, y1, 3)}" fill="${st.color}"/>` : `<rect x="${f1(x)}" y="${f1(y1)}" width="${f1(bw)}" height="${f1(h)}" fill="${st.color}"/>`;
+          const last = j === segs.length - 1, first = j === 0;   // oben und unten voll abgerundet, dazwischen gerade (1 px Trennung)
+          g += `<path d="${capsule(x, bw, y1, y1 + h, last ? bw / 2 : 0, first ? bw / 2 : 0)}" fill="${st.color}"/>`;
           acc += st.v;
         });
       }

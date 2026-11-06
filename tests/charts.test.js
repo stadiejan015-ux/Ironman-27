@@ -53,6 +53,8 @@ test("Achse ohne Null-Start mit Luft um die Daten (HRV, Ruhepuls, Gewicht, 1RM)"
   const rm = C.padAxis([80, 92, 100], { include: [140] });   // Ziel immer sichtbar
   assert.ok(rm.lo > 60 && rm.hi >= 140, `1RM ${rm.lo}–${rm.hi}`);
   assert.deepEqual(rm.ticks, [80, 100, 120, 140]);
+  const rhr = C.padAxis([42, 44, 47, 52]);      // Ruhepuls: sonst nur 45 und 50 → Bereich erweitert, mind. 3 Ticks
+  assert.ok(rhr.ticks.length >= 3 && rhr.ticks.length <= 5 && rhr.lo <= 42 && rhr.hi >= 52, `${rhr.ticks}`);
   const flat = C.padAxis([50, 50, 50]);         // alle gleich: trotzdem Spanne
   assert.ok(flat.lo < 50 && flat.hi > 50 && flat.ticks.length >= 3);
 });
