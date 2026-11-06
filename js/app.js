@@ -53,18 +53,83 @@
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
   const ofCat = (arr, c) => arr.filter((a) => a.cat === c);
 
-  /* ---------- Theme toggle ---------- */
+  /* ---------- Erscheinungsbild (Einstellungen-Blatt): Automatisch / Hell / Dunkel ---------- */
   (function theme() {
     const root = document.documentElement;
     let saved = null;
     try { saved = localStorage.getItem("theme"); } catch (e) { /* ignore */ }
-    if (saved) root.dataset.theme = saved;
-    $("#themeToggle").addEventListener("click", () => {
-      const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-      root.dataset.theme = dark ? "light" : "dark";
-      try { localStorage.setItem("theme", root.dataset.theme); } catch (e) { /* ignore */ }
-    });
+    const apply = (t) => {
+      if (t === "light" || t === "dark") root.dataset.theme = t; else delete root.dataset.theme;
+      document.querySelectorAll("[data-theme-choice]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === (t === "light" || t === "dark" ? t : "auto"))));
+    };
+    apply(saved);
+    document.querySelectorAll("[data-theme-choice]").forEach((b) => b.addEventListener("click", () => {
+      const t = b.dataset.themeChoice;
+      apply(t);
+      try { if (t === "auto") localStorage.removeItem("theme"); else localStorage.setItem("theme", t); } catch (e) { /* ignore */ }
+    }));
   })();
+
+  /* ---------- Blätter (Sheets) von unten: „Fertig“, Tippen daneben, Esc oder nach unten wischen schließt ---------- */
+  const reduceMotionNow = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  let sheetOpener = null;
+  function openSheet(id, opener) {
+    const bd = document.getElementById(id);
+    if (!bd || !bd.hidden) return;
+    sheetOpener = opener || document.activeElement;
+    bd.hidden = false;
+    document.documentElement.classList.add("sheet-open");
+    void bd.offsetHeight;   // Startzustand rendern, dann animieren
+    bd.classList.add("open");
+    const first = bd.querySelector(".sheet-done");
+    if (first) first.focus({ preventScroll: true });
+  }
+  function closeSheet(bd) {
+    if (!bd || bd.hidden) return;
+    const sheet = bd.querySelector(".sheet");
+    bd.classList.remove("open");
+    sheet.style.transform = "";
+    document.documentElement.classList.remove("sheet-open");
+    const done = () => { if (!bd.classList.contains("open")) bd.hidden = true; };
+    if (reduceMotionNow()) done(); else setTimeout(done, 300);
+    if (sheetOpener && sheetOpener.isConnected && sheetOpener.focus) sheetOpener.focus({ preventScroll: true });
+  }
+  function setupSheet(bd) {
+    if (!bd || bd._sheet) return;
+    bd._sheet = true;
+    const sheet = bd.querySelector(".sheet");
+    bd.addEventListener("click", (e) => { if (e.target === bd) closeSheet(bd); });
+    bd.querySelectorAll(".sheet-done").forEach((b) => b.addEventListener("click", () => closeSheet(bd)));
+    bd.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); closeSheet(bd); return; }
+      if (e.key !== "Tab") return;   // Fokus im Blatt halten
+      const f = [...sheet.querySelectorAll("button, a[href], input, [tabindex]:not([tabindex='-1'])")].filter((x) => !x.disabled && x.offsetParent);
+      if (!f.length) return;
+      if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
+    });
+    // Nach unten wischen am Griff oder an der Kopfzeile
+    let y0 = null, dy = 0, t0 = 0;
+    sheet.querySelectorAll(".sheet-grabber, .sheet-head").forEach((el) => el.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      y0 = e.clientY; dy = 0; t0 = performance.now();
+      sheet.classList.add("dragging");
+      try { sheet.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    }));
+    sheet.addEventListener("pointermove", (e) => {
+      if (y0 == null) return;
+      dy = Math.max(0, e.clientY - y0);
+      sheet.style.transform = `translateY(${dy}px)`;
+    });
+    const end = () => {
+      if (y0 == null) return;
+      const v = dy / Math.max(1, performance.now() - t0);
+      y0 = null; sheet.classList.remove("dragging");
+      if (dy > 90 || (dy > 24 && v > 0.6)) closeSheet(bd); else sheet.style.transform = "";
+    };
+    sheet.addEventListener("pointerup", end);
+    sheet.addEventListener("pointercancel", end);
+  }
 
   /* ---------- Tooltip ---------- */
   const tip = $("#tooltip");
@@ -1621,30 +1686,60 @@
     showAll = !showAll; activities();
     if (!showAll) $("#aktivitaeten").scrollIntoView({ block: "start" });   // beim Zuklappen nicht im Leeren landen
   });
-  // Im Flex-Zeitraum steht „Gym“ direkt nach „Heute“ (auch in der Navigation)
-  if (FLEX.active) {
-    $("#heute").after($("#gym"));
-    $("#gym").after($("#kalender"));
-    const link = document.querySelector('.nav a[href="#gym"]'), heuteLink = document.querySelector('.nav a[href="#heute"]');
-    const calLink = document.querySelector('.nav a[href="#kalender"]');
-    if (link && heuteLink) heuteLink.after(link);
-    if (calLink && link) link.after(calLink);
-  }
   setupSections();
   LOPEN = layoutState();
   Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, false));
   today(); recovery(); gymSection(); calendarSection();
   freshBanner();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
-  document.querySelectorAll('.nav a[href^="#"]').forEach((a) => a.addEventListener("click", () => revealSection(a.getAttribute("href").slice(1), false)));
-  window.addEventListener("hashchange", () => revealSection(decodeURIComponent(location.hash.slice(1)), true));
-  if (location.hash) requestAnimationFrame(() => revealSection(decodeURIComponent(location.hash.slice(1)), true));
-  $("#resetView").addEventListener("click", (e) => {
-    e.preventDefault();
+  /* ---------- Tabs: #heute, #training, #erholung, #plan; alte Anker (#zone2 …) öffnen den passenden Tab ---------- */
+  const TABS = ["heute", "training", "erholung", "plan"];
+  const tabScroll = {};   // jede Tab merkt sich ihre Scroll-Position
+  let curTab = null;
+  function tabOf(id) {
+    if (!id || TABS.includes(id)) return id || "heute";
+    const el = document.getElementById(id), panel = el && el.closest(".tab-panel");
+    return panel ? panel.dataset.tab : "heute";
+  }
+  function showTab(tab) {
+    if (tab === curTab) return false;
+    if (curTab) tabScroll[curTab] = window.scrollY;
+    curTab = tab;
+    document.querySelectorAll(".tab-panel").forEach((p) => { p.hidden = p.dataset.tab !== tab; });
+    document.querySelectorAll(".tabbar .tab").forEach((t) => t.setAttribute("aria-selected", String(t.getAttribute("href") === `#${tab}`)));
+    hideTip(); if (selBox) resetSel(selBox);
+    redrawCharts($(`#tab-${tab}`));   // Diagramme in echter Breite (waren versteckt)
+    if (tab === "plan") layoutTimeline(true);
+    return true;
+  }
+  function route() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const changed = showTab(tabOf(id));
+    if (id && !TABS.includes(id) && document.getElementById(id)) {
+      revealSection(id, false);
+      requestAnimationFrame(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ block: "start" }); });
+    } else {
+      window.scrollTo(0, changed ? tabScroll[curTab] || 0 : 0);
+    }
+  }
+  window.addEventListener("hashchange", route);
+  // Erneutes Tippen auf den aktiven Tab scrollt nach oben
+  document.querySelectorAll(".tabbar .tab").forEach((t) => t.addEventListener("click", (e) => {
+    if (t.getAttribute("href") === `#${curTab}` && location.hash === `#${curTab}`) { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); }
+  }));
+  route();
+
+  // Einstellungen (Zahnrad neben „Heute“)
+  const settings = $("#settingsSheet");
+  setupSheet(settings);
+  $("#settingsBtn").addEventListener("click", (e) => { $("#settingsStand").textContent = `Datenstand: ${$("#snap").textContent || "–"}`; openSheet("settingsSheet", e.currentTarget); });
+  const resetLayout = () => {
     saveLayout(null);
     LOPEN = layoutState();
     Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, true));
-  });
+  };
+  $("#resetView").addEventListener("click", (e) => { e.preventDefault(); resetLayout(); });
+  $("#resetViewBtn").addEventListener("click", () => { resetLayout(); closeSheet(settings); });
   // Größenänderung (Drehen, Fenster): Diagramme mit neuer Breite zeichnen (zusätzlich zum ResizeObserver)
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { hideTip(); redrawCharts(); layoutTimeline(false); }, 150); });
   $("#z2ZoneFilter").querySelectorAll("button").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));

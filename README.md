@@ -35,13 +35,32 @@ von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](s
 Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
 Die geplante Aufgabe neu anlegen (unabhängig von einem Chat): [`scripts/STRAVA_AUFGABE.md`](scripts/STRAVA_AUFGABE.md).
 
+## Tabs
+
+Die Seite ist in vier Tabs aufgeteilt, wie eine iOS-App:
+
+| Tab | Inhalt |
+|---|---|
+| **Heute** | Startbildschirm und Woche |
+| **Training** | Gym, Kalender, Die letzten 4 Wochen, Umfang, Disziplinen, Aktivitäten |
+| **Erholung** | Erholung & Form, Zone 2 |
+| **Plan** | Wo du gerade stehst, Saisonplan, Rennvorbereitung |
+
+- **Tab-Leiste:** Auf dem iPhone sitzt sie unten (durchscheinend), auf dem iPad schwebt sie oben als Kapsel.
+- **Adressen:** Umschalten geht über `#heute`, `#training`, `#erholung` und `#plan`. Alte Anker wie `#zone2` öffnen
+  den passenden Tab, klappen den Abschnitt auf und scrollen hin.
+- **Verhalten:** Jeder Tab merkt sich seine Scroll-Position. Erneutes Tippen auf den aktiven Tab scrollt nach oben.
+- **Knöpfe:** Neben „Heute“ stehen Aktualisieren und das Zahnrad. Das Zahnrad öffnet ein Blatt mit dem
+  Erscheinungsbild (Automatisch / Hell / Dunkel) und „Ansicht zurücksetzen“.
+- **Blätter:** Sie schließen über „Fertig“, durch Wischen nach unten, Tippen daneben oder Esc.
+
 ## Einklappbare Abschnitte
 
-Alle Abschnitte außer Überblick und Heute lassen sich über ihre Überschrift ein- und ausklappen (Tastatur,
+Alle Abschnitte außer Heute lassen sich über ihre Überschrift ein- und ausklappen (Tastatur,
 `aria-expanded`); eingeklappt steht eine Kurzfassung daneben. In „Erholung“ bleiben die Kacheln sichtbar, nur die
 Verläufe sind separat einklappbar. Standard: im Flex-Zeitraum Zone 2, Disziplinen, Rennen und die Erholungs-Verläufe
 zu, sonst nur die Verläufe (`layout` in `js/data.js`). Die eigene Wahl wird gemerkt, bis die Phase wechselt;
-„Ansicht zurücksetzen“ in der Fußzeile. Navigation und Anker öffnen eingeklappte Abschnitte. Logik:
+„Ansicht zurücksetzen“ in der Fußzeile und im Einstellungen-Blatt. Anker öffnen eingeklappte Abschnitte. Logik:
 [`js/layout.js`](js/layout.js), Tests: `node tests/layout.test.js`.
 
 ## Design

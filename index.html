@@ -25,222 +25,231 @@
   <noscript><link rel="stylesheet" href="css/style.css"></noscript>
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap">
-      <div class="brand">Ironman 27</div>
-      <nav class="nav" aria-label="Abschnitte">
-        <a href="#heute">Heute</a>
-        <a href="#erholung">Erholung</a>
-        <a href="#zone2">Zone 2</a>
-        <a href="#gym">Gym</a>
-        <a href="#kalender">Kalender</a>
-        <a href="#saison">Saisonplan</a>
-        <a href="#umfang">Umfang</a>
-        <a href="#disziplinen">Disziplinen</a>
-        <a href="#rennen">Rennen</a>
-        <a href="#aktivitaeten">Aktivitäten</a>
-      </nav>
-      <button class="icon-btn" id="refreshBtn" type="button" aria-label="Aktualisieren" title="Aktualisieren"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="display:block"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.6 1.6v3.1H9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-      <button class="icon-btn" id="themeToggle" type="button" aria-label="Farbschema wechseln" title="Hell / Dunkel"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="display:block"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg></button>
+  <!-- Tab-Leiste: iPhone unten, iPad schwebend oben als Kapsel -->
+  <nav class="tabbar" aria-label="Bereiche">
+    <div class="tabbar-inner" role="tablist">
+      <a class="tab" id="tabbtn-heute" href="#heute" role="tab" aria-controls="tab-heute" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg><span>Heute</span></a>
+      <a class="tab" id="tabbtn-training" href="#training" role="tab" aria-controls="tab-training" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 10h2v4h-2zM19.5 10h2v4h-2zM5 7h3v10H5zM16 7h3v10h-3zM8 11h8v2H8z" fill="currentColor"/></svg><span>Training</span></a>
+      <a class="tab" id="tabbtn-erholung" href="#erholung" role="tab" aria-controls="tab-erholung" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-8-4.8-8-10.4A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 8 2.5c0 5.6-8 10.4-8 10.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M6 12.5h3l1.5-2.5 2.2 5 1.6-2.5H18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Erholung</span></a>
+      <a class="tab" id="tabbtn-plan" href="#plan" role="tab" aria-controls="tab-plan" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 21V3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 4.5h12l-2.6 4 2.6 4h-12" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Plan</span></a>
     </div>
-  </header>
+  </nav>
 
   <main class="wrap">
     <div class="offline-badge" id="offlineBadge" role="status" hidden></div>
     <div class="fresh-banner" id="freshBanner" role="status" hidden></div>
 
-    <!-- HEUTE: Datumszeile, großer Titel, schlanke Infozeile (wie Apple Fitness) -->
-    <section id="heute">
-      <header class="today-head">
-        <p class="eyebrow" id="todayDate"></p>
-        <h1>Heute</h1>
-        <p class="today-line" id="todayLine"></p>
-        <p class="today-note" id="todayNote" role="status" hidden></p>
-      </header>
-      <div class="grid today-grid" id="today"></div>
-    </section>
-
-    <!-- KPIs -->
-    <section id="letzte4" data-collapse>
-      <h2>Die letzten 4 Wochen</h2>
-      <p class="section-sub" id="kpiSub"></p>
-      <div class="grid g4" id="kpis"></div>
-    </section>
-
-    <!-- INSIGHTS -->
-    <section id="stand" data-collapse>
-      <h2>Wo du gerade stehst</h2>
-      <p class="section-sub">Automatisch aus deinen Strava-Daten abgeleitet – Einschätzungen, keine Messwerte.</p>
-      <div class="grid g2" id="insights"></div>
-    </section>
-
-    <!-- ERHOLUNG -->
-    <section id="erholung">
-      <div id="recoverySection">
-        <h2>Erholung &amp; Form</h2>
-        <p class="section-sub" id="recoverySub"></p>
-        <div id="recovery"></div>
-      </div>
-    </section>
-
-    <!-- ZONE 2 -->
-    <section id="zone2" data-collapse>
-      <h2>Zone-2-Entwicklung</h2>
-      <p class="section-sub" id="z2Asof">Wird ein Mal pro Tag aus den Strava-Streams berechnet.</p>
-      <div class="grid g4" id="z2Tiles"></div>
-      <div class="grid g2" style="margin-top:12px">
-        <div class="card">
-          <h3>Pace bei fester Herzfrequenz</h3>
-          <div class="chart" id="z2Pace"></div>
-          <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--run);opacity:.45" aria-hidden="true"></i>Brustgurt</span><span><i class="lg lg-hollow" style="--c:var(--run)" aria-hidden="true"></i>Uhr / unbekannt</span><span><i class="lg lg-diamond" style="--c:var(--run);opacity:.45" aria-hidden="true"></i>GAP (hügelig)</span><span><i class="lg lg-line" style="--c:var(--run)" aria-hidden="true"></i>Median 4 Wochen</span><span class="muted">schneller = oben</span></div>
-        </div>
-        <div class="card">
-          <h3>Watt bei fester Herzfrequenz</h3>
-          <div class="chart" id="z2Watts"></div>
-          <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--bike);opacity:.45" aria-hidden="true"></i>Indoor (Zwift)</span><span><i class="lg lg-hollow" style="--c:var(--bike)" aria-hidden="true"></i>Outdoor</span><span><i class="lg lg-line" style="--c:var(--bike)" aria-hidden="true"></i>Median Indoor</span><span id="z2OutMedian" hidden><i class="lg lg-dash" style="--c:var(--bike)" aria-hidden="true"></i>Median Outdoor</span></div>
-        </div>
-        <div class="card">
-          <h3>Entkopplung pro langer Einheit</h3>
-          <div class="chart" id="z2Dec"></div>
-          <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--good)" aria-hidden="true"></i>unter 5 %</span><span><i class="lg lg-dot" style="--c:var(--warn)" aria-hidden="true"></i>5–10 %</span><span><i class="lg lg-dot" style="--c:var(--bad)" aria-hidden="true"></i>über 10 %</span><span class="muted">antippen für Details</span></div>
-        </div>
-        <div class="card">
-          <div class="chart-head" style="margin-bottom:4px">
-            <h3 style="margin:0">Zeit pro HF-Zone und Woche</h3>
-            <div class="segmented" id="z2ZoneFilter" role="group" aria-label="Sportart">
-              <button type="button" data-f="all" aria-pressed="true">Alle</button>
-              <button type="button" data-f="run" aria-pressed="false">Laufen</button>
-              <button type="button" data-f="ride" aria-pressed="false">Rad</button>
+    <!-- Bereiche (Tabs): immer nur einer sichtbar, Umschalten über #heute, #training, #erholung, #plan -->
+    <div class="tab-panel" id="tab-heute" data-tab="heute" role="tabpanel" aria-labelledby="tabbtn-heute">
+      <section id="heute">
+        <header class="today-head">
+          <p class="eyebrow" id="todayDate"></p>
+          <div class="title-row">
+            <h1>Heute</h1>
+            <div class="title-actions">
+              <button class="icon-btn" id="refreshBtn" type="button" aria-label="Aktualisieren" title="Aktualisieren"><svg width="20" height="20" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.6 1.6v3.1H9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              <button class="icon-btn" id="settingsBtn" type="button" aria-label="Einstellungen" title="Einstellungen" aria-haspopup="dialog" aria-controls="settingsSheet"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 6.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8.6 1.8h2.8l.4 2.3 1.6.9 2.2-.8 1.4 2.4-1.8 1.5v1.8l1.8 1.5-1.4 2.4-2.2-.8-1.6.9-.4 2.3H8.6l-.4-2.3-1.6-.9-2.2.8L3 13.4l1.8-1.5v-1.8L3 8.6 4.4 6.2l2.2.8 1.6-.9z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
             </div>
           </div>
-          <div class="chart" id="z2Zones"></div>
-          <div class="legend chart-legend" id="z2ZoneLegend"></div>
-        </div>
-      </div>
-      <details class="card how" style="margin-top:12px">
-        <summary>Wie wird gemessen?</summary>
-        <ul>
-          <li>Pro Einheit: erste 10 min als Aufwärmen verworfen, Stillstand entfernt, Herzfrequenz, Tempo und Watt mit 60-s-Mittel geglättet.</li>
-          <li><b>Pace @ HF:</b> Median-Pace aller Abschnitte mit 140–148 bpm und −2 bis +2 % Steigung, mind. 8 min im Band. Nicht gewertet: Trail, Laufband, &gt; 25 Hm/km, &gt; 10 % der Zeit ≥ Z4.</li>
-          <li><b>Hügelige Läufe (10–25 Hm/km):</b> steigungsbereinigte Pace (GAP, Minetti-Modell) auf Abschnitten mit höchstens ±6 % Steigung, als Raute markiert. Der Puls reagiert 30–60 s verzögert auf Steigungen – GAP-Werte sind deshalb etwas unsicherer.</li>
-          <li><b>Pulsmesser:</b> Brustgurt oder Uhr wird aus den Garmin-Sensordaten erkannt; <code>#gurt</code> bzw. <code>#uhr</code> im Strava-Titel oder in der Beschreibung hat Vorrang. Uhr-Werte werden hohl markiert (in <code>data.js</code> umstellbar auf „nur Brustgurt“).</li>
-          <li id="z2SrcStats"></li>
-          <li><b>Watt @ HF:</b> gleiche Logik mit 135–145 bpm, nur mit echten Watt (Zwift). Die Orbea-Watt sind geschätzt und zählen nicht.</li>
-          <li><b>Entkopplung:</b> ruhige Läufe ab 60 min bzw. Fahrten ab 90 min (≥ 80 % in Z1–2, Rad VI ≤ 1,10). Effizienz = Tempo bzw. Watt ÷ HF in beiden Hälften, Entkopplung = (EF1 − EF2) ÷ EF1.</li>
-          <li><b>Zonen:</b> eigene HF-Zonen (Z1 &lt; 130, Z2 130–152, Z3 153–175, Z4 176–200, Z5 ≥ 201). Die Zonenverteilung zählt das Aufwärmen mit, weil es echte Trainingszeit ist.</li>
-          <li>Alle Grenzen sind in <code>js/data.js</code> unter <code>z2</code> und <code>zones</code> anpassbar.</li>
-        </ul>
-      </details>
-    </section>
+          <p class="today-line" id="todayLine"></p>
+          <p class="today-note" id="todayNote" role="status" hidden></p>
+        </header>
+        <div class="grid today-grid" id="today"></div>
+      </section>
+    </div>
 
-    <!-- GYM -->
-    <section id="gym" data-collapse>
-      <h2>Gym</h2>
-      <p class="section-sub">Split und Hauptübung kommen aus dem Titel deiner Krafteinheit in Garmin Connect, z.&nbsp;B. „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“ oder „Push 6x100 @Bali“.</p>
-      <div class="grid g2 gym-top"><div id="gymWeek"></div><div class="card" id="gymSplit"></div></div>
-      <div class="grid g3" style="margin-top:16px" id="gymLifts"></div>
-    </section>
-
-    <!-- KALENDER -->
-    <section id="kalender" data-collapse>
-      <h2>Kalender</h2>
-      <p class="section-sub">Die letzten 10 Wochen – Farbe nach Sportart, kräftiger bei längerer Gesamtdauer. Tippe auf einen Tag für die Details.</p>
-      <div class="card">
-        <div class="calendar" id="calendar"></div>
-        <div class="legend" id="calLegend" style="margin-top:10px"></div>
-      </div>
-    </section>
-
-    <!-- SAISON -->
-    <section id="saison" data-collapse>
-      <h2>Saisonplan bis zum Rennen</h2>
-      <p class="section-sub">Periodisierung rückwärts vom Renntag gerechnet. Stundenangaben sind Richtwerte pro Woche.</p>
-      <div class="card">
-        <p class="phase-warn" id="phaseWarn" role="status" hidden></p>
-        <div class="timeline-scroll"><div class="timeline" id="timeline"></div></div>
-        <div class="phase-detail">
-          <div>
-            <div class="mini-title">Aktuelle Phase</div>
-            <div id="currentPhase"></div>
-          </div>
-          <div>
-            <div class="mini-title">Alle Phasen</div>
-            <ul class="ios-list dots phase-rows" id="phaseList"></ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- UMFANG -->
-    <section id="umfang" data-collapse>
-      <h2>Wochenumfang</h2>
-      <p class="section-sub">Trainingsstunden pro Woche (Montag–Sonntag), Bewegungszeit laut Strava.</p>
-      <div class="card">
-        <div class="chart-head" style="justify-content:flex-end">
-          <div class="controls">
-            <button class="chip check" id="toggleOther" type="button" aria-pressed="false">inkl. Kraft &amp; Sonstiges</button>
-            <button class="chip check" id="toggleTable" type="button" aria-pressed="false">Tabelle</button>
-          </div>
-        </div>
-        <div class="chart" id="volChart"></div>
-        <div class="legend chart-legend" id="volLegend"></div>
-        <div class="table-scroll" id="volTable" hidden></div>
-      </div>
-    </section>
-
-    <!-- DISZIPLINEN -->
-    <section id="disziplinen" data-collapse>
-      <h2>Disziplinen</h2>
-      <p class="section-sub">Alle Einheiten seit der Anmeldung am 27.06.2026 je Sportart.</p>
-      <div class="grid g3" id="disciplines"></div>
-    </section>
-
-    <!-- RENNEN -->
-    <section id="rennen" data-collapse>
-      <h2>Rennvorbereitung</h2>
-      <p class="section-sub">Deine Zielzeiten im Vergleich zur Prognose „Wenn heute Renntag wäre“ – und die längsten Einheiten im Vergleich zur Ironman-Distanz.</p>
-      <div class="grid g2">
-        <div class="card span-2 race-card" id="raceCard"></div>
-        <div class="card span-2" id="predCard">
-          <div class="chart-head">
-            <h3 style="margin:0">Ziel vs. Prognose</h3>
-            <span class="muted" style="font-size:13px" id="predAsOf"></span>
-          </div>
-          <div id="predBars"></div>
-          <div class="table-scroll"><table class="pred-table" id="predTable"></table></div>
-          <div id="predNotes" class="muted" style="font-size:13px;margin-top:10px"></div>
-        </div>
+    <div class="tab-panel" id="tab-training" data-tab="training" role="tabpanel" aria-labelledby="tabbtn-training" hidden>
+      <header class="tab-head"><h1>Training</h1></header>
+      <section id="gym" data-collapse>
+        <h2>Gym</h2>
+        <p class="section-sub">Split und Hauptübung kommen aus dem Titel deiner Krafteinheit in Garmin Connect, z.&nbsp;B. „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“ oder „Push 6x100 @Bali“.</p>
+        <div class="grid g2 gym-top"><div id="gymWeek"></div><div class="card" id="gymSplit"></div></div>
+        <div class="grid g3" style="margin-top:16px" id="gymLifts"></div>
+      </section>
+      <section id="kalender" data-collapse>
+        <h2>Kalender</h2>
+        <p class="section-sub">Die letzten 10 Wochen – Farbe nach Sportart, kräftiger bei längerer Gesamtdauer. Tippe auf einen Tag für die Details.</p>
         <div class="card">
-          <h3>Längste Einheit vs. Renndistanz</h3>
-          <div id="readiness"></div>
-          <p class="muted" style="font-size:13px;margin:8px 0 0">Faustregel: lange Einheiten im Training bis ca. 80–100&nbsp;% (Schwimmen/Rad) bzw. 30–35&nbsp;km (Laufen).</p>
+          <div class="calendar" id="calendar"></div>
+          <div class="legend" id="calLegend" style="margin-top:10px"></div>
         </div>
-        <div class="card" id="predHistoryCard">
-          <h3>Prognose-Verlauf</h3>
-          <div class="chart" id="predHistory"><p class="muted" style="margin:0">Wird geladen …</p></div>
+      </section>
+      <section id="letzte4" data-collapse>
+        <h2>Die letzten 4 Wochen</h2>
+        <p class="section-sub" id="kpiSub"></p>
+        <div class="grid g4" id="kpis"></div>
+      </section>
+      <section id="umfang" data-collapse>
+        <h2>Wochenumfang</h2>
+        <p class="section-sub">Trainingsstunden pro Woche (Montag–Sonntag), Bewegungszeit laut Strava.</p>
+        <div class="card">
+          <div class="chart-head" style="justify-content:flex-end">
+            <div class="controls">
+              <button class="chip check" id="toggleOther" type="button" aria-pressed="false">inkl. Kraft &amp; Sonstiges</button>
+              <button class="chip check" id="toggleTable" type="button" aria-pressed="false">Tabelle</button>
+            </div>
+          </div>
+          <div class="chart" id="volChart"></div>
+          <div class="legend chart-legend" id="volLegend"></div>
+          <div class="table-scroll" id="volTable" hidden></div>
         </div>
-      </div>
-    </section>
+      </section>
+      <section id="disziplinen" data-collapse>
+        <h2>Disziplinen</h2>
+        <p class="section-sub">Alle Einheiten seit der Anmeldung am 27.06.2026 je Sportart.</p>
+        <div class="grid g3" id="disciplines"></div>
+      </section>
+      <section id="aktivitaeten" data-collapse>
+        <h2>Aktivitäten</h2>
+        <p class="section-sub" id="actSub"></p>
+        <div class="card">
+          <div class="chart-head">
+            <div class="segmented" id="actFilter" role="group" aria-label="Sportart filtern"></div>
+            <span class="muted" style="font-size:13px" id="actCount"></span>
+          </div>
+          <ul class="ios-list ic act-list" id="actList"></ul>
+          <div style="text-align:center;margin-top:4px"><button class="btn-text" id="actMore" type="button" aria-controls="actList" aria-expanded="false" hidden></button></div>
+        </div>
+      </section>
+    </div>
 
-    <!-- AKTIVITÄTEN -->
-    <section id="aktivitaeten" data-collapse>
-      <h2>Aktivitäten</h2>
-      <p class="section-sub" id="actSub"></p>
-      <div class="card">
-        <div class="chart-head">
-          <div class="segmented" id="actFilter" role="group" aria-label="Sportart filtern"></div>
-          <span class="muted" style="font-size:13px" id="actCount"></span>
+    <div class="tab-panel" id="tab-erholung" data-tab="erholung" role="tabpanel" aria-labelledby="tabbtn-erholung" hidden>
+      <header class="tab-head"><h1>Erholung</h1></header>
+      <section id="erholung">
+        <div id="recoverySection">
+          <h2>Erholung &amp; Form</h2>
+          <p class="section-sub" id="recoverySub"></p>
+          <div id="recovery"></div>
         </div>
-        <ul class="ios-list ic act-list" id="actList"></ul>
-        <div style="text-align:center;margin-top:4px"><button class="btn-text" id="actMore" type="button" aria-controls="actList" aria-expanded="false" hidden></button></div>
-      </div>
-    </section>
+      </section>
+      <section id="zone2" data-collapse>
+        <h2>Zone-2-Entwicklung</h2>
+        <p class="section-sub" id="z2Asof">Wird ein Mal pro Tag aus den Strava-Streams berechnet.</p>
+        <div class="grid g4" id="z2Tiles"></div>
+        <div class="grid g2" style="margin-top:12px">
+          <div class="card">
+            <h3>Pace bei fester Herzfrequenz</h3>
+            <div class="chart" id="z2Pace"></div>
+            <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--run);opacity:.45" aria-hidden="true"></i>Brustgurt</span><span><i class="lg lg-hollow" style="--c:var(--run)" aria-hidden="true"></i>Uhr / unbekannt</span><span><i class="lg lg-diamond" style="--c:var(--run);opacity:.45" aria-hidden="true"></i>GAP (hügelig)</span><span><i class="lg lg-line" style="--c:var(--run)" aria-hidden="true"></i>Median 4 Wochen</span><span class="muted">schneller = oben</span></div>
+          </div>
+          <div class="card">
+            <h3>Watt bei fester Herzfrequenz</h3>
+            <div class="chart" id="z2Watts"></div>
+            <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--bike);opacity:.45" aria-hidden="true"></i>Indoor (Zwift)</span><span><i class="lg lg-hollow" style="--c:var(--bike)" aria-hidden="true"></i>Outdoor</span><span><i class="lg lg-line" style="--c:var(--bike)" aria-hidden="true"></i>Median Indoor</span><span id="z2OutMedian" hidden><i class="lg lg-dash" style="--c:var(--bike)" aria-hidden="true"></i>Median Outdoor</span></div>
+          </div>
+          <div class="card">
+            <h3>Entkopplung pro langer Einheit</h3>
+            <div class="chart" id="z2Dec"></div>
+            <div class="legend chart-legend"><span><i class="lg lg-dot" style="--c:var(--good)" aria-hidden="true"></i>unter 5 %</span><span><i class="lg lg-dot" style="--c:var(--warn)" aria-hidden="true"></i>5–10 %</span><span><i class="lg lg-dot" style="--c:var(--bad)" aria-hidden="true"></i>über 10 %</span><span class="muted">antippen für Details</span></div>
+          </div>
+          <div class="card">
+            <div class="chart-head" style="margin-bottom:4px">
+              <h3 style="margin:0">Zeit pro HF-Zone und Woche</h3>
+              <div class="segmented" id="z2ZoneFilter" role="group" aria-label="Sportart">
+                <button type="button" data-f="all" aria-pressed="true">Alle</button>
+                <button type="button" data-f="run" aria-pressed="false">Laufen</button>
+                <button type="button" data-f="ride" aria-pressed="false">Rad</button>
+              </div>
+            </div>
+            <div class="chart" id="z2Zones"></div>
+            <div class="legend chart-legend" id="z2ZoneLegend"></div>
+          </div>
+        </div>
+        <details class="card how" style="margin-top:12px">
+          <summary>Wie wird gemessen?</summary>
+          <ul>
+            <li>Pro Einheit: erste 10 min als Aufwärmen verworfen, Stillstand entfernt, Herzfrequenz, Tempo und Watt mit 60-s-Mittel geglättet.</li>
+            <li><b>Pace @ HF:</b> Median-Pace aller Abschnitte mit 140–148 bpm und −2 bis +2 % Steigung, mind. 8 min im Band. Nicht gewertet: Trail, Laufband, &gt; 25 Hm/km, &gt; 10 % der Zeit ≥ Z4.</li>
+            <li><b>Hügelige Läufe (10–25 Hm/km):</b> steigungsbereinigte Pace (GAP, Minetti-Modell) auf Abschnitten mit höchstens ±6 % Steigung, als Raute markiert. Der Puls reagiert 30–60 s verzögert auf Steigungen – GAP-Werte sind deshalb etwas unsicherer.</li>
+            <li><b>Pulsmesser:</b> Brustgurt oder Uhr wird aus den Garmin-Sensordaten erkannt; <code>#gurt</code> bzw. <code>#uhr</code> im Strava-Titel oder in der Beschreibung hat Vorrang. Uhr-Werte werden hohl markiert (in <code>data.js</code> umstellbar auf „nur Brustgurt“).</li>
+            <li id="z2SrcStats"></li>
+            <li><b>Watt @ HF:</b> gleiche Logik mit 135–145 bpm, nur mit echten Watt (Zwift). Die Orbea-Watt sind geschätzt und zählen nicht.</li>
+            <li><b>Entkopplung:</b> ruhige Läufe ab 60 min bzw. Fahrten ab 90 min (≥ 80 % in Z1–2, Rad VI ≤ 1,10). Effizienz = Tempo bzw. Watt ÷ HF in beiden Hälften, Entkopplung = (EF1 − EF2) ÷ EF1.</li>
+            <li><b>Zonen:</b> eigene HF-Zonen (Z1 &lt; 130, Z2 130–152, Z3 153–175, Z4 176–200, Z5 ≥ 201). Die Zonenverteilung zählt das Aufwärmen mit, weil es echte Trainingszeit ist.</li>
+            <li>Alle Grenzen sind in <code>js/data.js</code> unter <code>z2</code> und <code>zones</code> anpassbar.</li>
+          </ul>
+        </details>
+      </section>
+    </div>
+
+    <div class="tab-panel" id="tab-plan" data-tab="plan" role="tabpanel" aria-labelledby="tabbtn-plan" hidden>
+      <header class="tab-head"><h1>Plan</h1></header>
+      <section id="stand" data-collapse>
+        <h2>Wo du gerade stehst</h2>
+        <p class="section-sub">Automatisch aus deinen Strava-Daten abgeleitet – Einschätzungen, keine Messwerte.</p>
+        <div class="grid g2" id="insights"></div>
+      </section>
+      <section id="saison" data-collapse>
+        <h2>Saisonplan bis zum Rennen</h2>
+        <p class="section-sub">Periodisierung rückwärts vom Renntag gerechnet. Stundenangaben sind Richtwerte pro Woche.</p>
+        <div class="card">
+          <p class="phase-warn" id="phaseWarn" role="status" hidden></p>
+          <div class="timeline-scroll"><div class="timeline" id="timeline"></div></div>
+          <div class="phase-detail">
+            <div>
+              <div class="mini-title">Aktuelle Phase</div>
+              <div id="currentPhase"></div>
+            </div>
+            <div>
+              <div class="mini-title">Alle Phasen</div>
+              <ul class="ios-list dots phase-rows" id="phaseList"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="rennen" data-collapse>
+        <h2>Rennvorbereitung</h2>
+        <p class="section-sub">Deine Zielzeiten im Vergleich zur Prognose „Wenn heute Renntag wäre“ – und die längsten Einheiten im Vergleich zur Ironman-Distanz.</p>
+        <div class="grid g2">
+          <div class="card span-2 race-card" id="raceCard"></div>
+          <div class="card span-2" id="predCard">
+            <div class="chart-head">
+              <h3 style="margin:0">Ziel vs. Prognose</h3>
+              <span class="muted" style="font-size:13px" id="predAsOf"></span>
+            </div>
+            <div id="predBars"></div>
+            <div class="table-scroll"><table class="pred-table" id="predTable"></table></div>
+            <div id="predNotes" class="muted" style="font-size:13px;margin-top:10px"></div>
+          </div>
+          <div class="card">
+            <h3>Längste Einheit vs. Renndistanz</h3>
+            <div id="readiness"></div>
+            <p class="muted" style="font-size:13px;margin:8px 0 0">Faustregel: lange Einheiten im Training bis ca. 80–100&nbsp;% (Schwimmen/Rad) bzw. 30–35&nbsp;km (Laufen).</p>
+          </div>
+          <div class="card" id="predHistoryCard">
+            <h3>Prognose-Verlauf</h3>
+            <div class="chart" id="predHistory"><p class="muted" style="margin:0">Wird geladen …</p></div>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <footer>
       <p style="margin:0 0 8px">Datenstand: <span id="snap"></span>. Rennen, Zielzeiten und Daten lassen sich in <code>js/data.js</code> anpassen.</p>
       <a href="#" id="resetView">Ansicht zurücksetzen</a>
     </footer>
   </main>
+
+  <!-- Einstellungen (Blatt von unten) -->
+  <div class="sheet-backdrop" id="settingsSheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-head"><h2 id="settingsTitle">Einstellungen</h2><button type="button" class="btn-text sheet-done">Fertig</button></div>
+      <div class="sheet-body">
+        <div class="mini-title" style="margin-top:0">Erscheinungsbild</div>
+        <div class="segmented seg-wide" id="themeSeg" role="group" aria-label="Erscheinungsbild">
+          <button type="button" data-theme-choice="auto" aria-pressed="true">Automatisch</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Hell</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
+        </div>
+        <div class="mini-title">Ansicht</div>
+        <div class="card list-card sheet-list"><ul class="ios-list">
+          <li><button type="button" class="ios-row" id="resetViewBtn"><span class="row-main"><span class="row-title">Ein- und ausgeklappte Abschnitte zurücksetzen</span></span></button></li>
+        </ul></div>
+        <p class="sheet-foot" id="settingsStand"></p>
+      </div>
+    </div>
+  </div>
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>

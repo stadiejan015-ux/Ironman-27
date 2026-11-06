@@ -35,6 +35,7 @@
   --heart: #ff2d55; --heart-ink: #d1003f; --sleep: #30b0c7; --sleep-ink: #00778a; --body: #af52de; --body-ink: #8944ab;
   --swim-ink: #0071a4; --bike-ink: #c93400; --run-ink: #1f7a36; --strength-ink: #5856d6;
   --seg-thumb: #ffffff;
+  --sheet-bg: #f2f2f7; --sheet-card: #ffffff;   /* Blätter (Sheets) */
   --radius: 16px;                      /* Karten */
   --radius-in: 10px;                   /* Elemente in Karten */
   --shadow: none;
@@ -52,6 +53,7 @@
     --good-ink: #30d158; --warn-ink: #ff9f0a; --bad-ink: #ff6961;
     --heart: #ff375f; --heart-ink: #ff6482; --sleep: #40c8e0; --sleep-ink: #40c8e0; --body: #bf5af2; --body-ink: #da8fff;
     --swim-ink: #64d2ff; --bike-ink: #ff9f0a; --run-ink: #30d158; --strength-ink: #8e8cff; --seg-thumb: #636366;
+    --sheet-bg: #1c1c1e; --sheet-card: #2c2c2e;
   }
 }
 :root[data-theme="dark"] {
@@ -66,6 +68,7 @@
   --good-ink: #30d158; --warn-ink: #ff9f0a; --bad-ink: #ff6961;
   --heart: #ff375f; --heart-ink: #ff6482; --sleep: #40c8e0; --sleep-ink: #40c8e0; --body: #bf5af2; --body-ink: #da8fff;
   --swim-ink: #64d2ff; --bike-ink: #ff9f0a; --run-ink: #30d158; --strength-ink: #8e8cff; --seg-thumb: #636366;
+  --sheet-bg: #1c1c1e; --sheet-card: #2c2c2e;
 }
 
 * { box-sizing: border-box; }
@@ -83,22 +86,60 @@ body {
 }
 a { color: var(--accent-ink); text-decoration: none; }
 a:hover { text-decoration: underline; }
-.wrap { max-width: 1100px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
-@media (min-width: 768px) { .wrap { padding-left: max(24px, env(safe-area-inset-left)); padding-right: max(24px, env(safe-area-inset-right)); } }
+.wrap { max-width: 1100px; margin: 0 auto; padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(49px + 40px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+@media (min-width: 768px) { .wrap { padding: calc(env(safe-area-inset-top) + 76px) max(24px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); } }
 
-/* Top bar */
-.topbar {
-  position: sticky; top: 0; z-index: 10; padding-top: env(safe-area-inset-top);
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: .5px solid var(--separator);
+/* Tab-Leiste: iPhone unten (durchscheinend, Safe-Area), iPad schwebend oben mittig als Kapsel (iPadOS 18) */
+.tabbar { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--bg) 80%, transparent); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-top: .5px solid var(--separator); }
+.tabbar-inner { display: flex; max-width: 640px; margin: 0 auto; padding: 0 max(8px, env(safe-area-inset-left)) 0 max(8px, env(safe-area-inset-right)); }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 49px; padding: 5px 0 3px;
+  color: var(--text-2); text-decoration: none; font-size: 10px; line-height: 12px; font-weight: 500; -webkit-tap-highlight-color: transparent; }
+.tab svg { width: 26px; height: 26px; flex: none; }
+.tab:hover { text-decoration: none; }
+.tab[aria-selected="true"] { color: var(--accent-ink); }
+.tab:focus-visible { outline-offset: -2px; border-radius: 10px; }
+@media (min-width: 768px) {
+  .tabbar { top: calc(env(safe-area-inset-top) + 12px); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); padding: 3px;
+    border: 0; border-radius: 999px; background: color-mix(in srgb, var(--surface) 78%, transparent);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .14), inset 0 0 0 .5px var(--separator); }
+  .tabbar-inner { gap: 2px; padding: 0; }
+  .tab { flex: none; flex-direction: row; gap: 6px; min-height: 44px; padding: 0 18px; border-radius: 999px; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--text); }
+  .tab svg { width: 20px; height: 20px; }
+  .tab[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-ink); }
 }
-.topbar .wrap { display: flex; align-items: center; gap: 8px; padding-top: 0; padding-bottom: 0; min-height: 52px; }
-.brand { font-size: 17px; font-weight: 600; white-space: nowrap; color: var(--accent-ink); margin-right: 8px; }
-.nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; }
-.nav::-webkit-scrollbar { display: none; }
-.nav a { text-decoration: none; color: var(--text-2); padding: 0 10px; min-height: 44px; display: inline-flex; align-items: center; border-radius: var(--radius-in); font-size: 15px; white-space: nowrap; }
-.nav a:hover { background: var(--fill); color: var(--text); }
+/* Großer Titel je Tab; Aktualisieren und Einstellungen rechts neben „Heute“ */
+.tab-head { margin: 8px 0 0; }
+.tab-head h1 { margin: 0; }
+.tab-head + section { margin-top: 16px; }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.title-actions { display: flex; gap: 2px; margin-right: -10px; }
+
+/* Blätter (Sheets): gleiten von unten herein; auf dem iPad mittig. Ohne Animation bei „Bewegung reduzieren“. */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0); transition: background-color .28s ease; }
+.sheet-backdrop.open { background: rgba(0, 0, 0, .32); }
+.sheet { width: 100%; max-width: 560px; max-height: 88vh; overflow: auto; overscroll-behavior: contain; background: var(--sheet-bg); color: var(--text);
+  border-radius: 14px 14px 0 0; padding: 6px 16px calc(24px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
+.sheet-backdrop.open .sheet { transform: translateY(0); }
+.sheet.dragging { transition: none; }
+.sheet-grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(118, 118, 128, .45); margin: 0 auto 4px; touch-action: none; cursor: grab; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-bottom: 8px; touch-action: none; }
+.sheet-head h2 { font-size: 17px; line-height: 22px; font-weight: 600; margin: 0; }
+.sheet-done { font-weight: 600; margin-right: -8px; }
+.sheet .card { background: var(--sheet-card); }
+.sheet .mini-title { margin-top: 20px; }
+.sheet-list { padding-left: 16px; padding-right: 16px; }
+.sheet-list button.ios-row { color: var(--accent-ink); }
+.sheet-foot { margin: 16px 0 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
+.seg-wide { display: flex; width: 100%; }
+.seg-wide button { flex: 1 1 0; }
+.sheet .segmented button[aria-pressed="true"] { background: var(--seg-thumb); }
+html.sheet-open, html.sheet-open body { overflow: hidden; }
+@media (min-width: 768px) { .sheet-backdrop { align-items: center; padding: 24px; } .sheet { border-radius: 14px; padding-bottom: 24px; } }
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet-backdrop { transition: none; } }
+
+/* Symbol-Knöpfe (Aktualisieren, Einstellungen) */
 .icon-btn {
   border: 0; background: none; color: var(--accent-ink); width: 44px; height: 44px; flex: none;
   border-radius: 50%; display: grid; place-items: center; cursor: pointer; font: inherit; padding: 0;
@@ -111,7 +152,7 @@ a:hover { text-decoration: underline; }
 .eyebrow { text-transform: uppercase; letter-spacing: .02em; font-size: 13px; line-height: 18px; color: var(--text-2); font-weight: 600; margin: 0 0 2px; }
 h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0 0 8px; }   /* Large Title */
 /* Startbildschirm „Heute“ (wie Apple Fitness): Datumszeile, Large Title, schlanke Infozeile */
-#heute { margin-top: 16px; }
+#heute { margin-top: 8px; }
 .today-head { margin: 0 0 16px; }
 .today-head h1 { margin: 0; }
 .today-line { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 4px 0 0; font-size: 15px; line-height: 20px; color: var(--text-2); }
@@ -154,7 +195,8 @@ h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0 0 8px; }   
 .race-focus { margin: 12px 0 0; font-size: 15px; line-height: 20px; color: var(--text-2); }
 
 /* Sections */
-section { margin-top: 40px; scroll-margin-top: 72px; }
+section { margin-top: 40px; scroll-margin-top: 16px; }
+@media (min-width: 768px) { section { scroll-margin-top: calc(env(safe-area-inset-top) + 80px); } }
 /* Einklappbare Abschnitte */
 .sec-head { display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; margin: 0 0 4px; }
 .sec-head h2 { margin: 0; }
@@ -552,6 +594,5 @@ footer { margin-top: 48px; color: var(--text-2); font-size: 13px; line-height: 1
   .ready-row { grid-template-columns: 74px 1fr; }
   .ready-row .num { grid-column: 2; text-align: left; margin-top: -6px; }
   .phase span { display: none; }
-  .brand span { display: none; }
 }
 @media (forced-colors: active) { .swatch, .ready-fill, .lg { forced-color-adjust: none; } }
