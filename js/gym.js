@@ -116,6 +116,17 @@
     });
   }
 
+  // Anzeigename einer Krafteinheit (z. B. für „Heute schon erledigt“ und die Aktivitäten-Liste), wie im Gym-Tracker:
+  // der Garmin-Titel der passenden Einheit (±10 min), wenn er als Gym-Titel erkannt wird („Push 5×70kg @Bali“),
+  // sonst der Strava-Name (z. B. wenn Garmin nur „Krafttraining“ heißt oder es keine Garmin-Einheit gibt).
+  function displayName(act, sessions, cfg) {
+    const c = conf(cfg);
+    const toMin = (d) => (d instanceof Date ? d.getTime() : Date.parse(String(d).slice(0, 16))) / 60000;
+    const t = toMin(act.date);
+    const g = (sessions || []).find((s) => s.source === "Garmin" && Math.abs(s.t - t) <= 10);
+    return g && g.name && parseOne(g.name, c) ? g.name : act.name;
+  }
+
   /* ---------- Verlauf je Hauptübung mit PRs ---------- */
   function exerciseHistory(sessions, exercise, cfg) {
     const c = conf(cfg);
@@ -218,5 +229,5 @@
     return { goal, current, best, place, perPlace, pct: current == null ? 0 : Math.round((current / goal) * 100), reached: current != null && current >= goal };
   }
 
-  return { DEFAULTS, parseGymTitle, epley, gymSessions, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf, goalProgress };
+  return { DEFAULTS, parseGymTitle, epley, gymSessions, displayName, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf, goalProgress };
 });
