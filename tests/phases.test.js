@@ -43,7 +43,7 @@ test("Mit Flex: Grundlage 1 endet vor Flex, danach Wiedereinstieg, Grundlage 2, 
     "Aufbau 2 2027-04-19–2027-05-23", "Peak 2027-05-24–2027-06-13", "Taper 2027-06-14–2027-06-27",
   ]);
   contiguous(r);
-  assert.equal(r.phases.find((p) => p.key === "flex").name, "Flex · Gym-Block & Reisen");
+  assert.equal(r.phases.find((p) => p.key === "flex").name, "Flex: Gym-Block & Reisen");
   assert.equal(r.phases.filter((p) => p.key === "base2").length, 1);   // alte Grundlage 2 fällt weg
   r.phases.filter((p) => !["einstieg", "flex"].includes(p.key)).forEach((p) => assert.equal(p.start.getDay(), 1, `${p.short} nicht Montag`));
   assert.equal(r.warning, null);

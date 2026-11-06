@@ -46,12 +46,12 @@ test("Zeitzonen: Daten in UTC, Gerät in UTC+8 bzw. Europa – Alter gleich, Anz
     const f = F.freshness({ now, ...data });
     assert.equal(Math.round(f.strava.ageH), 12); assert.equal(f.strava.level, "ok");
     assert.equal(Math.round(f.garmin.ageH), 21); assert.equal(f.garmin.level, "warn");
-    assert.equal(f.footer, "Strava 05.11. 21:40 · Garmin 05.11. 12:17");
+    assert.equal(f.footer, "Strava 05.11. 21:40, Garmin 05.11. 12:17");
   });
   withTZ("Europe/Berlin", () => {
     const f = F.freshness({ now, ...data });
     assert.equal(Math.round(f.strava.ageH), 12);
-    assert.equal(f.footer, "Strava 05.11. 14:40 · Garmin 05.11. 05:17");
+    assert.equal(f.footer, "Strava 05.11. 14:40, Garmin 05.11. 05:17");
   });
   // Zeitstempel mit anderem Offset (+01:00) wird korrekt umgerechnet
   const g = F.freshness({ now: at("2026-11-05T12:00:00Z"), garmin: { updated: "2026-11-05T05:00+01:00" } });

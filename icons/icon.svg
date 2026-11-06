@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#d71e28"/>
+  <rect width="512" height="512" fill="#ff3b30"/>
   <g transform="translate(256 256) scale(1) translate(-256 -256)" font-family="Inter, 'Helvetica Neue', Arial, sans-serif" fill="#ffffff">
     <circle cx="256" cy="108" r="34"/>
     <text x="256" y="378" text-anchor="middle" font-size="268" font-weight="800" letter-spacing="-12">27</text>

@@ -49,7 +49,7 @@ test("Highlight-Priorität: neuer PR vor Wochen-Minimum vor längster Einheit", 
   // Minimum nicht erfüllt (kein Schwimmen) → längste Einheit
   const lo = W.weeklySummary({ acts: acts.slice(1), gymSessions: g2, today, weekStart, cfg });
   assert.equal(lo.minimum.ok, false); assert.deepEqual(lo.minimum.missing, ["1× lockere Ausdauer", "1× Schwimmen"]);
-  assert.equal(lo.highlight.type, "longest"); assert.equal(lo.highlight.text, "Längste Einheit: Lang · 1:35 h");
+  assert.equal(lo.highlight.type, "longest"); assert.equal(lo.highlight.text, "Längste Einheit: Lang (1:35 h)");
   // außerhalb von Flex gibt es kein Minimum
   assert.equal(W.weeklySummary({ acts, gymSessions: g2, today, weekStart, cfg: { flex: noFlex } }).minimum, null);
 });

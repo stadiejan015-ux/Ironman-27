@@ -166,10 +166,10 @@
       note: c.note,
       inputs: [
         `FTP ${inp.ftp} W × ${nf(c.intensity, 2)} = ${nf(real.power)} W (Spanne IF ${nf(c.intensityRange[1], 2)}–${nf(c.intensityRange[0], 2)})`,
-        `CdA ${nf(c.cda, 2)} (Spanne ${nf(c.cdaRange[0], 2)}–${nf(c.cdaRange[1], 2)}) · Crr ${nf(c.crr, 4)} · ρ ${nf(c.rho, 2)} · η ${nf(c.eta, 2)}`,
+        `CdA ${nf(c.cda, 2)} (Spanne ${nf(c.cdaRange[0], 2)}–${nf(c.cdaRange[1], 2)}), Crr ${nf(c.crr, 4)}, ρ ${nf(c.rho, 2)}, η ${nf(c.eta, 2)}`,
         `Systemmasse ${nf(inp.weightKg, 1)} kg (${inp.weightSource}) + ${c.bikeMassKg} kg = ${nf(mass, 1)} kg`,
         `${nf(c.elevationM)} Hm: ${nf(seg("bergauf").km, 0)} km bergauf (${nf(c.climbGrade * 100, 1)} %, ${nf(seg("bergauf").power)} W → ${nf(seg("bergauf").kmh, 1)} km/h)`,
-        `${nf(seg("bergab").km, 0)} km bergab (${nf(seg("bergab").power)} W → ${nf(seg("bergab").kmh, 1)} km/h, max. ${c.maxDescentKmh} km/h) · ${nf(seg("flach").km, 0)} km flach (${nf(seg("flach").power)} W → ${nf(seg("flach").kmh, 1)} km/h)`,
+        `${nf(seg("bergab").km, 0)} km bergab (${nf(seg("bergab").power)} W → ${nf(seg("bergab").kmh, 1)} km/h, max. ${c.maxDescentKmh} km/h), ${nf(seg("flach").km, 0)} km flach (${nf(seg("flach").power)} W → ${nf(seg("flach").kmh, 1)} km/h)`,
         `+${nf((c.overheadFactor - 1) * 100)} % Zeit für Kurven & Verpflegung`,
       ],
     };

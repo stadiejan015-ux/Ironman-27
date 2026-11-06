@@ -16,7 +16,7 @@ window.TRAINING = {
   race: {
     name: "Ironman Frankfurt 2027",
     date: "2027-06-27",           // laut Presse (EM Frankfurt), offizielle Bestätigung prüfen
-    location: "Frankfurt am Main · Europameisterschaft",
+    location: "Frankfurt am Main, Europameisterschaft",
     swimKm: 3.8, bikeKm: 180, runKm: 42.2,
   },
 

@@ -80,7 +80,7 @@
     const footer = [
       strava ? `Strava ${s.exact ? stamp(s.at) : s.date ? dm(s.date) : "–"}` : null,
       garmin && g.at ? `Garmin ${stamp(g.at)}` : null,
-    ].filter(Boolean).join(" · ");
+    ].filter(Boolean).join(", ");
     // ändert sich mit jedem Update → „Ausblenden“ gilt nur bis zu neuen Daten
     const key = [strava && (strava.snapshotAt || strava.snapshotDate), garmin && garmin.updated, garmin && garmin.lastDay].map((x) => x || "").join("|");
     return { strava: s, garmin: g, watch, messages, worst, stamp: key, footer };

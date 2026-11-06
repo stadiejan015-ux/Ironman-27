@@ -140,8 +140,8 @@
   /* ---------- Hero / Countdown ---------- */
   function hero() {
     $("#raceName").textContent = D.race.name;
-    $("#raceMeta").textContent = `${fmtDate(race, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${D.race.location && D.race.location !== "tbd" ? " · " + D.race.location : ""}`;
-    $("#heroSub").textContent = `${nf(D.race.swimKm, 1)} km Schwimmen · ${D.race.bikeKm} km Rad · ${nf(D.race.runKm, 1)} km Laufen. Fokus aktuell: ${FLEX.active && FCFG.focus ? FCFG.focus : D.athlete.focus}.`;
+    $("#raceMeta").textContent = `${fmtDate(race, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${D.race.location && D.race.location !== "tbd" ? ", " + D.race.location : ""}`;
+    $("#heroSub").textContent = `${nf(D.race.swimKm, 1)} km Schwimmen, ${D.race.bikeKm} km Rad, ${nf(D.race.runKm, 1)} km Laufen. Fokus aktuell: ${FLEX.active && FCFG.focus ? FCFG.focus : D.athlete.focus}.`;
     const now = new Date();
     const days = Math.max(0, Math.ceil((race - now) / DAY));
     const weeks = Math.floor(days / 7);
@@ -152,14 +152,14 @@
     $("#countdown").innerHTML = `
       <div><b>${days}</b><small>Tage</small></div>
       <div><b>${weeks}</b><small>Wochen</small></div>
-      <div><b class="phase-name" style="font-size:18px;line-height:32px">${phase ? esc(phase.short) : "–"}</b><small>Phase</small></div>
-      <div class="journey"><div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} · ${pct} %</span><span>Rennen</span></div>
+      <div><b class="phase-name" style="font-size:17px;line-height:32px">${phase ? esc(phase.short) : "–"}</b><small>Phase</small></div>
+      <div class="journey"><div class="journey-head"><span>Anmeldung ${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "2-digit" })}</span><span><b>Tag ${dayNo}</b> von ${totalDays} (${pct} %)</span><span>Rennen</span></div>
         <div class="ready-track" role="img" aria-label="${pct} % der Vorbereitung vergangen"><div class="ready-fill" style="width:${pct}%;background:var(--text)"></div></div></div>`;
     const banner = $("#flexBanner");
     if (FLEX.active) {
       const until = fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" });
       banner.hidden = false;
-      banner.innerHTML = `<b>Flex-Phase bis ${until}</b> · ${esc(FLEX.label)} · danach strukturiertes Training` +
+      banner.innerHTML = `<b>Flex-Phase bis ${until}</b><div>${esc(FLEX.label)}, danach strukturiertes Training</div>` +
         (FLEX.reentry ? `<div class="flex-reentry">Noch ${FLEX.daysLeft} ${FLEX.daysLeft === 1 ? "Tag" : "Tage"}: Wiedereinstieg vorbereiten – Ausdauer wieder auf 3–4 Einheiten pro Woche steigern, je eine längere lockere Rad- und Laufeinheit einbauen und Gym auf 2–3× reduzieren.</div>` : "");
     }
   }
@@ -169,10 +169,10 @@
     const from = addDays(snapEnd, -28), prevFrom = addDays(snapEnd, -56);
     const cur = inRange(from, snapEnd), prev = inRange(prevFrom, from);
     $("#kpiSub").textContent = `${fmtDate(from)} – ${fmtDate(snap)}, verglichen mit den 4 Wochen davor.`;
-    setSum("letzte4", `${nf(sum(cur, (a) => a.sec) / 3600, 1)} h · ${cur.length} Einheiten`);
+    setSum("letzte4", [`${nf(sum(cur, (a) => a.sec) / 3600, 1)} h`, `${cur.length} Einheiten`]);
     const delta = (a, b, unit, d = 0) => {
       const diff = a - b; if (Math.abs(diff) < 0.05) return "± 0 zur Vorperiode";
-      if (FLEX.active && diff < 0) return `<span class="neutral-delta">−${nf(Math.abs(diff), d)} ${unit} · Flex-Phase, kein Soll</span>`;
+      if (FLEX.active && diff < 0) return `<span class="neutral-delta">−${nf(Math.abs(diff), d)} ${unit}, Flex-Phase ohne Soll</span>`;
       return `${diff > 0 ? "▲ +" : "▼ −"}${nf(Math.abs(diff), d)} ${unit} zur Vorperiode`;
     };
     const triCats = ["swim", "bike", "run"];
@@ -184,11 +184,11 @@
     const tiles = [
       ["Ø Triathlon-Stunden / Woche", `${nf(triH(cur) / 4, 1)} <small>h</small>`, delta(triH(cur) / 4, triH(prev) / 4, "h", 1)],
       ["Ø Gesamt inkl. Kraft & Klettern", `${nf(allH(cur) / 4, 1)} <small>h/Wo</small>`, delta(allH(cur) / 4, allH(prev) / 4, "h", 1)],
-      [`<i class="swatch" style="background:var(--swim)"></i> Schwimmen`, `${nf(km(cur, "swim"), 1)} <small>km · ${n(cur, "swim")}×</small>`, delta(km(cur, "swim"), km(prev, "swim"), "km", 1)],
-      [`<i class="swatch" style="background:var(--bike)"></i> Rad`, `${nf(km(cur, "bike"))} <small>km · ${n(cur, "bike")}×</small>`, delta(km(cur, "bike"), km(prev, "bike"), "km")],
-      [`<i class="swatch" style="background:var(--run)"></i> Laufen`, `${nf(km(cur, "run"))} <small>km · ${n(cur, "run")}×</small>`, delta(km(cur, "run"), km(prev, "run"), "km")],
+      [`<i class="swatch" style="background:var(--swim)"></i> Schwimmen`, `${nf(km(cur, "swim"), 1)} <small>km</small><small>${n(cur, "swim")}×</small>`, delta(km(cur, "swim"), km(prev, "swim"), "km", 1)],
+      [`<i class="swatch" style="background:var(--bike)"></i> Rad`, `${nf(km(cur, "bike"))} <small>km</small><small>${n(cur, "bike")}×</small>`, delta(km(cur, "bike"), km(prev, "bike"), "km")],
+      [`<i class="swatch" style="background:var(--run)"></i> Laufen`, `${nf(km(cur, "run"))} <small>km</small><small>${n(cur, "run")}×</small>`, delta(km(cur, "run"), km(prev, "run"), "km")],
       ["Krafteinheiten", `${n(cur, "strength")} <small>× in 4 Wo</small>`, delta(n(cur, "strength"), n(prev, "strength"), "Einheiten")],
-      ["FTP", `${D.zones.ftp} <small>W · ${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg</small>`, `bei ${nf(D.athlete.weightKg, 1)} kg Körpergewicht${latestWeight ? " (Garmin)" : ""}`],
+      ["FTP", `${D.zones.ftp} <small>W</small><small>${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg</small>`, `bei ${nf(D.athlete.weightKg, 1)} kg Körpergewicht${latestWeight ? " (Garmin)" : ""}`],
       ["Aktivitäts-Streak", `${D.athlete.streakWeeks} <small>Wochen</small>`, `seit Anmeldung ${Math.floor((snap - commit) / DAY / 7)} Wochen dabei`],
     ];
     $("#kpis").innerHTML = tiles.map(([l, v, d]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="delta">${d}</div></div>`).join("");
@@ -269,15 +269,15 @@
     if (FLEX.active && FX) {
       const wk = FX.weekMinimum(flexActs, now, FCFG), after = currentPhase(addDays(FLEX.until, 1));
       $("#currentPhase").innerHTML = `<div class="card" style="box-shadow:none;background:var(--surface-2);border:0">
-        <h3 style="margin-bottom:2px">Flex · ${esc(FLEX.label)}</h3>
-        <div class="muted" style="font-size:13px;margin-bottom:10px">${FLEX.from ? fmtDate(FLEX.from) + " – " : "bis "}${fmtDate(FLEX.until)} · noch ${FLEX.daysLeft} Tage${after ? ` · danach ${esc(after.name)}` : ""}</div>
+        <h3 style="margin-bottom:2px">Flex: ${esc(FLEX.label)}</h3>
+        <div class="muted" style="font-size:15px;line-height:20px;margin-bottom:12px">${FLEX.from ? fmtDate(FLEX.from) + " – " : "bis "}${fmtDate(FLEX.until)}<br>noch ${FLEX.daysLeft} Tage${after ? `, danach ${esc(after.name)}` : ""}</div>
         <div class="mini-title" style="margin-top:0">Wochen-Minimum (diese Woche)</div>
         ${minList(wk)}</div>`;
     } else if (cp) {
       const left = Math.ceil((cp.end - now) / DAY / 7);
       $("#currentPhase").innerHTML = `<div class="card" style="box-shadow:none;background:var(--surface-2);border:0">
         <h3 style="margin-bottom:2px">${esc(cp.name)}</h3>
-        <div class="muted" style="font-size:13px;margin-bottom:10px">${fmtDate(cp.start)} – ${fmtDate(addDays(cp.end, -1))} · noch ${left} ${left === 1 ? "Woche" : "Wochen"} · Ziel ${cp.hours}/Woche${cp.key === "reentry" ? " · Umfang langsam steigern" : ""}</div>
+        <div class="muted" style="font-size:15px;line-height:20px;margin-bottom:12px">${fmtDate(cp.start)} – ${fmtDate(addDays(cp.end, -1))}, noch ${left} ${left === 1 ? "Woche" : "Wochen"}<br>Ziel ${cp.hours} pro Woche${cp.key === "reentry" ? ", Umfang langsam steigern" : ""}</div>
         <ul style="margin:0;padding-left:18px">${cp.focus.map((f) => `<li>${esc(f)}</li>`).join("")}</ul></div>`;
     } else {
       $("#currentPhase").innerHTML = `<p class="muted">Außerhalb des Plans.</p>`;
@@ -286,8 +286,8 @@
     $("#phaseList").innerHTML = PHASES.map((p) => `<li class="${[p === cp ? "current" : "", p.flex ? "flex-li" : ""].join(" ").trim()}">
       <b>${esc(p.short)}</b><span class="dates">${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">${p.hours}</span></li>`).join("");
     const afterFlex = FLEX.active ? currentPhase(addDays(FLEX.until, 1)) : null;
-    setSum("saison", FLEX.active ? `Flex bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })}${afterFlex ? ` · danach ${afterFlex.short}` : ""}`
-      : cp ? `${cp.short} · noch ${Math.ceil((cp.end - now) / DAY / 7)} Wochen` : "");
+    setSum("saison", FLEX.active ? [`Flex bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })}`, afterFlex ? `danach ${afterFlex.short}` : null]
+      : cp ? [cp.short, `noch ${Math.ceil((cp.end - now) / DAY / 7)} Wochen`] : "");
   }
 
   /* ---------- Wochenumfang (gestapelte Balken) ---------- */
@@ -368,7 +368,7 @@
   function disciplines() {
     const swims = ofCat(acts, "swim"), bikes = ofCat(acts, "bike"), runs = ofCat(acts, "run");
     const z2b = z2PaceRange();   // grobe Zone-2-Pace [schnell, langsam] aus der Zone-2-Auswertung, sonst null
-    setSum("disziplinen", `Schwimmen ${swims.length}× · Rad ${bikes.length}× · Laufen ${runs.length}×`);
+    setSum("disziplinen", [`Schwimmen ${swims.length}×`, `Rad ${bikes.length}×`, `Laufen ${runs.length}×`]);
     const weeksN = weeks.length;
     const stat = (l, v) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`;
 
@@ -393,7 +393,7 @@
           ${stat("Einheiten", swims.length)}${stat("Distanz", nf(swimKm, 1) + " km")}${stat("Zeit", hm(swimSec) + " h")}
           ${stat("Ø Pace", mmss(swimSec / (swimKm * 10)) + "/100m")}${stat("Beste Pace*", mmss(bestSwim) + "/100m")}${stat("Längste", nf(longestSwim * 1000) + " m")}
         </div>
-        <div class="mini-title">Pace pro Einheit (≥ 900 m) · schneller = oben</div>
+        <div class="mini-title">Pace pro Einheit ab 900 m, schneller ist oben</div>
         <div class="chart" id="swimChart"></div>
         <p class="muted" style="font-size:12px;margin:6px 0 0">* nur Einheiten ab 900 m. Ø ${nf(swims.length / weeksN, 1)} Einheiten/Woche.</p>
       </div>
@@ -405,7 +405,7 @@
         </div>
         <div class="mini-title">Kilometer pro Woche</div>
         <div class="chart" id="bikeChart"></div>
-        <p class="muted" style="font-size:12px;margin:6px 0 0">FTP ${D.zones.ftp} W · Ironman-Tempo ca. ${Math.round(D.zones.ftp * 0.65)}–${Math.round(D.zones.ftp * 0.75)} W (65–75 % FTP, Faustregel).</p>
+        <p class="muted" style="font-size:12px;margin:6px 0 0">FTP ${D.zones.ftp} W, Ironman-Tempo ca. ${Math.round(D.zones.ftp * 0.65)}–${Math.round(D.zones.ftp * 0.75)} W (65–75 % FTP, Faustregel).</p>
       </div>
       <div class="card" id="dRun">
         <h3><i class="swatch" style="background:var(--run)"></i>Laufen</h3>
@@ -413,7 +413,7 @@
           ${stat("Einheiten", runs.length)}${stat("Distanz", nf(runKm) + " km")}${stat("Zeit", hm(runSec) + " h")}
           ${stat("Ø Pace", mmss(runSec / runKm) + "/km")}${stat("Längster", nf(longestRun, 1) + " km")}${stat("Höhenmeter", nf(runElev) + " m")}
         </div>
-        <div class="mini-title">Pace pro Lauf (≥ 4 km)${z2b ? " · Band = grobe Zone-2-Pace" : ""}</div>
+        <div class="mini-title">Pace pro Lauf ab 4 km${z2b ? ", Band = grobe Zone-2-Pace" : ""}</div>
         <div class="chart" id="runChart"></div>
         <p class="muted" style="font-size:12px;margin:6px 0 0">Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm aus deinen HF-Zonen – nach Puls, nicht nach Tempo${z2b ? `; grobe Pace laut Zone-2-Auswertung ca. ${mmss(z2b[0])}–${mmss(z2b[1])} /km (Band im Diagramm)` : ""}.</p>
       </div>`;
@@ -421,7 +421,7 @@
     if (swimPts.length) trendLine($("#swimChart"), swimPts, {
       color: "var(--swim)", axis: C.paceAxis(swimPts.map((p) => p.v)), invert: true, fmt: mmss, val: mmss,
       aria: `Schwimm-Pace pro Einheit ab 900 m, ${swimPts.length} Einheiten, zuletzt ${mmss(swimPts[swimPts.length - 1].v)} pro 100 m`,
-      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--swim)", "Pace", mmss(p.v) + " /100 m")], `${esc(p.a.name)} · ${nf(p.a.km * 1000)} m · ${hm(p.a.sec)} h`),
+      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--swim)", "Pace", mmss(p.v) + " /100 m")], `${esc(p.a.name)}<br>${nf(p.a.km * 1000)} m in ${hm(p.a.sec)} h`),
     }); else noChart($("#swimChart"), "Noch keine Einheit ab 900 m.");
     const lastBike = bikeWeekly[bikeWeekly.length - 1];
     weekBars($("#bikeChart"), bikeWeekly, {
@@ -432,7 +432,7 @@
       color: "var(--run)", axis: C.paceAxis(runPts.map((p) => p.v), { include: z2b || [] }), invert: true, fmt: mmss, val: mmss,
       band: z2b ? { from: z2b[0], to: z2b[1], color: "var(--run)" } : null,
       aria: `Lauf-Pace pro Lauf ab 4 km, ${runPts.length} Läufe, zuletzt ${mmss(runPts[runPts.length - 1].v)} pro km`,
-      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--run)", "Pace", mmss(p.v) + " /km")], `${esc(p.a.name)} · ${nf(p.a.km, 1)} km · ${p.a.elev} hm`),
+      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--run)", "Pace", mmss(p.v) + " /km")], `${esc(p.a.name)}<br>${nf(p.a.km, 1)} km, ${p.a.elev} hm`),
     }); else noChart($("#runChart"), "Noch kein Lauf ab 4 km.");
   }
 
@@ -469,8 +469,8 @@
       { key: "run", label: "Laufen", color: "var(--run)", goal: toSec(g.run), pred: p.run, unit: (t) => `${mmss(t / runKm)} /km` },
     ];
     const goalTotal = sum(legs, (l) => l.goal);
-    setSum("rennen", `Prognose ${hm(p.total.realistic)} · Ziel ${hm(goalTotal)}`);
-    $("#predAsOf").textContent = `Wenn heute Renntag wäre · Stand ${fmtDate(parse(p.asOf))}`;
+    setSum("rennen", [`Prognose ${hm(p.total.realistic)}`, `Ziel ${hm(goalTotal)}`]);
+    $("#predAsOf").textContent = `Wenn heute Renntag wäre, Stand ${fmtDate(parse(p.asOf))}`;
 
     // Zwei gestapelte Balken auf derselben Zeitskala
     const max = Math.max(goalTotal, p.total.conservative, p.subTarget) * 1.03;
@@ -514,7 +514,7 @@
     }).join("");
     const gap = p.subGap;
     const subChip = gap <= 0
-      ? `<span class="badge good">✓ Sub-12${gap < -60 ? ` · ${Math.floor(-gap / 60)} min Puffer` : ""}</span>`
+      ? `<span class="badge good">✓ Sub-12${gap < -60 ? `, ${Math.floor(-gap / 60)} min Puffer` : ""}</span>`
       : `<span class="badge warn">noch ${Math.ceil(gap / 60)} min bis Sub-12</span>`;
     $("#predTable").innerHTML = `<thead><tr><th>Disziplin</th><th class="num">Ziel</th><th class="num">Prognose</th><th class="num">Δ</th></tr></thead>
       <tbody>${rows}</tbody>
@@ -549,7 +549,7 @@
         trendLine(box, pts, {
           color: "var(--text-2)", axis: C.durationAxis(pts.map((p) => p.v), { include: [goalTotal, sub] }), invert: true, fmt: hm, val: hm, refs,
           aria: `Verlauf der Gesamtprognose seit ${fmtDate(pts[0].d)}, aktuell ${hm(last.v)} h, Ziel ${hm(goalTotal)} h`,
-          tip: (p) => tipBox(tipDay(p.d), [tRow("var(--text-2)", "Prognose", hms(p.v))], `Schwimmen ${hm(p.e.swim)} · Rad ${hm(p.e.bike)} · Laufen ${hm(p.e.run)}`),
+          tip: (p) => tipBox(tipDay(p.d), [tRow("var(--text-2)", "Prognose", hms(p.v)), tRow("var(--swim)", "Schwimmen", hm(p.e.swim)), tRow("var(--bike)", "Rad", hm(p.e.bike)), tRow("var(--run)", "Laufen", hm(p.e.run))]),
         });
       })
       .catch(() => { noChart(box, "Verlauf nicht verfügbar (nur auf der veröffentlichten Seite)."); });
@@ -608,12 +608,12 @@
     const lp = lastOf(pace);
     const t1 = kP.enough
       ? tile(`Pace @ ${runMid} bpm`, `${mmss(kP.value)} <small>/km</small>`, kP.delta != null ? `${kP.delta < 0 ? "▼" : kP.delta > 0 ? "▲" : "±"} ${mmss(Math.abs(kP.delta))} ${kP.delta <= 0 ? "schneller" : "langsamer"} als die 4 Wochen davor` : `Median aus ${kP.n} Läufen`)
-      : tile(`Pace @ ${runMid} bpm`, "–", `${few(kP.n, ["Lauf", "Läufe"])}${lp ? ` · zuletzt ${mmss(lp.v)} /km am ${fmtDate(parse(lp.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
+      : tile(`Pace @ ${runMid} bpm`, "–", `${few(kP.n, ["Lauf", "Läufe"])}${lp ? `<br>zuletzt ${mmss(lp.v)} /km am ${fmtDate(parse(lp.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
     // Kachel 2: Watt @ HF (Indoor)
     const lw = lastOf(wIn);
     const t2 = kW.enough
       ? tile(`Watt @ ${rideMid} bpm (Indoor)`, `${nf(kW.value)} <small>W</small>`, kW.delta != null ? `${kW.delta > 0 ? "▲ +" : kW.delta < 0 ? "▼ −" : "± "}${nf(Math.abs(kW.delta))} W zu den 4 Wochen davor` : `Median aus ${kW.n} Fahrten`)
-      : tile(`Watt @ ${rideMid} bpm (Indoor)`, "–", `${few(kW.n, ["Fahrt", "Fahrten"])}${lw ? ` · zuletzt ${lw.v} W am ${fmtDate(parse(lw.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
+      : tile(`Watt @ ${rideMid} bpm (Indoor)`, "–", `${few(kW.n, ["Fahrt", "Fahrten"])}${lw ? `<br>zuletzt ${lw.v} W am ${fmtDate(parse(lw.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
     // Kachel 3: Ø Entkopplung lange Läufe
     const since = parse(asOf).getTime() - cfg.longRunWindowDays * DAY;
     const decRecent = decRuns.filter((p) => parse(p.date).getTime() > since);
@@ -624,18 +624,18 @@
     } else t3 = tile("Ø Entkopplung lange Läufe", "–", "noch keine ruhigen Läufe ≥ 60 min in den letzten 8 Wochen");
     // Kachel 4: Anteil Z1–2
     const sh = Z.zoneShare(all, asOf, cfg.windowDays, [0, 1]), sh3 = Z.zoneShare(all, asOf, cfg.windowDays, [2]);
-    const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3: ${Math.round((sh3 ? sh3.share : 0) * 100)} % · Z4–5: ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} % · ${hm(sh.totalSec)} h Lauf & Rad · Richtwert ~80 %`)
+    const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3 ${Math.round((sh3 ? sh3.share : 0) * 100)} %, Z4–5 ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} %<br>${hm(sh.totalSec)} h Lauf & Rad, Richtwert ~80 %`)
       : tile("Anteil Z1–2 (4 Wochen)", "–", "keine Einheiten mit Herzfrequenz");
     $("#z2Tiles").innerHTML = t1 + t2 + t3 + t4;
     const decAvg = decRecent.length ? decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length : null;
-    setSum("zone2", [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null].filter(Boolean).join(" · ") || "noch keine Auswertung");
+    setSum("zone2", [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null].filter(Boolean).length ? [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null] : "noch keine Auswertung");
 
     // Chart 1: Pace @ HF
     const toPts = (arr, kind) => arr.map((p) => ({ d: parse(p.date), v: p.v, rec: p.rec, kind,
       hollow: kind === "run" ? p.rec.hrSrc !== "strap" : kind === "outdoor", gap: kind === "run" && !!(p.rec.pace && p.rec.pace.gap) }));
     const roll = (arr) => Z.rollingMedian(arr, cfg.windowDays).map((p) => ({ d: parse(p.date), v: p.v }));
     const tipRec = (p, color, label, valTxt) => tipBox(tipDay(p.d), [tRow(color, label, valTxt)],
-      `${esc(p.rec.name)} · ${nf(p.rec.km, 1)} km · ${hm(p.rec.sec)} h${p.rec.pace ? ` · ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? ` · ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? " · steigungsbereinigt (GAP)" : ""}`);
+      `${esc(p.rec.name)}<br>${nf(p.rec.km, 1)} km in ${hm(p.rec.sec)} h${p.rec.pace ? `, ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? `, ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? ", steigungsbereinigt (GAP)" : ""}`);
     trendChart($("#z2Pace"), toPts(pace, "run"), pace.length >= cfg.minPoints ? [{ pts: roll(pace) }] : [], {
       invert: true, fmt: mmss, axis: (vs) => C.paceAxis(vs), color: "var(--run)", label: `Pace bei ${runMid} bpm`, unit: " pro km", minPoints: cfg.minPoints,
       tip: (p) => tipRec(p, "var(--run)", "Pace", `${mmss(p.v)} /km`),
@@ -655,8 +655,8 @@
 
     // Text der Karte „Zone 2 verbessern“
     const ins = $("#z2Insight p");
-    if (ins) ins.innerHTML = Z.summary(recs, asOf, cfg, hrZ).map(esc).join(" · ") + ` · <a href="#zone2">Details</a>`;
-    $("#z2Asof").textContent = `${all.length} Läufe & Fahrten seit ${fmtDate(parse(all[0].date))} · Stand ${fmtDate(parse(asOf))}${strapOnly ? " · nur Brustgurt-Einheiten gewertet" : ""}`;
+    if (ins) ins.innerHTML = Z.summary(recs, asOf, cfg, hrZ).map((t) => `<span class="z2-line">${esc(t)}</span>`).join("") + `<a href="#zone2">Details</a>`;
+    $("#z2Asof").textContent = `${all.length} Läufe & Fahrten seit ${fmtDate(parse(all[0].date))}, Stand ${fmtDate(parse(asOf))}${strapOnly ? ". Nur Brustgurt-Einheiten gewertet." : ""}`;
     const withHr = all.filter((r) => r.hasHr), cnt = (k) => withHr.filter((r) => r.hrSrc === k).length;
     $("#z2SrcStats").innerHTML = `<b>Pulsmesser erkannt:</b> ${cnt("strap")} × Brustgurt, ${cnt("wrist")} × Uhr, ${cnt("unknown")} × unbekannt (von ${withHr.length} Einheiten mit HF). ${HRSRC && HRSRC.updated ? `Garmin-Sensordaten Stand ${new Date(HRSRC.updated).toLocaleDateString("de-DE")}.` : "Noch keine Garmin-Sensordaten – der nächste Garmin-Lauf holt sie."}`;
   }
@@ -687,7 +687,7 @@
     const tip = (p) => {
       const r = p.rec, st = window.Z2.ampel(p.v, thr);
       return tipBox(tipDay(parse(p.date)), [tRow(STATUS_COL[st], "Entkopplung", `${nf(p.v, 1)} % (${STATUS_TXT[st]})`)],
-        `${esc(r.name)} · ${r.kind === "run" ? "Lauf" : "Rad"} · ${hm(r.sec)} h · ${nf(r.km, 1)} km<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? ` · VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? " · GAP" : ""} · ${SRC_TXT[r.hrSrc] || SRC_TXT.unknown}`);
+        `${esc(r.name)}<br>${r.kind === "run" ? "Lauf" : "Rad"}, ${nf(r.km, 1)} km in ${hm(r.sec)} h<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? `, VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? ", GAP" : ""}<br>${SRC_TXT[r.hrSrc] || SRC_TXT.unknown}`);
     };
     mount(box, (W) => {
       box.innerHTML = C.barChart({
@@ -709,7 +709,7 @@
     const ax = C.zeroAxis(Math.max(...tot) / 3600), curMon = ymdLocal(monday(new Date()));
     const tip = (i) => {
       const w = weeksZ[i], total = tot[i];
-      return tipBox(`Woche ab ${fmtDate(parse(w.week))}`, w.sec.map((sec, z) => tRow(ZCOL[z], `Z${z + 1}`, `${hm(sec)} h · ${total ? Math.round((sec / total) * 100) : 0} %`)).concat(tSum("Summe", `${hm(total)} h`)));
+      return tipBox(`Woche ab ${fmtDate(parse(w.week))}`, w.sec.map((sec, z) => tRow(ZCOL[z], `Z${z + 1}`, `${hm(sec)} h (${total ? Math.round((sec / total) * 100) : 0} %)`)).concat(tSum("Summe", `${hm(total)} h`)));
     };
     mount(box, (W) => {
       box.innerHTML = C.barChart({
@@ -728,7 +728,7 @@
     if (!GYM) { $("#gym").hidden = true; return; }
     const now = new Date(), todayIso = ymdLocal(now), mon = ymdLocal(monday(now));
     const wk = GYM.splitCounts(GYM_SESS, mon, todayIso);
-    setSum("gym", `${wk.total}× diese Woche${wk.total ? ` · ${["Push", "Pull", "Legs"].filter((k) => wk[k]).map((k) => `${wk[k]} ${k}`).join(", ") || "ohne Split"}` : ""}`);
+    setSum("gym", [`${wk.total}× diese Woche`, wk.total ? ["Push", "Pull", "Legs"].filter((k) => wk[k]).map((k) => `${wk[k]} ${k}`).join(", ") || "ohne Split" : null]);
     const tile = (label, value, sub) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${sub || "&nbsp;"}</div></div>`;
     $("#gymWeek").innerHTML = ["Push", "Pull", "Legs"].map((k) => tile(`${k} diese Woche`, wk[k], k === "Legs" && !wk.Legs ? "noch kein Leg Day" : "")).join("")
       + tile("Gym gesamt diese Woche", `${wk.total} <small>×</small>`, wk.ohne ? `davon ${wk.ohne} ohne erkannten Split` : `seit Montag, ${fmtDate(monday(now), { day: "2-digit", month: "2-digit" })}`);
@@ -742,7 +742,7 @@
     $("#gymLifts").innerHTML = lifts.map(([split, ex]) => {
       const h = GYM.exerciseHistory(GYM_SESS, ex, GCFG);
       const gp = GYM.goalProgress(GYM_SESS, ex, GCFG);
-      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span></h3><p class="muted" style="margin:0;font-size:14px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg (geschätztes 1RM)</p>` : ""}</div>`;
+      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span></h3><p class="muted" style="margin:0;font-size:15px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg (geschätztes 1RM)</p>` : ""}</div>`;
       const last = h[h.length - 1];
       const scope = (GCFG.perPlace || []).includes(ex) ? h.filter((e) => e.place === last.place) : h;
       const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
@@ -750,9 +750,9 @@
       const machine = (GCFG.perPlace || []).includes(ex);
       const plan = GYM.liftPlan(GYM_SESS, ex, GCFG);
       return `<div class="card lift">
-        <h3>${esc(ex)} <span class="muted" style="font-weight:400">· ${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}${plan.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</h3>
+        <h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}${plan.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</h3>
         <div class="stats">
-          <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} · ${esc(last.place)}</small></div>
+          <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} @${esc(last.place)}</small></div>
           <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
           <div class="stat"><small>1RM geschätzt${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>Epley</small></div>
         </div>
@@ -769,7 +769,7 @@
     const maxN = Math.max(1, c4.Push, c4.Pull, c4.Legs, c4.ohne);
     const avgPP = (c4.Push + c4.Pull) / 2;
     const short = c4.Legs < avgPP * 0.6 && avgPP >= 2;
-    $("#gymSplit").innerHTML = `<h3>Split-Verteilung · letzte 4 Wochen${short ? ` <span class="badge warn">Legs kommen zu kurz</span>` : ""}</h3>
+    $("#gymSplit").innerHTML = `<h3>Split-Verteilung der letzten 4 Wochen${short ? ` <span class="badge warn">Legs kommen zu kurz</span>` : ""}</h3>
       <div class="split-bars">${[["Push", c4.Push], ["Pull", c4.Pull], ["Legs", c4.Legs], ["ohne Split", c4.ohne]].map(([k, v]) => `<div class="split-row"><span>${k}</span><div class="ready-track"><div class="ready-fill" style="width:${(v / maxN) * 100}%;background:${k === "ohne Split" ? "var(--other)" : "var(--strength)"}"></div></div><b>${v}×</b></div>`).join("")}</div>
       <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}${c4.ohne ? ` „ohne Split“: Titel ohne Push/Pull/Legs, z. B. „Gym Bali“.` : ""} Quelle: Garmin-Titel, sonst Strava.</p>`;
   }
@@ -779,8 +779,8 @@
   function goalBar(gp) {
     if (!gp) return "";
     const where = gp.perPlace && gp.place ? ` in ${esc(gp.place)}` : "";
-    if (gp.current == null) return `<div class="goal-bar"><div class="goal-label"><span>Ziel ${nf(gp.goal)} kg · noch kein Eintrag${gp.place ? ` in ${esc(gp.place)}` : ""}</span></div><div class="ready-track goal-track"></div></div>`;
-    const label = `Ziel ${nf(gp.goal)} kg · aktuell ${nf(Math.round(gp.current))} kg${where} (${gp.pct} %)`;
+    if (gp.current == null) return `<div class="goal-bar"><div class="goal-label"><span>Ziel ${nf(gp.goal)} kg, noch kein Eintrag${gp.place ? ` in ${esc(gp.place)}` : ""}</span></div><div class="ready-track goal-track"></div></div>`;
+    const label = `Ziel ${nf(gp.goal)} kg, aktuell ${nf(Math.round(gp.current))} kg${where} (${gp.pct} %)`;
     return `<div class="goal-bar">
       <div class="goal-label"><span>${label}</span>${gp.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</div>
       <div class="ready-track goal-track" role="progressbar" aria-label="1RM-Ziel" aria-valuemin="0" aria-valuemax="${gp.goal}" aria-valuenow="${Math.round(gp.current)}" aria-valuetext="${label}"><div class="ready-fill" style="width:${Math.min(100, gp.pct)}%;background:${gp.reached ? "var(--good)" : "var(--strength)"}"></div></div>
@@ -805,8 +805,8 @@
   function goalBox(p) {
     const pr = p.prog, range = `${pr.reps[0]}–${pr.reps[1]} Wdh., +${kgTxt(pr.step)} kg`;
     const head = `<small>Nächstes Ziel${p.perPlace && p.place ? ` (${esc(p.place)})` : ""}</small>`;
-    const body = p.target ? `<b>${setTxt(p.target)}</b><small>zuletzt ${setTxt(p.last, false)} · ${range}</small>`
-      : p.noEntryAtPlace ? `<span class="muted">Noch kein Eintrag in ${esc(p.place)} – Startgewicht frei wählen.</span><small>${range} · Werte anderer Orte werden nicht übernommen</small>`
+    const body = p.target ? `<b>${setTxt(p.target)}</b><small>zuletzt ${setTxt(p.last, false)}<br>${range}</small>`
+      : p.noEntryAtPlace ? `<span class="muted">Noch kein Eintrag in ${esc(p.place)} – Startgewicht frei wählen.</span><small>${range}<br>Werte anderer Orte werden nicht übernommen</small>`
         : `<span class="muted">Noch kein Eintrag.</span>`;
     return `<div class="lift-goal">${head}${body}</div>${p.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}`;
   }
@@ -836,7 +836,7 @@
         refs: goal ? [{ v: goal, label: `Ziel ${nf(goal)}` }] : [],
         latest: { d: last.d, v: last.v, label: nf(last.v) }, hits: pts,
       });
-      bindTips(box, (i) => { const p = pts[i]; return tipBox(`${tipDay(p.d)} · ${esc(p.e.place)}`, [tRow(multi ? placeColor(p.e.place) : "var(--text-2)", setTxt(p.e), `1RM ${nf(p.v, 1)} kg`)], p.e.pr ? `<b class="t-good">PR</b>` : ""); });
+      bindTips(box, (i) => { const p = pts[i]; return tipBox(`${tipDay(p.d)} @${esc(p.e.place)}`, [tRow(multi ? placeColor(p.e.place) : "var(--text-2)", setTxt(p.e), `1RM ${nf(p.v, 1)} kg`)], p.e.pr ? `<b class="t-good">PR</b>` : ""); });
     });
   }
 
@@ -846,7 +846,7 @@
   const LV_MIX = [0, 50, 74, 100];
   let calSel = null;
   const calColor = (cat, lv) => `color-mix(in srgb, ${(CATS[cat] || CATS.other).color} ${LV_MIX[lv] || 100}%, var(--surface))`;
-  const itemLabel = (it) => (it.cat === "strength" ? `Kraft${it.split ? " · " + it.split : ""}` : SPORT_LABEL[it.sport] || CATS[it.cat].label);
+  const itemLabel = (it) => (it.cat === "strength" ? `Kraft${it.split ? " (" + it.split + ")" : ""}` : SPORT_LABEL[it.sport] || CATS[it.cat].label);
   const durTxt = (sec) => (sec >= 3600 ? `${hm(sec)} h` : `${Math.round(sec / 60)} min`);
 
   function calendarSection() {
@@ -867,12 +867,12 @@
         ${stripes ? `<span class="cal-stripes">${stripes}</span>` : ""}${d.split ? `<b class="cal-split">${d.split}</b>` : ""}${d.more ? `<b class="cal-more" title="weitere Sportarten">+</b>` : ""}</button>`;
     };
     const detail = (d) => {
-      const head = `<b>${WD_LONG[d.weekday]}, ${fmtDate(parse(d.date), { day: "2-digit", month: "2-digit", year: "numeric" })}</b>${d.items.length ? ` · ${durTxt(d.totalSec)} · ${d.items.length} ${d.items.length === 1 ? "Einheit" : "Einheiten"}` : ""}`;
+      const head = `<b>${WD_LONG[d.weekday]}, ${fmtDate(parse(d.date), { day: "2-digit", month: "2-digit", year: "numeric" })}</b>${d.items.length ? `<div class="muted">${durTxt(d.totalSec)} in ${d.items.length} ${d.items.length === 1 ? "Einheit" : "Einheiten"}</div>` : ""}`;
       if (!d.items.length) return `<div class="cal-detail" role="region" aria-live="polite">${head}<p class="muted" style="margin:4px 0 0">${d.future ? "Noch keine Einheiten." : "Ruhetag."}</p></div>`;
       return `<div class="cal-detail" role="region" aria-live="polite">${head}<ul>${d.items.map((it) => {
         const lift = it.cat === "strength" && it.exercise
-          ? ` · ${esc(it.exercise)}${it.entry ? ` ${it.entry.sets > 1 ? it.entry.sets + "×" : ""}${it.entry.reps}×${nf(it.entry.weight, it.entry.weight % 1 ? 1 : 0)} kg${it.entry.place ? " @" + esc(it.entry.place) : ""}` : ""}` : "";
-        return `<li><i class="swatch" style="background:${(CATS[it.cat] || CATS.other).color}"></i><span><b>${esc(itemLabel(it))}</b> · ${esc(it.name || "")}${lift}</span><span class="muted">${durTxt(it.sec)}</span></li>`;
+          ? `, ${esc(it.exercise)}${it.entry ? ` ${it.entry.sets > 1 ? it.entry.sets + "×" : ""}${it.entry.reps}×${nf(it.entry.weight, it.entry.weight % 1 ? 1 : 0)} kg${it.entry.place ? " @" + esc(it.entry.place) : ""}` : ""}` : "";
+        return `<li><i class="swatch" style="background:${(CATS[it.cat] || CATS.other).color}"></i><span><b>${esc(itemLabel(it))}</b><br><span class="muted">${esc(it.name || "")}${lift}</span></span><span class="muted">${durTxt(it.sec)}</span></li>`;
       }).join("")}</ul></div>`;
     };
     const head = `<div class="cal-row cal-head" aria-hidden="true"><span></span>${["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].map((x) => `<span>${x}</span>`).join("")}<span></span></div>`;
@@ -881,11 +881,11 @@
       return `<div class="cal-row${w.flex ? " flex" : ""}">
         <div class="cal-label">${fmtDate(parse(w.monday), { day: "2-digit", month: "2-digit" })}${w.flex ? ` <span class="cal-flex">Flex</span>` : ""}</div>
         ${w.days.map((d, di) => cell(d, wi, di)).join("")}
-        <div class="cal-sum">${w.count ? `${nf(w.totalSec / 3600, 1)} h · ${w.count}×` : "–"}</div>
+        <div class="cal-sum">${w.count ? `${nf(w.totalSec / 3600, 1)} h<span class="cal-n">${w.count}×</span>` : "–"}</div>
       </div>${selDay ? detail(selDay) : ""}`;
     }).join("");
     box.innerHTML = head + rows;
-    setSum("kalender", `Diese Woche ${nf(cal.weeks[0].totalSec / 3600, 1)} h · ${cal.weeks[0].count}×`);
+    setSum("kalender", [`Diese Woche ${nf(cal.weeks[0].totalSec / 3600, 1)} h`, `${cal.weeks[0].count} Einheiten`]);
     box.querySelectorAll(".cal-cell").forEach((b) => b.addEventListener("click", () => {
       const d = cal.weeks[+b.dataset.w].days[+b.dataset.d];
       calSel = calSel === d.date ? null : d.date;
@@ -894,7 +894,7 @@
       if (again) again.focus({ preventScroll: true });
     }));
     $("#calLegend").innerHTML = ["swim", "bike", "run", "strength", "other"].map((c) => `<span><i class="swatch" style="background:${CATS[c].color}"></i>${c === "other" ? "Sonstiges (Klettern, Wandern …)" : CATS[c].label}</span>`).join("")
-      + `<span class="cal-lv"><i style="background:${calColor("other", 1)}"></i><i style="background:${calColor("other", 2)}"></i><i style="background:${calColor("other", 3)}"></i> &lt; 45 · 45–90 · &gt; 90 min</span><span><b>Pu</b> Push · <b>Pl</b> Pull · <b>L</b> Legs</span>`;
+      + `<span class="cal-lv"><i style="background:${calColor("other", 1)}"></i><i style="background:${calColor("other", 2)}"></i><i style="background:${calColor("other", 3)}"></i> &lt; 45, 45–90, &gt; 90 min</span><span><b>Pu</b> Push, <b>Pl</b> Pull, <b>L</b> Legs</span>`;
   }
 
   /* ---------- Insights ---------- */
@@ -927,7 +927,7 @@
       ["good", "Fokus", "Zone 2 verbessern", `Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm. Die Entwicklung wird aus deinen Läufen und Fahrten berechnet …`, "z2Insight"],
     ];
     const warn = items.find((i) => i[0] === "warn");
-    setSum("stand", `${items.length} Einschätzungen${warn ? ` · ${warn[2]}` : ""}`);
+    setSum("stand", [`${items.length} Einschätzungen`, warn ? warn[2] : null]);
     $("#insights").innerHTML = items.map(([cls, badge, title, text, id]) => `<div class="card insight"${id ? ` id="${id}"` : ""}><span class="badge ${cls}">${badge}</span><div><b>${title}</b><p>${text}</p></div></div>`).join("");
   }
 
@@ -1009,13 +1009,13 @@
     const add = (label, value, state, score) => f.push({ label, value, state, score });
     if (today.sleepScore != null) {
       const v = today.sleepScore;
-      add("Sleep Score", `${v}${today.sleepH ? ` · ${nf(today.sleepH, 1)} h` : ""}`, v >= 80 ? "good" : v >= 60 ? "ok" : "bad", v);
+      add("Sleep Score", `${v}${today.sleepH ? ` (${nf(today.sleepH, 1)} h)` : ""}`, v >= 80 ? "good" : v >= 60 ? "ok" : "bad", v);
     }
     if (today.hrv != null || today.hrvStatus) {
       const st = today.hrvStatus;
       let score = st === "BALANCED" ? 85 : st === "UNBALANCED" ? 55 : st ? 30 : null;
       if (score == null && today.hrvWeekly) { const r = today.hrv / today.hrvWeekly; score = Math.max(0, Math.min(100, (r - 0.7) / 0.3 * 100)); }
-      add("HRV", `${today.hrv ?? "–"} ms${st ? " · " + (HRV_DE[st] || st) : ""}`, score >= 70 ? "good" : score >= 45 ? "ok" : "bad", score);
+      add("HRV", `${today.hrv ?? "–"} ms${st ? " (" + (HRV_DE[st] || st) + ")" : ""}`, score >= 70 ? "good" : score >= 45 ? "ok" : "bad", score);
     }
     const bb = today.bbHigh ?? today.bbNow;
     if (bb != null) add("Body Battery", `${bb}${today.bbNow != null && today.bbHigh != null ? ` (jetzt ${today.bbNow})` : ""}`, bb >= 70 ? "good" : bb >= 40 ? "ok" : "bad", bb);
@@ -1137,17 +1137,17 @@
     const e = sg.endurance;
     return `
       <div class="card today-plan">
-        <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })} · Flex</div>
+        <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })} (Flex)</div>
         <div class="equip" role="group" aria-label="Ausstattung vor Ort">${chips}</div>
         <div class="flex-sug">
           <div><span class="mini-title" style="margin:0">Gym</span>
-            <h3 style="font-size:20px;margin:2px 0"><i class="swatch" style="background:var(--strength)"></i>${esc(sg.gym.title)}</h3>
-            <p class="muted" style="margin:0;font-size:14px">${esc(sg.gym.detail)}</p>${sg.gym.rest ? "" : targetLine(sg.next && sg.next.split)}</div>
-          <div><span class="mini-title" style="margin:0">Ausdauer${e && e.done ? "" : " · optional"}${e && e.forMinimum ? " · fürs Wochen-Minimum" : ""}</span>
-            ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)} · ${e.minutes} min</h3>
-            <p class="muted" style="margin:0;font-size:14px">${esc(e.detail)}</p>` : `<p class="muted" style="margin:2px 0 0;font-size:14px">${rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt."}</p>`}</div>
+            <h3 style="font-size:22px;margin:2px 0"><i class="swatch" style="background:var(--strength)"></i>${esc(sg.gym.title)}</h3>
+            <p class="muted" style="margin:0;font-size:15px">${esc(sg.gym.detail)}</p>${sg.gym.rest ? "" : targetLine(sg.next && sg.next.split)}</div>
+          <div><span class="mini-title" style="margin:0">Ausdauer${e && e.done ? "" : ", optional"}${e && e.forMinimum ? ", fürs Wochen-Minimum" : ""}</span>
+            ${e ? `<h3 style="font-size:17px;margin:2px 0"><i class="swatch" style="background:${CATS[e.type === "swim" ? "swim" : e.type === "bike" ? "bike" : "run"].color}"></i>${esc(e.title)}, ${e.minutes} min</h3>
+            <p class="muted" style="margin:0;font-size:15px">${esc(e.detail)}</p>` : `<p class="muted" style="margin:2px 0 0;font-size:15px">${rd && rd.level >= 3 ? "Heute keine Ausdauer." : "Keine passende Ausstattung gewählt."}</p>`}</div>
         </div>
-        ${sg.notes.length ? `<p class="muted" style="font-size:13px;margin:10px 0 0">${sg.notes.map(esc).join(" · ")}</p>` : ""}
+        ${sg.notes.length ? `<p class="muted" style="font-size:13px;line-height:18px;margin:12px 0 0">${sg.notes.map(esc).join("<br>")}</p>` : ""}
         <div class="mini-title">Wochen-Minimum</div>
         ${minList(sg.week)}
         <div id="sinceBox"></div>
@@ -1169,10 +1169,10 @@
     const planCard = planHtml || `
       <div class="card today-plan">
         <div class="mini-title" style="margin-top:0">Vorschlag für ${fmtDate(now, { weekday: "long", day: "numeric", month: "long" })}</div>
-        <h3 style="font-size:20px;margin:4px 0 2px"><i class="swatch" style="background:${color}"></i>${esc(s.title)}</h3>
-        <div class="muted" style="font-size:14px;margin-bottom:10px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)} · ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? ` · Phase ${esc(s.phase.short)}` : ""}${s.changed ? ` · <b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
+        <h3 style="font-size:22px;margin:4px 0 2px"><i class="swatch" style="background:${color}"></i>${esc(s.title)}</h3>
+        <div class="muted" style="font-size:15px;line-height:20px;margin-bottom:12px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)}, ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? `, Phase ${esc(s.phase.short)}` : ""}${s.changed ? `<br><b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
         <p style="margin:0">${esc(s.detail)}</p>
-        ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="done-list">${done.map((a) => `<li><i class="swatch" style="background:${CATS[a.cat].color}"></i>${esc(a.name)} · ${hm(a.sec)} h</li>`).join("")}</ul>` : ""}
+        ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="done-list">${done.map((a) => `<li><i class="swatch" style="background:${CATS[a.cat].color}"></i>${esc(a.name)}<span class="muted" style="margin-left:auto">${hm(a.sec)} h</span></li>`).join("")}</ul>` : ""}
         <div id="sinceBox"></div>
         ${standLine}
       </div>`;
@@ -1183,7 +1183,7 @@
           <div class="form-score"><b>${rd.R}</b><span class="badge ${lv.cls}">${lv.label}</span></div>
           <div class="muted" style="font-size:13px;margin:2px 0 10px">${FLEX.active ? FLEX_LEVEL_TEXT[rd.level] : lv.text}${rd.notes.length ? " Grund: " + esc(rd.notes.join(", ")) + "." : ""}</div>
           <ul class="factor-list">${rd.factors.map((x) => `<li><span class="dot ${x.state}" aria-hidden="true"></span><span>${x.label}</span><b>${esc(x.value)}</b><span class="sr-only">${x.state === "good" ? "gut" : x.state === "ok" ? "mittel" : "schlecht"}</span></li>`).join("")}</ul>
-          <div class="muted" style="font-size:12px;margin-top:8px">${esc(rd.source)} · Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
+          <div class="muted" style="font-size:13px;line-height:18px;margin-top:8px">${esc(rd.source)}<br>Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
         : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
       </div>`;
     $("#today").querySelectorAll("[data-eq]").forEach((b) => b.addEventListener("click", () => {
@@ -1215,13 +1215,13 @@
     const dm = (iso) => fmtDate(parse(iso), { day: "2-digit", month: "2-digit" });
     const sp = s.gym.splits;
     const splitTxt = ["Push", "Pull", "Legs"].filter((k) => sp[k]).map((k) => `${sp[k]} ${k}`).concat(sp.ohne ? [`${sp.ohne} ohne Split`] : []).join(", ");
-    const sport = (x) => `<span class="wk-sport"><i class="swatch" style="background:${CATS[x.cat].color}"></i>${CATS[x.cat].label} ${x.count}× · ${durTxt(x.sec)}</span>`;
+    const sport = (x) => `<span class="wk-sport"><i class="swatch" style="background:${CATS[x.cat].color}"></i>${CATS[x.cat].label} ${x.count}×, ${durTxt(x.sec)}</span>`;
     const endu = s.sports.filter((x) => x.cat !== "other"), other = s.sports.find((x) => x.cat === "other");
     const pct = s.totalDiffPct;
     const rows = [
-      ["Gym", s.gym.count ? `${s.gym.count}× Gym${splitTxt ? ` · ${splitTxt}` : ""}${s.gym.goals ? ` · Ziele erreicht: ${s.gym.goals.reached}/${s.gym.goals.total}` : ""}${s.gym.lifts.length ? `<div class="muted wk-sub">${s.gym.lifts.map((l) => esc(l.text)).join(" · ")}</div>` : ""}` : `<span class="muted">kein Gym</span>`],
+      ["Gym", s.gym.count ? `${s.gym.count}× Gym${splitTxt ? `: ${splitTxt}` : ""}${s.gym.goals ? `<div class="wk-sub">Ziele erreicht: ${s.gym.goals.reached}/${s.gym.goals.total}</div>` : ""}${s.gym.lifts.length ? `<div class="muted wk-sub">${s.gym.lifts.map((l) => esc(l.text)).join("<br>")}</div>` : ""}` : `<span class="muted">kein Gym</span>`],
       ["Ausdauer", (endu.length ? endu.map(sport).join("") : `<span class="muted">keine</span>`) + (other ? sport(other) : "")],
-      ["Gesamt", `${nf(s.totalSec / 3600, 1)} h · ${s.count} ${s.count === 1 ? "Einheit" : "Einheiten"}${s.avg4Sec ? ` <span class="muted">· Ø der 4 Wochen davor ${nf(s.avg4Sec / 3600, 1)} h (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %)</span>` : ""}`],
+      ["Gesamt", `${nf(s.totalSec / 3600, 1)} h in ${s.count} ${s.count === 1 ? "Einheit" : "Einheiten"}${s.avg4Sec ? `<div class="muted wk-sub">Ø der 4 Wochen davor ${nf(s.avg4Sec / 3600, 1)} h (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %)</div>` : ""}`],
     ];
     if (s.minimum) rows.push(["Minimum", s.minimum.ok ? `<span class="wk-ok">✓ erfüllt</span>` : `${s.running ? "fehlt noch" : "gefehlt"}: ${s.minimum.missing.map(esc).join(", ")}`]);
     box.innerHTML = `
@@ -1237,7 +1237,7 @@
       ${s.highlight ? `<p class="wk-hl"><span aria-hidden="true">★</span><span>${esc(s.highlight.text)}</span></p>` : `<p class="muted" style="margin:10px 0 0">Keine Einheiten in dieser Woche.</p>`}
       ${s.empty ? "" : `<div class="mini-title">Training</div><dl class="wk-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`}
       ${loadBlock(s)}
-      ${s.recovery ? `<div class="mini-title">Erholung · Garmin, Ø der Woche</div>
+      ${s.recovery ? `<div class="mini-title">Erholung (Garmin, Ø der Woche)</div>
         <div class="wk-rec">${s.recovery.map((r) => `<div><span>${r.label}</span><b>${r.value == null ? "–" : REC_FMT[r.key](r.value)}</b>${r.trend ? ` <em class="wk-trend" title="${TREND[r.trend][1]}">${TREND[r.trend][0]}</em><span class="sr-only">${TREND[r.trend][1]}</span>` : ""}</div>`).join("")}</div>` : ""}
       ${s.hints.length ? `<div class="mini-title">Hinweise</div><ul class="wk-hints">${s.hints.map((h) => `<li${h.strong ? ' class="wk-hint-strong"' : ""}>${h.strong ? `<span class="badge warn">Wiedereinstieg</span> ` : ""}${esc(h.text)}</li>`).join("")}</ul>` : ""}`;
     box.querySelectorAll("[data-wk]").forEach((b) => b.addEventListener("click", () => {
@@ -1279,12 +1279,12 @@
   }
   function loadBlock(s) {
     const L = s.load;
-    if (!L) return G.loads ? "" : `<div class="mini-title">Belastung · Garmin</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
+    if (!L) return G.loads ? "" : `<div class="mini-title">Belastung (Garmin)</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
     const pct = L.diffPct;
     const head = L.sum == null ? `<span class="muted">Keine Belastungswerte in dieser Woche.</span>`
       : `Trainingsbelastung: <b>${nf(L.sum)}</b>${L.prevSum != null ? ` <span class="muted" style="white-space:nowrap">(Vorwoche ${nf(L.prevSum)}${pct != null ? `, ${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %` : ""})</span>` : ""}`;
-    const ac = L.acute != null ? `<p class="wk-load-line">Akut ${nf(L.acute)} · Chronisch ${nf(L.chronic)}${L.ratio != null ? ` · Verhältnis ${nf(L.ratio, 1)}` : ""}${L.status && LOAD_STATUS[L.status] ? ` · Garmin: <b>${LOAD_STATUS[L.status]}</b>` : ""} <span class="muted">(Stand ${fmtDate(parse(L.statusDate), { day: "2-digit", month: "2-digit" })})</span></p>` : "";
-    return `<div class="mini-title">Belastung · Garmin</div>
+    const ac = L.acute != null ? `<p class="wk-load-line">Akut ${nf(L.acute)}, chronisch ${nf(L.chronic)}${L.ratio != null ? `, Verhältnis ${nf(L.ratio, 1)}` : ""}${L.status && LOAD_STATUS[L.status] ? `<br>Garmin: <b>${LOAD_STATUS[L.status]}</b>` : ""} <span class="muted">(Stand ${fmtDate(parse(L.statusDate), { day: "2-digit", month: "2-digit" })})</span></p>` : "";
+    return `<div class="mini-title">Belastung (Garmin)</div>
       <p class="wk-load-line">${head}</p>
       <div class="chart load-box"></div>
       ${C.legend(LOAD_ORDER.slice().reverse().map((k) => ({ label: LOAD_LABEL[k], color: LOAD_COLORS[k] })))}
@@ -1306,9 +1306,9 @@
     });
     const sel = items.find((x) => x.key === sinceSel);
     const detail = (x) => {
-      if (!x.last) return `<b>${esc(x.label)}</b> · seit der Anmeldung (${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "numeric" })}) noch keine Einheit${x.minMinutes ? ` ab ${fmtMin(x.minMinutes)}` : ""}.`;
+      if (!x.last) return `<b>${esc(x.label)}</b>: seit der Anmeldung (${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "numeric" })}) noch keine Einheit${x.minMinutes ? ` ab ${fmtMin(x.minMinutes)}` : ""}.`;
       const a = x.last;
-      return `<b>${esc(x.label)}</b> · zuletzt ${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}: ${esc(a.title || a.name || "")}${a.sec ? ` · ${a.sec >= 3600 ? hm(a.sec) + " h" : Math.round(a.sec / 60) + " min"}` : ""}${x.minMinutes ? ` <span class="muted">(zählt ab ${fmtMin(x.minMinutes)})</span>` : ""}`;
+      return `<b>${esc(x.label)}</b>: zuletzt ${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric" })}: ${esc(a.title || a.name || "")}${a.sec ? `, ${a.sec >= 3600 ? hm(a.sec) + " h" : Math.round(a.sec / 60) + " min"}` : ""}${x.minMinutes ? ` <span class="muted">(zählt ab ${fmtMin(x.minMinutes)})</span>` : ""}`;
     };
     box.innerHTML = `
       <div class="mini-title">Zuletzt gemacht</div>
@@ -1409,11 +1409,13 @@
     laySaved = r.saved;
     return r.open;
   }
+  // Kurzfassung neben der Überschrift; mehrere Angaben als Liste → mit Abstand statt „·“
   function setSum(id, text) {
     const u = UNITS[id];
     if (!u || !u.sum) return;
-    u.sum.textContent = text || "";
-    u.sum.hidden = LOPEN[id] !== false || !text;
+    const parts = (Array.isArray(text) ? text : [text]).filter(Boolean);
+    u.sum.innerHTML = parts.map((t) => `<span>${esc(t)}</span>`).join("");
+    u.sum.hidden = LOPEN[id] !== false || !parts.length;
   }
   function setupSections() {
     document.querySelectorAll("section[data-collapse]").forEach((sec) => {

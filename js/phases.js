@@ -70,7 +70,7 @@
       out.push({ ...p, end: p.end > fFrom ? fFrom : p.end });
     }
     out.push({
-      key: "flex", flex: true, name: flex.label ? `Flex · ${flex.label}` : "Flex", short: "Flex", hours: "Minimum",
+      key: "flex", flex: true, name: flex.label ? `Flex: ${flex.label}` : "Flex", short: "Flex", hours: "Minimum",
       focus: ["Wochen-Minimum statt Umfangsziel", "Schwerpunkt Gym", "Ausdauer zur Erhaltung"],
       start: fFrom, end: new Date(Math.min(fEnd, peak.start)),
     });

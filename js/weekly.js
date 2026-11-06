@@ -156,11 +156,11 @@
     let highlight = null;
     if (prs.length) {
       const p = prs[prs.length - 1];
-      highlight = { type: "pr", text: `Neuer PR: ${p.exercise} ${entryText(p)} (1RM ${kg(Math.round(p.e1rm))} kg)${prs.length > 1 ? ` · +${prs.length - 1} weitere` : ""}` };
+      highlight = { type: "pr", text: `Neuer PR: ${p.exercise} ${entryText(p)} (1RM ${kg(Math.round(p.e1rm))} kg)${prs.length > 1 ? `, +${prs.length - 1} weitere` : ""}` };
     } else if (minimum && minimum.ok) {
       highlight = { type: "minimum", text: "Wochen-Minimum komplett erfüllt" };
     } else if (longest) {
-      highlight = { type: "longest", cat: longest.cat, text: `Längste Einheit: ${longest.name || "Einheit"} · ${dur(longest.sec)}` };
+      highlight = { type: "longest", cat: longest.cat, text: `Längste Einheit: ${longest.name || "Einheit"} (${dur(longest.sec)})` };
     }
 
     // Trainingsbelastung (Garmin): Summe der Einheiten Mo–So, nur echte Werte

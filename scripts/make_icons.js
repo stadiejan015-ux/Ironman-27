@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 
 const OUT = path.join(__dirname, "..", "icons");
-const C = { bg: "#d71e28", text: "#ffffff" };   // Rot-Weiß
+const C = { bg: "#ff3b30", text: "#ffffff" };   // Rot-Weiß (Apple-Systemrot, wie der Akzent der Seite)
 
 // scale < 1 rückt das Motiv in die Mitte (maskable: sicherer Bereich = Kreis mit 80 % Durchmesser)
 function svg(scale = 1) {
