@@ -199,6 +199,9 @@ Beinpresse 5–8 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zur
 (3 Einträge ohne neues bestes 1RM).
 **1RM-Ziel** je Hauptübung (`gym.goals`, z. B. Bankdrücken 100, Latzug 140, Beinpresse 300 kg): Fortschrittsbalken unter
 dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm.
+**Namen in Listen:** In „Heute schon erledigt“ und in der Aktivitäten-Liste steht bei Krafteinheiten der Garmin-Titel,
+wenn er als Gym-Titel erkannt wird (z. B. „Push 5×70kg @Bali“). Sonst steht dort der Strava-Name, etwa wenn Garmin
+nur „Krafttraining“ heißt (`Gym.displayName`).
 Tests: `node tests/gym.test.js`.
 
 ## Zuletzt gemacht

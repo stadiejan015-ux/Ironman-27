@@ -50,6 +50,8 @@
   const flexActs = GYM && FX ? FX.mergeActs(acts, GYM_SESS) : acts;
   // Für Anzeigen: Strava-Name, wenn der Garmin-Titel nur „Krafttraining“ ist (Kalender, Wochenkarte)
   const GYM_VIEW = GYM_SESS.map((x) => ({ ...x, name: x.alt || x.name }));
+  // Name in Listen: bei Krafteinheiten der Garmin-Titel (wie im Gym-Tracker), sonst der Strava-Name
+  const actName = (a) => (a.cat === "strength" && GYM ? GYM.displayName(a, GYM_SESS, GCFG) : a.name);
   const sum = (arr, f) => arr.reduce((s, a) => s + f(a), 0);
   const ofCat = (arr, c) => arr.filter((a) => a.cat === c);
 
@@ -1124,7 +1126,7 @@
       const main = a.km ? (a.cat === "swim" ? `${nf(a.km * 1000)}<small>m</small>` : `${nf(a.km, 1)}<small>km</small>`) : `${hm(a.sec)}<small>h</small>`;
       const extra = [a.km ? `${hm(a.sec)} h` : null, a.info || null, a.elev ? `${nf(a.elev)} hm` : null].filter(Boolean).join(", ");
       return irow({
-        lead: rowIcon(a.cat), title: esc(a.name),
+        lead: rowIcon(a.cat), title: esc(actName(a)),
         sub: `${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}, ${esc(SPORT_LABEL[a.sport] || a.sport)}`,
         val: `<b>${main}</b>${extra ? `<small>${esc(extra)}</small>` : ""}`,
       });
@@ -1402,7 +1404,7 @@
         detail: `<p>Ziel ${esc(cp.hours)} pro Woche.</p>${cp.focus && cp.focus.length ? `<ul class="due-focus">${cp.focus.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}` });
       main = `<div class="card today-main-card"><div class="mini-title" style="margin-top:0">Heute dran</div><ul class="ios-list ic due-list">${dueRows(rows)}</ul></div>`;
     }
-    const doneHtml = done.length ? `<div class="mini-title" style="margin-top:0">Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(a.name), val: `${hm(a.sec)} h` })).join("")}</ul>` : "";
+    const doneHtml = done.length ? `<div class="mini-title" style="margin-top:0">Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(actName(a)), val: `${hm(a.sec)} h` })).join("")}</ul>` : "";
     const sinceCard = `<div class="card today-since">${doneHtml}<div id="sinceBox"></div>${standLine}</div>`;
     const formCard = `
       <div class="card today-form">

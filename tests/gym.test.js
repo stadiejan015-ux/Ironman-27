@@ -214,4 +214,24 @@ test("1RM-Ziel: Standard bestes 1RM über alle Orte; mit perPlace nur der aktuel
   assert.equal(none.place, "Bali"); assert.equal(none.current, null); assert.equal(none.pct, 0); assert.equal(none.reached, false);
 });
 
+test("Anzeigename: Garmin-Titel bei Krafteinheiten, sonst Strava-Name", () => {
+  const garmin = [
+    { start: "2026-11-04T16:53", name: "Krafttraining", sec: 4436 },        // nur generisch → Strava-Name
+    { start: "2026-11-06T09:51", name: "Push 5×70kg @Bali", sec: 5727 },    // erkannter Gym-Titel → Garmin
+    { start: "2026-11-07T18:00", name: "Pull @Bali", sec: 3600 },
+  ];
+  const strava = [
+    { date: new Date("2026-11-04T16:53"), name: "Pull", sec: 4436 },
+    { date: new Date("2026-11-06T09:55"), name: "Pull", sec: 5727 },        // 4 min daneben → gleiche Einheit
+    { date: new Date("2026-11-08T08:00"), name: "Gewichtstraining am Morgen", sec: 3000 },   // ohne Garmin-Einheit
+    { date: new Date("2026-11-07T18:20"), name: "Abendtraining", sec: 3600 },               // 20 min daneben → nicht dieselbe
+  ];
+  const sessions = G.gymSessions(garmin, strava, {});
+  assert.equal(G.displayName(strava[0], sessions), "Pull");
+  assert.equal(G.displayName(strava[1], sessions), "Push 5×70kg @Bali");
+  assert.equal(G.displayName(strava[2], sessions), "Gewichtstraining am Morgen");
+  assert.equal(G.displayName(strava[3], sessions), "Abendtraining");
+  assert.equal(G.displayName({ date: new Date("2026-11-06T09:51"), name: "Pull" }, []), "Pull");   // ohne Garmin-Daten
+});
+
 console.log(`\n${n} Tests bestanden.`);
