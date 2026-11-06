@@ -79,11 +79,11 @@ window.TRAINING = {
     minBuild2Weeks: 3,  // Aufbau 2 (14–18 h) mindestens
   },
 
-  // Einklappbare Abschnitte: was standardmäßig zugeklappt ist (ids der Abschnitte; „erholungVerlauf“ =
-  // Verlaufsdiagramme unter den Erholungs-Kacheln). Eigene Auf-/Zuklapp-Wahl hat Vorrang, bis die Phase wechselt.
+  // Einklappbare Abschnitte: was standardmäßig zugeklappt ist (ids der Abschnitte).
+  // Eigene Auf-/Zuklapp-Wahl hat Vorrang, bis die Phase wechselt.
   layout: {
-    flex:   { collapsed: ["zone2", "disziplinen", "rennen", "erholungVerlauf"] },
-    normal: { collapsed: ["erholungVerlauf"] },
+    flex:   { collapsed: ["zone2", "disziplinen", "rennen"] },
+    normal: { collapsed: [] },
   },
 
   // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,

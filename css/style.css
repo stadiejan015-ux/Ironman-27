@@ -137,6 +137,31 @@ a:hover { text-decoration: underline; }
 .seg-wide button { flex: 1 1 0; }
 .sheet .segmented button[aria-pressed="true"] { background: var(--seg-thumb); }
 html.sheet-open, html.sheet-open body { overflow: hidden; }
+/* Detailansicht einer Kennzahl: iPhone über die ganze Höhe, iPad großes mittiges Blatt (ca. 700 px) */
+.sheet-detail { max-width: none; height: calc(100% - max(12px, env(safe-area-inset-top))); max-height: none; }
+.sheet-detail .sheet-head { position: sticky; top: -6px; z-index: 2; background: var(--sheet-bg); margin: 0 -16px 8px; padding: 0 16px; }
+.md-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.md-ic { display: inline-grid; place-items: center; color: var(--ci); }
+.md-name { color: var(--ci); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.md-periods { margin: 4px 0 12px; }
+.md-chart { touch-action: pan-y; }
+.md-stats { margin-top: 16px; }
+.md-stats .row-val b { font-size: 17px; }
+.md-about { margin: 16px 0 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
+.md-about b { font-weight: 600; }
+@media (min-width: 768px) { .sheet-detail { width: 700px; height: auto; max-height: 90vh; } }
+/* Kacheln und Listenzeilen, die eine Detailansicht öffnen */
+a.tile-link, a.ios-row { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+a.tile-link:hover, a.ios-row:hover { text-decoration: none; }
+a.tile-link:active { opacity: .75; }
+a.ios-row:active { background: var(--fill); }
+.tile-link .label .row-chev { margin-left: 6px; }
+.tile-link .ht-time + .row-chev { margin-left: 6px; }
+.tile-link .label .ht-name + .row-chev { margin-left: auto; }
+.ht-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.ht-main { min-width: 0; }
+.spark { flex: none; margin-bottom: 4px; }
+@media (max-width: 600px) { .grid.rec-tiles { grid-template-columns: minmax(0, 1fr); gap: 12px; } }   /* iPhone: Kacheln untereinander wie in Health */
 @media (min-width: 768px) { .sheet-backdrop { align-items: center; padding: 24px; } .sheet { border-radius: 14px; padding-bottom: 24px; } }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet-backdrop { transition: none; } }
 
@@ -223,7 +248,6 @@ section { margin-top: 40px; scroll-margin-top: 16px; }
 section.is-collapsed { margin-top: 24px; }
 .sec-body { transition: height .22s ease; }
 .sec-body.animating { overflow: hidden; }
-.rec-more { margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) { .sec-body, .sec-chev { transition: none; } }
 h2 { font-size: 22px; line-height: 28px; font-weight: 700; margin: 0 0 4px; }   /* Title 2 */
 .section-sub { color: var(--text-2); margin: 0 0 16px; font-size: 15px; line-height: 20px; }   /* Subheadline */

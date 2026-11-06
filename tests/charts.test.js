@@ -133,4 +133,13 @@ test("Ringe (Wochen-Minimum): Fortschritt begrenzt, bei 100 % geschlossen, bei 0
   assert.doesNotMatch(svg, /#[0-9a-f]{3,6}\b/i);
 });
 
+test("Mini-Linie: ohne Achsen, Lücken erlaubt, unter 2 Werten leer", () => {
+  const s = C.sparkline([70, 72, null, 75, 74, 77, 79], { color: "var(--heart)" });
+  assert.match(s, /<svg class="spark"/); assert.match(s, /aria-hidden="true"/);
+  assert.doesNotMatch(s, /<text/);                          // keine Achsen, keine Beschriftung
+  assert.equal((s.match(/L/g) || []).length, 5);            // 6 Punkte, Lücke übersprungen
+  assert.equal(C.sparkline([70, null]), "");
+  assert.doesNotMatch(s, /#[0-9a-f]{3,6}\b/i);
+});
+
 console.log(`\n${n} Tests bestanden.`);

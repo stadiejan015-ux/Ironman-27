@@ -97,14 +97,16 @@
     const back = sheetOpener && (sheetOpener.isConnected ? sheetOpener : sheetOpener.id && document.getElementById(sheetOpener.id));
     if (back && back.focus) back.focus({ preventScroll: true });
   }
+  // Schließen durch den Nutzer; ein Blatt kann das abfangen (Detailansicht: über den Browser-Verlauf)
+  const requestClose = (bd) => (bd._onUserClose ? bd._onUserClose() : closeSheet(bd));
   function setupSheet(bd) {
     if (!bd || bd._sheet) return;
     bd._sheet = true;
     const sheet = bd.querySelector(".sheet");
-    bd.addEventListener("click", (e) => { if (e.target === bd) closeSheet(bd); });
-    bd.querySelectorAll(".sheet-done").forEach((b) => b.addEventListener("click", () => closeSheet(bd)));
+    bd.addEventListener("click", (e) => { if (e.target === bd) requestClose(bd); });
+    bd.querySelectorAll(".sheet-done").forEach((b) => b.addEventListener("click", () => requestClose(bd)));
     bd.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") { e.preventDefault(); closeSheet(bd); return; }
+      if (e.key === "Escape") { e.preventDefault(); requestClose(bd); return; }
       if (e.key !== "Tab") return;   // Fokus im Blatt halten
       const f = [...sheet.querySelectorAll("button, a[href], input, [tabindex]:not([tabindex='-1'])")].filter((x) => !x.disabled && x.offsetParent);
       if (!f.length) return;
@@ -128,7 +130,7 @@
       if (y0 == null) return;
       const v = dy / Math.max(1, performance.now() - t0);
       y0 = null; sheet.classList.remove("dragging");
-      if (dy > 90 || (dy > 24 && v > 0.6)) closeSheet(bd); else sheet.style.transform = "";
+      if (dy > 90 || (dy > 24 && v > 0.6)) requestClose(bd); else sheet.style.transform = "";
     };
     sheet.addEventListener("pointerup", end);
     sheet.addEventListener("pointercancel", end);
@@ -281,6 +283,33 @@
     if (selBox) resetSel(selBox);
   }, { passive: true });
   const tickFmt = (ax, unit = "") => (v) => nf(v, C.decimals(ax.step)) + unit;
+
+  // Diagramm in der Detailansicht: Antippen oder Ziehen zeigt den Tageswert oben, Loslassen setzt zurück (wie Health)
+  function bindScrub(box, { summary, select }) {
+    box._summary = summary; box._select = select; box._selI = null;
+    setHead(box, summary, false);
+    if (box._scrub) return;
+    box._scrub = true;
+    let down = false;
+    const nearest = (x) => {
+      let best = null, bd = Infinity;
+      box.querySelectorAll(".hit").forEach((h) => { const r = h.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - x); if (d < bd) { bd = d; best = h; } });
+      return best;
+    };
+    const show = (ev) => {
+      const h = nearest(ev.clientX);
+      if (!h || +h.dataset.i === box._selI) return;
+      box._selI = +h.dataset.i;
+      cursorAt(box, h);
+      setHead(box, box._select(box._selI), true);
+    };
+    const reset = () => { if (box._selI == null) return; box._selI = null; cursorAt(box, null); setHead(box, box._summary, false); };
+    box.addEventListener("pointerdown", (ev) => { down = true; show(ev); });
+    box.addEventListener("pointermove", (ev) => { if (down || ev.pointerType === "mouse") show(ev); });
+    box.addEventListener("pointerup", (ev) => { down = false; if (ev.pointerType !== "mouse") reset(); });
+    box.addEventListener("pointercancel", () => { down = false; reset(); });
+    box.addEventListener("pointerleave", (ev) => { if (ev.pointerType === "mouse") reset(); });
+  }
 
   /* ---------- Hero / Countdown ---------- */
   // Kopf von „Heute“ (Datumszeile, großer Titel, schlanke Infozeile) und Renn-Karte in „Rennvorbereitung“
@@ -1564,6 +1593,92 @@
     }));
   }
 
+  /* ---------- Detailansichten (js/metrics.js): großer Wert, Diagramm, Zeitraum, Statistik – wie in Apple Health ---------- */
+  const MX = window.Metrics;
+  const CAT_COLOR = { heart: "var(--heart)", sleep: "var(--sleep)", activity: "var(--bike)", body: "var(--body)", run: "var(--run)", bike: "var(--bike)", swim: "var(--swim)", strength: "var(--strength)", other: "var(--other)" };
+  const metricHash = (m) => `${m.tab}-${m.key}`;
+  const metricOfHash = (id) => (MX && id ? MX.REGISTRY.find((m) => metricHash(m) === id) || null : null);
+  const hmVal = (h) => { let H = Math.floor(h), Mi = Math.round((h - H) * 60); if (Mi === 60) { H++; Mi = 0; } return `${H}<small>h</small> ${Mi}<small>min</small>`; };
+  const mVal = (m, v) => (v == null ? "–" : m.fmt === "hm" ? hmVal(v) : hv(nf(v, m.decimals || 0), m.unit));
+  const mTxt = (m, v) => (v == null ? "–" : m.fmt === "hm" ? `${hm(v * 3600)} h` : `${nf(v, m.decimals || 0)}${m.unit ? " " + m.unit : ""}`);
+  const dShort = (iso) => fmtDate(parse(iso), { day: "numeric", month: "short" });
+  const dWeek = (iso) => fmtDate(parse(iso), { weekday: "short", day: "numeric", month: "short" });
+  const wLabel = (w) => (w.from === w.to ? dShort(w.from) : `${dShort(w.from)} – ${dShort(w.to)}`);
+  const md = { key: null, period: null, pushed: false, opener: null };
+  const metricSeries = (m) => MX.series(gDays, m.field);
+  // Mini-Linie der letzten 7 Tage für die großen Kacheln (ohne Achsen)
+  const spark7 = (m) => C.sparkline(MX.daily(metricSeries(m), MX.windowOf("7", ymdLocal(new Date()))).map((p) => p.v), { color: CAT_COLOR[m.cat] || "var(--text-2)" });
+  function renderMetric() {
+    const m = MX.byKey[md.key];
+    if (!m) return;
+    const today = ymdLocal(new Date()), pts = metricSeries(m), periods = MX.availablePeriods(pts, today);
+    if (!periods.includes(md.period)) md.period = periods.includes("30") ? "30" : periods[0] || null;
+    $("#mdTitle").innerHTML = `<span class="md-ic c-${m.cat}">${icon(m.cat, 20)}</span><span class="md-name c-${m.cat}">${esc(m.name)}</span>`;
+    const body = $("#mdBody"), about = `<p class="md-about"><b>Über diese Werte</b><br>${esc(m.about)}</p>`;
+    if (!md.period) { body.innerHTML = C.empty("Noch keine Daten.") + about; return; }
+    const w = MX.windowOf(md.period, today, pts[0].date), inW = MX.inWindow(pts, w), st = MX.stats(inW);
+    const ch = MX.change(pts, w, m.summary, md.period), value = MX.summarize(inW, m.summary), pw = MX.previousWindow(w);
+    const arrow = ch ? (ch.diff > 0 ? "↑" : ch.diff < 0 ? "↓" : "→") : "";
+    const diffTxt = ch ? `${arrow} ${ch.diff > 0 ? "+" : ch.diff < 0 ? "−" : "±"}${mTxt(m, Math.abs(ch.diff))}` : "–";
+    const lastDay = gDays[gDays.length - 1] || {};
+    const hasBand = m.band && Number.isFinite(lastDay[m.band[0]]) && Number.isFinite(lastDay[m.band[1]]);
+    const legend = m.field2 ? C.legend([{ label: m.name1, color: CAT_COLOR[m.cat], shape: "line" }, { label: m.name2, color: "var(--text-2)", shape: "dash" }])
+      : hasBand ? C.legend([{ label: "Normalbereich laut Garmin", color: CAT_COLOR[m.cat], opacity: 0.3 }]) : "";
+    body.innerHTML = `
+      <div class="segmented seg-wide md-periods" role="group" aria-label="Zeitraum">${MX.PERIODS.filter((p) => periods.includes(p.key)).map((p) => `<button type="button" data-period="${p.key}" aria-pressed="${p.key === md.period}">${p.label}</button>`).join("")}</div>
+      <div class="chart md-chart" id="mdChart"></div>${legend}
+      <div class="card list-card md-stats"><ul class="ios-list">
+        ${irow({ title: "Durchschnitt", sub: `${st.n} ${st.n === 1 ? "Tag" : "Tage"} mit Daten`, val: `<b>${mVal(m, st.avg)}</b>` })}
+        ${irow({ title: "Minimum", sub: dWeek(st.minAt), val: `<b>${mVal(m, st.min)}</b>` })}
+        ${irow({ title: "Maximum", sub: dWeek(st.maxAt), val: `<b>${mVal(m, st.max)}</b>` })}
+        ${irow({ title: "Veränderung", sub: ch ? `zum Vorzeitraum ${wLabel(pw)}` : md.period === "all" ? "bei „Alle“ kein Vorzeitraum" : "keine Daten im Vorzeitraum", val: `<b>${diffTxt}</b>` })}
+        ${irow({ title: "Letzter Wert", sub: dWeek(st.lastDate), val: `<b>${mVal(m, st.last)}</b>` })}
+      </ul></div>${about}`;
+    body.querySelectorAll("[data-period]").forEach((b) => b.addEventListener("click", () => {
+      md.period = b.dataset.period; renderMetric();
+      const again = $(`#mdBody [data-period="${md.period}"]`); if (again) again.focus({ preventScroll: true });
+    }));
+    drawMetricChart(m, pts, w, value, hasBand ? { from: lastDay[m.band[0]], to: lastDay[m.band[1]], color: CAT_COLOR[m.cat] } : null);
+  }
+  // Diagramm erst beim Öffnen zeichnen (dann ist die echte Breite bekannt)
+  function drawMetricChart(m, pts, w, value, band) {
+    const box = $("#mdChart"), color = CAT_COLOR[m.cat] || "var(--text-2)", refs = m.refs || [];
+    const summary = { label: MX.SUMMARY_LABEL[m.summary], value: mVal(m, value), period: wLabel(w) };
+    const aria = `${m.name}, ${wLabel(w)}: ${summary.label} ${mTxt(m, value)}`;
+    if (m.chart === "bar") {
+      const dl = MX.daily(pts, w), ax = MX.axis(m, dl.map((p) => p.v).concat(refs.map((r) => r.v)));
+      mount(box, (W) => {
+        box.innerHTML = C.barChart({ width: W, height: C.LARGE, aria, refs, maxBar: 14, y: { ...ax, fmt: tickFmt(ax, m.fmt === "hm" ? " h" : "") },
+          bands: dl.map((p) => ({ label: dmS(parse(p.date)), stacks: p.v == null ? [] : [{ v: p.v, color }] })) });
+        bindScrub(box, { summary, select: (i) => ({ label: dl[i].v == null ? "Keine Daten" : m.name, value: dl[i].v == null ? "–" : mVal(m, dl[i].v), period: dWeek(dl[i].date) }) });
+      });
+      return;
+    }
+    const inW = MX.inWindow(pts, w).map((p) => ({ d: parse(p.date), v: p.v, date: p.date }));
+    const sec = m.field2 ? MX.inWindow(MX.series(gDays, m.field2), w).map((p) => ({ d: parse(p.date), v: p.v })) : [];
+    const ax = MX.axis(m, inW.map((p) => p.v).concat(sec.map((p) => p.v), refs.map((r) => r.v), band ? [band.from, band.to] : []));
+    const v2 = new Map(sec.map((p) => [+p.d, p.v])), last = inW[inW.length - 1];
+    mount(box, (W) => {
+      box.innerHTML = C.lineChart({ width: W, height: C.LARGE, aria, band, refs, y: { ...ax, fmt: tickFmt(ax) },
+        series: [{ pts: inW, color }].concat(sec.length ? [{ pts: sec, color: "var(--text-2)", dash: true, dots: false }] : []),
+        latest: last ? { d: last.d, v: last.v, label: nf(last.v, m.decimals || 0) } : null, hits: inW });
+      bindScrub(box, { summary, select: (i) => {
+        const p = inW[i], b = v2.get(+p.d);
+        return { label: m.field2 ? `${m.name1}${b != null ? `, ${m.name2} ${nf(b)}` : ""}` : m.name, value: mVal(m, p.v), period: dWeek(p.date) };
+      } });
+    });
+  }
+  function openMetric(key) {
+    const bd = $("#metricSheet");
+    if (md.key !== key) { md.key = key; md.period = null; }
+    if (bd.hidden) openSheet("metricSheet", md.opener || document.activeElement);
+    renderMetric();
+  }
+  function closeMetric() {
+    md.key = null; md.pushed = false; md.opener = null;
+    closeSheet($("#metricSheet"));
+  }
+
   function recovery() {
     const el = $("#recovery");
     if (!gDays.length) { $("#recoverySection").hidden = true; return; }
@@ -1574,59 +1689,34 @@
     const sleepVal = (h) => { if (h == null) return "–"; let H = Math.floor(h), M = Math.round((h - H) * 60); if (M === 60) { H++; M = 0; } return `${H}<small>h</small> ${M}<small>min</small>`; };
     const a = (k, d = 0, unit = "") => (avg7(k) == null ? "" : `Ø 7 Tage: ${nf(avg7(k), d)}${unit}`);
     const st = gLast("trainingStatus");
-    // Die vier wichtigsten als Kacheln, der Rest als gruppierte Liste
+    // Die vier wichtigsten als Kacheln (mit Mini-Linie der letzten 7 Tage), der Rest als gruppierte Liste; alles öffnet die Detailansicht
+    const mtile = (key, label, value, sub, time) => {
+      const m = MX.byKey[key];
+      return `<a class="card kpi tile-link c-${m.cat}" href="#${metricHash(m)}">
+        <div class="label">${icon(m.cat, 15)}<span class="ht-name">${label}</span>${time ? `<span class="ht-time">${time}</span>` : ""}${CHEV_R}</div>
+        <div class="ht-bottom"><div class="ht-main"><div class="value">${value}</div>${sub ? `<div class="delta">${sub}</div>` : ""}</div>${spark7(m)}</div>
+        <span class="sr-only">, Verlauf und Details öffnen</span></a>`;
+    };
     const tiles = [
-      htile({ cat: "sleep", label: "Schlaf", time: when("sleepH"), value: sleepVal(last("sleepH")), sub: last("sleepScore") != null ? `Sleep Score ${nf(last("sleepScore"))}` : a("sleepH", 1, " h") }),
-      htile({ cat: "heart", label: "HRV", time: when("hrv"), value: v(last("hrv"), 0, "ms"), sub: gLast("hrvStatus") ? HRV_DE[last("hrvStatus")] || last("hrvStatus") : a("hrv", 0, " ms") }),
-      htile({ cat: "heart", label: "Ruhepuls", time: when("rhr"), value: v(last("rhr"), 0, "bpm"), sub: a("rhr", 0, " bpm") }),
-      htile({ cat: "activity", label: "Bereitschaft", time: when("readiness"), value: v(last("readiness")), sub: last("recoveryH") != null ? `Erholungszeit ${nf(last("recoveryH"))} h` : "" }),
+      mtile("sleep", "Schlaf", sleepVal(last("sleepH")), last("sleepScore") != null ? `Sleep Score ${nf(last("sleepScore"))}` : a("sleepH", 1, " h"), when("sleepH")),
+      mtile("hrv", "HRV", v(last("hrv"), 0, "ms"), gLast("hrvStatus") ? HRV_DE[last("hrvStatus")] || last("hrvStatus") : a("hrv", 0, " ms"), when("hrv")),
+      mtile("rhr", "Ruhepuls", v(last("rhr"), 0, "bpm"), a("rhr", 0, " bpm"), when("rhr")),
+      mtile("readiness", "Bereitschaft", v(last("readiness")), last("recoveryH") != null ? `Erholungszeit ${nf(last("recoveryH"))} h` : "", when("readiness")),
     ];
     const more = [
-      ["sleep", "Sleep Score", v(last("sleepScore")), a("sleepScore")],
-      ["activity", "Body Battery", v(last("bbHigh"), 0, "max"), last("bbNow") != null ? `aktuell ${last("bbNow")}` : ""],
-      ["heart", "Stress Ø", v(last("stressAvg")), a("stressAvg")],
-      ["activity", "Trainingsstatus", st ? esc(statusDe(st.trainingStatus)) : "–", last("acuteLoad") != null ? `Belastung akut ${nf(last("acuteLoad"))}, chronisch ${nf(last("chronicLoad") || 0)}` : ""],
-      ["run", "VO2max Laufen", v(last("vo2run"), 1), ""],
-      ["bike", "VO2max Rad", v(last("vo2bike"), 1), ""],
-      ["body", "Gewicht", v(last("weight"), 1, "kg"), last("bodyFat") != null ? `Körperfett ${nf(last("bodyFat"), 1)} %` : ""],
-      ["activity", "Schritte", v(last("steps")), a("steps")],
+      ["sleepScore", "Sleep Score", v(last("sleepScore")), a("sleepScore")],
+      ["bodyBattery", "Body Battery", v(last("bbHigh"), 0, "max"), last("bbNow") != null ? `aktuell ${last("bbNow")}` : ""],
+      ["stress", "Stress Ø", v(last("stressAvg")), a("stressAvg")],
+      ["load", "Trainingsstatus", st ? esc(statusDe(st.trainingStatus)) : "–", last("acuteLoad") != null ? `Belastung akut ${nf(last("acuteLoad"))}, chronisch ${nf(last("chronicLoad") || 0)}` : ""],
+      ["vo2run", "VO2max Laufen", v(last("vo2run"), 1), ""],
+      ["vo2bike", "VO2max Rad", v(last("vo2bike"), 1), ""],
+      ["weight", "Gewicht", v(last("weight"), 1, "kg"), last("bodyFat") != null ? `Körperfett ${nf(last("bodyFat"), 1)} %` : ""],
+      ["steps", "Schritte", v(last("steps")), a("steps")],
     ].filter((r) => r[2] !== "–");
-    // Titel, Name/Einheit für Tooltip und aria-label, Nachkommastellen, feste Grenzen (Sleep Score, Body Battery: 0–100)
-    const charts = [
-      ["sleepScore", "Sleep Score", "Sleep Score", "", 0, [0, 100]],
-      ["hrv", "HRV (ms)", "HRV", " ms", 0, null],
-      ["rhr", "Ruhepuls (bpm)", "Ruhepuls", " bpm", 0, null],
-      ["bbHigh", "Body Battery (Tageshoch)", "Body Battery", "", 0, [0, 100]],
-      ["vo2run", "VO2max Laufen", "VO2max Laufen", "", 1, null],
-      ["weight", "Gewicht (kg)", "Gewicht", " kg", 1, null],
-    ].map(([k, label, name, unit, dec, clamp]) => ({ k, label, name, unit, fmt: (x) => nf(x, dec), clamp, pts: gDays.slice(-60).filter((d) => d[k] != null).map((d) => ({ d: parse(d.date), v: d[k], raw: d })) }))
-      .filter((c) => c.pts.length >= 2);
-    el.innerHTML = `<div class="grid g4">${tiles.join("")}</div>` +
-      (more.length ? `<div class="card list-card" style="margin-top:16px"><ul class="ios-list ic">${more.map(([cat, label, value, sub]) => irow({ lead: rowIcon(cat), title: label, sub, val: `<b>${value}</b>` })).join("")}</ul></div>` : "") +
-      (charts.length ? `<div class="rec-more"><button type="button" class="btn-text rec-toggle" aria-expanded="true" aria-controls="erholungVerlauf-body">Verläufe ausblenden</button></div>
-        <div class="sec-body" id="erholungVerlauf-body"><div class="grid g2 rec-charts" style="margin-top:16px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div></div>` : "");
-    REC_CHARTS = charts;
-    if (charts.length) {
-      const btn = el.querySelector(".rec-toggle");
-      UNITS.erholungVerlauf = { btn, body: $("#erholungVerlauf-body"), sum: null, host: null, label: (open) => { btn.textContent = open ? "Verläufe ausblenden" : "Verläufe anzeigen"; } };
-      btn.addEventListener("click", () => toggleUnit("erholungVerlauf"));
-      applyUnit("erholungVerlauf", LOPEN.erholungVerlauf !== false, false, false);
-      drawRecoveryCharts();   // eingeklappt: wird beim Aufklappen in echter Breite gezeichnet
-    }
-    $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Verläufe: letzte 60 Tage.`;
-  }
-
-  let REC_CHARTS = [];
-  function drawRecoveryCharts() {
-    REC_CHARTS.forEach((c, i) => {
-      const ax = C.padAxis(c.pts.map((p) => p.v), { clamp: c.clamp }), last = c.pts[c.pts.length - 1];
-      trendLine($(`#gchart${i}`), c.pts, {
-        color: "var(--text-2)", axis: ax, fmt: tickFmt(ax), val: c.fmt,
-        aria: `${c.name} letzte 60 Tage, aktuell ${c.fmt(last.v)}${c.unit}`,
-        summary: { label: "Durchschnitt", value: hv(c.fmt(mean(c.pts.map((p) => p.v))), c.unit.trim()), period: range(c.pts[0].d, last.d) },
-        select: (p) => ({ label: c.name, value: hv(c.fmt(p.v), c.unit.trim()), period: tipDay(p.d) }),
-      });
-    });
+    el.innerHTML = `<div class="grid g4 rec-tiles">${tiles.join("")}</div>` +
+      (more.length ? `<div class="card list-card" style="margin-top:16px"><ul class="ios-list ic">${more.map(([key, label, value, sub]) => { const m = MX.byKey[key];
+        return `<li><a class="ios-row" href="#${metricHash(m)}">${rowIcon(m.cat)}<span class="row-main"><span class="row-title">${label}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span><span class="row-val"><b>${value}</b></span>${CHEV_R}</a></li>`; }).join("")}</ul></div>` : "");
+    $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Tippe auf einen Wert für Verlauf und Details.`;
   }
 
   /* ---------- Einklappbare Abschnitte (js/layout.js) ---------- */
@@ -1644,7 +1734,7 @@
   const loadLayout = () => { try { return JSON.parse(localStorage.getItem(LAY_KEY) || "null"); } catch (e) { return null; } };
   const saveLayout = (v) => { try { if (v) localStorage.setItem(LAY_KEY, JSON.stringify(v)); else localStorage.removeItem(LAY_KEY); } catch (e) { /* ignore */ } };
   function layoutState() {
-    const ids = Object.keys(UNITS).concat(["erholungVerlauf"]);
+    const ids = Object.keys(UNITS);
     if (!LAY) return Object.fromEntries(ids.map((id) => [id, true]));
     const r = LAY.resolve({ ids, cfg: LCFG, phase: LAY_PHASE, saved: loadLayout() });
     if (r.reset) saveLayout(null);   // Wahl aus der vorigen Phase verwerfen
@@ -1752,14 +1842,40 @@
   }
   function route() {
     const id = decodeURIComponent(location.hash.slice(1));
+    // Detailansicht, z. B. #erholung-hrv: passenden Tab zeigen und das Blatt öffnen
+    const metric = metricOfHash(id);
+    if (metric) {
+      if (showTab(metric.tab)) window.scrollTo(0, tabScroll[curTab] || 0);
+      if (!md.key) mdScrollY = window.scrollY;   // Position merken, um sie nach dem Schließen wiederherzustellen
+      openMetric(metric.key);
+      return;
+    }
+    const fromMetric = !!md.key;   // „Zurück“ aus einer Detailansicht: Blatt schließen, Scroll-Position behalten
+    if (fromMetric) closeMetric();
     const changed = showTab(tabOf(id));
     if (id && !TABS.includes(id) && document.getElementById(id)) {
       revealSection(id, false);
       requestAnimationFrame(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ block: "start" }); });
+    } else if (fromMetric && !changed) {
+      window.scrollTo(0, mdScrollY);   // der Browser springt sonst zum Abschnitt #erholung
     } else {
       window.scrollTo(0, changed ? tabScroll[curTab] || 0 : 0);
     }
   }
+  let mdScrollY = 0;
+  // Detailansicht per Link geöffnet → „Fertig“ geht im Verlauf zurück; per Direktlink geöffnet → Hash ersetzen
+  document.addEventListener("click", (e) => {
+    const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+    if (a && metricOfHash(decodeURIComponent(a.getAttribute("href").slice(1)))) { md.pushed = true; md.opener = a; }
+  });
+  const mSheet = $("#metricSheet");
+  setupSheet(mSheet);
+  mSheet._onUserClose = () => {
+    if (md.pushed) { history.back(); return; }
+    const m = MX.byKey[md.key];
+    history.replaceState(null, "", `#${m ? m.tab : "heute"}`);
+    route();
+  };
   window.addEventListener("hashchange", route);
   // Erneutes Tippen auf den aktiven Tab scrollt nach oben
   document.querySelectorAll(".tabbar .tab").forEach((t) => t.addEventListener("click", (e) => {
