@@ -136,35 +136,82 @@
   const RO = typeof ResizeObserver === "function"
     ? new ResizeObserver((entries) => requestAnimationFrame(() => entries.forEach((e) => { if (e.target.isConnected) paint(e.target, true); })))
     : null;
-  function noChart(box, text) { if (!box) return; box._draw = null; box.innerHTML = C.empty(text); }
-  // Antippen (Touch/iPad) oder Hovern (Maus) zeigt den Tooltip; pick(i): Klick wählt etwas aus (z. B. Woche)
-  function bindTips(box, render, pick) {
-    box._tip = render; box._pick = pick || null;
-    if (box._tipBound) return;
-    box._tipBound = true;
+  function noChart(box, text) { if (!box) return; box._draw = null; if (box._head) { box._head.remove(); box._head = null; } box.innerHTML = C.empty(text); }
+  /* Health-Kopf über jedem Diagramm: Kernwert groß (SF Pro Rounded), darunter klein der Zeitraum.
+     Antippen (iPad) oder Hovern (Maus) auf einen Punkt/Balken: dünne senkrechte Linie, der Wert erscheint oben im Kopf;
+     antippen daneben stellt zurück. pick(i): Klick wählt etwas aus (z. B. die Woche im Belastungsdiagramm). */
+  const hv = (num, unit) => `${num}${unit ? `<small>${unit}</small>` : ""}`;          // Kernwert mit kleiner Einheit
+  const range = (a, b) => `${dmS(a)} – ${dmS(b)}`;
+  const mean = (arr) => arr.reduce((x, y) => x + y, 0) / (arr.length || 1);
+  const selRows = (rows) => `<div class="ch-rows">${rows.map(([c, label, val]) => `<span><i class="lg lg-dot" style="--c:${c}" aria-hidden="true"></i>${label ? `<span class="sr-only">${label} </span>` : ""}${val}</span>`).join("")}</div>`;
+  const headHtml = (d) => `<div class="ch-main"><div class="ch-label">${d.label || "&nbsp;"}</div><div class="ch-value">${d.value}</div><div class="ch-period">${d.period || "&nbsp;"}</div></div>${d.detail ? `<div class="ch-detail">${d.detail}</div>` : ""}`;
+  function setHead(box, d, sel) {
+    let h = box._head;
+    if (!h || !h.isConnected) { h = document.createElement("div"); h.className = "ch-head"; h.setAttribute("aria-live", "polite"); box.before(h); box._head = h; }
+    h.classList.toggle("is-sel", !!sel);
+    h.innerHTML = headHtml(d);
+  }
+  const SVGNS = "http://www.w3.org/2000/svg";
+  function cursorAt(box, hit) {
+    const svg = box.querySelector("svg.cv");
+    if (!svg) return;
+    svg.querySelectorAll(".cursor, .sel-dot").forEach((e) => e.remove());
+    svg.querySelectorAll(".hit.on").forEach((e) => e.classList.remove("on"));
+    if (!hit) return;
+    hit.classList.add("on");
+    const circ = hit.tagName.toLowerCase() === "circle";
+    const x = circ ? +hit.getAttribute("cx") : +hit.getAttribute("x") + +hit.getAttribute("width") / 2, xx = String(Math.round(x) + 0.5);
+    const first = svg.querySelector(".hit");
+    const ln = document.createElementNS(SVGNS, "line");
+    [["class", "cursor"], ["x1", xx], ["x2", xx], ["y1", String(+svg.dataset.pt - 8)], ["y2", svg.dataset.pb]].forEach(([k, v]) => ln.setAttribute(k, v));
+    svg.insertBefore(ln, first);
+    if (circ) {
+      const c = document.createElementNS(SVGNS, "circle");
+      [["class", "sel-dot"], ["cx", hit.getAttribute("cx")], ["cy", hit.getAttribute("cy")], ["r", "5"]].forEach(([k, v]) => c.setAttribute(k, v));
+      svg.insertBefore(c, first);
+    }
+  }
+  let selBox = null;
+  function resetSel(box) {
+    if (!box) return;
+    cursorAt(box, null);
+    if (box._summary && box._selI != null) setHead(box, box._summary, false);
+    box._selI = null;
+    if (selBox === box) selBox = null;
+  }
+  function bindSel(box, { summary, select, pick }) {
+    box._summary = summary; box._select = select; box._pick = pick || null; box._selI = null;
+    setHead(box, summary, false);
+    if (box._selBound) return;
+    box._selBound = true;
     let ptr = "mouse";
     const hitOf = (ev) => (ev.target && ev.target.closest ? ev.target.closest(".hit") : null);
-    const show = (h, ev) => {
-      box.querySelectorAll(".hit.on").forEach((x) => x !== h && x.classList.remove("on"));
-      h.classList.add("on");
-      showTip(box._tip(+h.dataset.i), ev);
+    const choose = (h) => {
+      if (selBox && selBox !== box) resetSel(selBox);
+      box._selI = +h.dataset.i; selBox = box;
+      cursorAt(box, h);
+      setHead(box, box._select(box._selI), true);
     };
     box.addEventListener("pointerdown", (ev) => { ptr = ev.pointerType || "mouse"; });
     box.addEventListener("pointermove", (ev) => {
       if (ev.pointerType && ev.pointerType !== "mouse") return;
       const h = hitOf(ev);
-      if (h) show(h, ev); else hideTip();
+      if (h) { if (+h.dataset.i !== box._selI) choose(h); } else if (box._selI != null) resetSel(box);
     });
-    box.addEventListener("pointerleave", (ev) => { if (!ev.pointerType || ev.pointerType === "mouse") hideTip(); });
+    box.addEventListener("pointerleave", (ev) => { if (!ev.pointerType || ev.pointerType === "mouse") resetSel(box); });
     box.addEventListener("click", (ev) => {
       const h = hitOf(ev);
       if (!h) return;
-      if (box._pick) { hideTip(); box._pick(+h.dataset.i, ev, ptr); return; }
-      if (ptr !== "mouse") show(h, ev);
+      if (box._pick) { box._pick(+h.dataset.i, ev, ptr); return; }
+      if (ptr !== "mouse" && +h.dataset.i === box._selI) resetSel(box); else choose(h);
     });
   }
-  // Antippen außerhalb eines Diagrammpunkts schließt den Tooltip
-  document.addEventListener("pointerdown", (ev) => { if (!(ev.target && ev.target.closest && ev.target.closest(".chart .hit"))) hideTip(); }, { passive: true });
+  // Antippen außerhalb eines Diagrammpunkts stellt den Kopf zurück (und schließt das Tooltip der Prognose-Balken)
+  document.addEventListener("pointerdown", (ev) => {
+    if (ev.target && ev.target.closest && ev.target.closest(".chart .hit")) return;
+    hideTip();
+    if (selBox) resetSel(selBox);
+  }, { passive: true });
   const tickFmt = (ax, unit = "") => (v) => nf(v, C.decimals(ax.step)) + unit;
 
   /* ---------- Hero / Countdown ---------- */
@@ -362,8 +409,12 @@
     const ax = C.zeroAxis(Math.max(...weeks.map(total)));
     const fIdx = weeks.map((w, i) => (w.flex ? i : -1)).filter((i) => i >= 0);
     const aria = `Wochenstunden je Disziplin, ${weeks.length} Wochen, ${lastW && lastW.start.getTime() === curMon ? "diese Woche" : "zuletzt"} ${nf(lastW ? total(lastW) : 0, 1)} h`;
-    const tip = (w) => tipBox(`Woche ab ${fmtDate(w.start)}`, keys.map((k) => tRow(colors[k], labels[k], hm(w[k] * 3600) + " h")).concat(tSum("Summe", hm(total(w) * 3600) + " h"))) +
-      (w.min ? `<div class="t-title t-sec">Wochen-Minimum (Flex)</div>` + w.min.items.map((it) => `<div class="t-row"><span>${it.ok ? "✓" : "○"} ${esc(it.label)}</span><span>${it.have}/${it.need}</span></div>`).join("") : "");
+    const summary = { label: "Ø pro Woche", value: hv(nf(mean(weeks.map(total)), 1), "h"), period: range(weeks[0].start, addDays(lastW.start, 6)) };
+    const select = (i) => {
+      const w = weeks[i];
+      return { label: w.flex ? "Woche, Flex" : "Woche", value: hv(hm(total(w) * 3600), "h"), period: range(w.start, addDays(w.start, 6)),
+        detail: selRows(keys.filter((k) => w[k] > 0).map((k) => [colors[k], labels[k], `${hm(w[k] * 3600)} h`])) + (w.min ? `<div>Minimum ${w.min.items.filter((it) => it.ok).length}/3</div>` : "") };
+    };
     mount(el, (W) => {
       const narrow = (W - 50) / weeks.length < 26;   // wenig Platz: ✓ / ○ statt „2/3“
       el.innerHTML = C.barChart({
@@ -376,7 +427,7 @@
           belowClass: w.flex && w.min && w.min.ok ? "min-ok" : "tick",
         })),
       });
-      bindTips(el, (i) => tip(weeks[i]));
+      bindSel(el, { summary, select });
     });
     // Tabelle
     $("#volTable").innerHTML = `<table><thead><tr><th>Woche ab</th><th class="num">Schwimmen</th><th class="num">Rad</th><th class="num">Laufen</th><th class="num">Kraft & Sonst.</th><th class="num">Tri gesamt</th></tr></thead><tbody>` +
@@ -384,7 +435,7 @@
   }
 
   /* ---------- Zeitverlauf mit einer Linie (Disziplinen, Erholung, Prognose) ---------- */
-  // pts aufsteigend nach Datum; o = { color, axis, fmt, val, aria, tip, band, refs, invert, height, emptyText }
+  // pts aufsteigend nach Datum; o = { color, axis, fmt, val, aria, summary, select(p), band, refs, invert, height, emptyText }
   function trendLine(box, pts, o) {
     if (!box) return;
     if (pts.length < 2) { noChart(box, o.emptyText || "Zu wenig Daten."); return; }
@@ -395,7 +446,7 @@
         series: [{ pts, color: o.color }], band: o.band, refs: o.refs,
         latest: { d: last.d, v: last.v, label: o.val(last.v) }, hits: pts,
       });
-      bindTips(box, (i) => o.tip(pts[i]));
+      bindSel(box, { summary: o.summary, select: (i) => o.select(pts[i]) });
     });
   }
   // Wochenbalken einer Sportart (Rad-km)
@@ -407,7 +458,7 @@
         width: W, height: C.SMALL, aria: o.aria, y: { ...ax, fmt: tickFmt(ax) },
         bands: values.map((w) => ({ label: dmS(w.d), current: w.d.getTime() === curMon, stacks: [{ v: w.v, color: o.color }] })),
       });
-      bindTips(box, (i) => o.tip(values[i]));
+      bindSel(box, { summary: o.summary, select: (i) => o.select(values[i]) });
     });
   }
 
@@ -468,18 +519,21 @@
     if (swimPts.length) trendLine($("#swimChart"), swimPts, {
       color: "var(--swim)", axis: C.paceAxis(swimPts.map((p) => p.v)), invert: true, fmt: mmss, val: mmss,
       aria: `Schwimm-Pace pro Einheit ab 900 m, ${swimPts.length} Einheiten, zuletzt ${mmss(swimPts[swimPts.length - 1].v)} pro 100 m`,
-      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--swim)", "Pace", mmss(p.v) + " /100 m")], `${esc(p.a.name)}<br>${nf(p.a.km * 1000)} m in ${hm(p.a.sec)} h`),
+      summary: { label: "Ø Pace", value: hv(mmss(mean(swimPts.map((p) => p.v))), "/100 m"), period: range(swimPts[0].d, swimPts[swimPts.length - 1].d) },
+      select: (p) => ({ label: "Pace", value: hv(mmss(p.v), "/100 m"), period: tipDay(p.d), detail: `${esc(p.a.name)}<br>${nf(p.a.km * 1000)} m in ${hm(p.a.sec)} h` }),
     }); else noChart($("#swimChart"), "Noch keine Einheit ab 900 m.");
     const lastBike = bikeWeekly[bikeWeekly.length - 1];
     weekBars($("#bikeChart"), bikeWeekly, {
       color: "var(--bike)", aria: `Rad-Kilometer pro Woche, ${bikeWeekly.length} Wochen, zuletzt ${nf(lastBike ? lastBike.v : 0)} km`,
-      tip: (w) => tipBox(`Woche ab ${fmtDate(w.d)}`, [tRow("var(--bike)", "Rad", nf(w.v) + " km")]),
+      summary: { label: "Ø pro Woche", value: hv(nf(mean(bikeWeekly.map((w) => w.v))), "km"), period: range(bikeWeekly[0].d, addDays(bikeWeekly[bikeWeekly.length - 1].d, 6)) },
+      select: (w) => ({ label: "Woche", value: hv(nf(w.v), "km"), period: range(w.d, addDays(w.d, 6)) }),
     });
     if (runPts.length) trendLine($("#runChart"), runPts, {
       color: "var(--run)", axis: C.paceAxis(runPts.map((p) => p.v), { include: z2b || [] }), invert: true, fmt: mmss, val: mmss,
       band: z2b ? { from: z2b[0], to: z2b[1], color: "var(--run)" } : null,
       aria: `Lauf-Pace pro Lauf ab 4 km, ${runPts.length} Läufe, zuletzt ${mmss(runPts[runPts.length - 1].v)} pro km`,
-      tip: (p) => tipBox(tipDay(p.d), [tRow("var(--run)", "Pace", mmss(p.v) + " /km")], `${esc(p.a.name)}<br>${nf(p.a.km, 1)} km, ${p.a.elev} hm`),
+      summary: { label: "Ø Pace", value: hv(mmss(mean(runPts.map((p) => p.v))), "/km"), period: range(runPts[0].d, runPts[runPts.length - 1].d) },
+      select: (p) => ({ label: "Pace", value: hv(mmss(p.v), "/km"), period: tipDay(p.d), detail: `${esc(p.a.name)}<br>${nf(p.a.km, 1)} km, ${p.a.elev} hm` }),
     }); else noChart($("#runChart"), "Noch kein Lauf ab 4 km.");
   }
 
@@ -492,7 +546,7 @@
     ];
     $("#readiness").innerHTML = rows.map(([k, l, best, goal]) => {
       const pct = Math.min(100, (best / goal) * 100);
-      return `<div class="ready-row"><span>${l}</span><div class="ready-track" role="img" aria-label="${l}: ${Math.round((best / goal) * 100)} %"><div class="ready-fill" style="width:${pct}%;background:var(--${k})"></div></div><span class="num">${nf(best, 1)} / ${nf(goal, 1)} km · <b>${Math.round((best / goal) * 100)} %</b></span></div>`;
+      return `<div class="ready-row"><span>${l}</span><div class="ready-track" role="img" aria-label="${l}: ${Math.round((best / goal) * 100)} %"><div class="ready-fill" style="width:${pct}%;background:var(--${k})"></div></div><span class="num">${nf(best, 1)} / ${nf(goal, 1)} km <b>(${Math.round((best / goal) * 100)}&nbsp;%)</b></span></div>`;
     }).join("");
 
     predictionCard();
@@ -596,7 +650,8 @@
         trendLine(box, pts, {
           color: "var(--text-2)", axis: C.durationAxis(pts.map((p) => p.v), { include: [goalTotal, sub] }), invert: true, fmt: hm, val: hm, refs,
           aria: `Verlauf der Gesamtprognose seit ${fmtDate(pts[0].d)}, aktuell ${hm(last.v)} h, Ziel ${hm(goalTotal)} h`,
-          tip: (p) => tipBox(tipDay(p.d), [tRow("var(--text-2)", "Prognose", hms(p.v)), tRow("var(--swim)", "Schwimmen", hm(p.e.swim)), tRow("var(--bike)", "Rad", hm(p.e.bike)), tRow("var(--run)", "Laufen", hm(p.e.run))]),
+          summary: { label: "Aktuell", value: hv(hm(last.v), "h"), period: `Ziel ${hm(goalTotal)} h, seit ${dmS(pts[0].d)}` },
+          select: (p) => ({ label: "Prognose", value: hv(hms(p.v), "h"), period: tipDay(p.d), detail: selRows([["var(--swim)", "Schwimmen", `Schwimmen ${hm(p.e.swim)}`], ["var(--bike)", "Rad", `Rad ${hm(p.e.bike)}`], ["var(--run)", "Laufen", `Laufen ${hm(p.e.run)}`]]) }),
         });
       })
       .catch(() => { noChart(box, "Verlauf nicht verfügbar (nur auf der veröffentlichten Seite)."); });
@@ -667,12 +722,12 @@
     let t3;
     if (decRecent.length) {
       const avg = decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length, st = Z.ampel(avg, cfg.decoupling.thresholds);
-      t3 = tile("Ø Entkopplung lange Läufe", `${nf(avg, 1)} <small>%</small>`, `${decRecent.length} Lauf${decRecent.length > 1 ? "e" : ""} ≥ 60 min, letzte 8 Wochen`, `<span class="badge ${st}" style="margin-right:6px">${st === "good" ? "✓ unter 5 %" : st === "warn" ? "5–10 %" : "über 10 %"}</span>`);
-    } else t3 = tile("Ø Entkopplung lange Läufe", "–", "noch keine ruhigen Läufe ≥ 60 min in den letzten 8 Wochen");
+      t3 = tile("Entkopplung", `${nf(avg, 1)} <small>%</small>`, `${decRecent.length} Lauf${decRecent.length > 1 ? "e" : ""} ≥ 60 min, letzte 8 Wochen`, `<span class="badge ${st}" style="margin-right:6px">${st === "good" ? "✓ unter 5 %" : st === "warn" ? "5–10 %" : "über 10 %"}</span>`);
+    } else t3 = tile("Entkopplung", "–", "noch keine ruhigen Läufe ≥ 60 min in den letzten 8 Wochen");
     // Kachel 4: Anteil Z1–2
     const sh = Z.zoneShare(all, asOf, cfg.windowDays, [0, 1]), sh3 = Z.zoneShare(all, asOf, cfg.windowDays, [2]);
-    const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3 ${Math.round((sh3 ? sh3.share : 0) * 100)} %, Z4–5 ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} %<br>${hm(sh.totalSec)} h Lauf & Rad, Richtwert ~80&nbsp;%`)
-      : tile("Anteil Z1–2 (4 Wochen)", "–", "keine Einheiten mit Herzfrequenz");
+    const t4 = sh ? tile("Anteil Z1–2", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3 ${Math.round((sh3 ? sh3.share : 0) * 100)} %, Z4–5 ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} %<br>${hm(sh.totalSec)} h Lauf & Rad in 4 Wochen, Richtwert ~80&nbsp;%`)
+      : tile("Anteil Z1–2", "–", "keine Einheiten mit Herzfrequenz");
     $("#z2Tiles").innerHTML = t1 + t2 + t3 + t4;
     const decAvg = decRecent.length ? decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length : null;
     setSum("zone2", [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null].filter(Boolean).length ? [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null] : "noch keine Auswertung");
@@ -681,17 +736,16 @@
     const toPts = (arr, kind) => arr.map((p) => ({ d: parse(p.date), v: p.v, rec: p.rec, kind,
       hollow: kind === "run" ? p.rec.hrSrc !== "strap" : kind === "outdoor", gap: kind === "run" && !!(p.rec.pace && p.rec.pace.gap) }));
     const roll = (arr) => Z.rollingMedian(arr, cfg.windowDays).map((p) => ({ d: parse(p.date), v: p.v }));
-    const tipRec = (p, color, label, valTxt) => tipBox(tipDay(p.d), [tRow(color, label, valTxt)],
-      `${esc(p.rec.name)}<br>${nf(p.rec.km, 1)} km in ${hm(p.rec.sec)} h${p.rec.pace ? `, ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? `, ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? ", steigungsbereinigt (GAP)" : ""}`);
+    const recNote = (p) => `${esc(p.rec.name)}<br>${nf(p.rec.km, 1)} km in ${hm(p.rec.sec)} h${p.rec.pace ? `, ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? `, ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? ", steigungsbereinigt (GAP)" : ""}`;
     trendChart($("#z2Pace"), toPts(pace, "run"), pace.length >= cfg.minPoints ? [{ pts: roll(pace) }] : [], {
       invert: true, fmt: mmss, axis: (vs) => C.paceAxis(vs), color: "var(--run)", label: `Pace bei ${runMid} bpm`, unit: " pro km", minPoints: cfg.minPoints,
-      tip: (p) => tipRec(p, "var(--run)", "Pace", `${mmss(p.v)} /km`),
+      unitShort: "/km", select: (p) => ({ label: "Pace", value: hv(mmss(p.v), "/km"), period: tipDay(p.d), detail: recNote(p) }),
     });
     // Chart 2: Watt @ HF
     trendChart($("#z2Watts"), toPts(wIn, "indoor").concat(toPts(wOut, "outdoor")),
       [wIn.length >= cfg.minPoints ? { pts: roll(wIn) } : null, wOut.length >= cfg.minPoints ? { pts: roll(wOut), dash: true } : null].filter(Boolean), {
         invert: false, fmt: (v) => nf(v), axis: (vs) => C.padAxis(vs), color: "var(--bike)", label: `Watt bei ${rideMid} bpm`, unit: " W", minPoints: cfg.minPoints,
-        tip: (p) => tipRec(p, "var(--bike)", p.kind === "indoor" ? "Indoor" : "Outdoor", `${p.v} W`),
+        unitShort: "W", select: (p) => ({ label: p.kind === "indoor" ? "Indoor" : "Outdoor", value: hv(p.v, "W"), period: tipDay(p.d), detail: recNote(p) }),
       });
     $("#z2OutMedian").hidden = wOut.length < cfg.minPoints;   // gestrichelte Outdoor-Linie nur mit genug Fahrten
     // Chart 3: Entkopplung
@@ -722,7 +776,11 @@
         scatter: pts.map((p) => ({ d: p.d, v: p.v, color: o.color, shape: p.gap ? "diamond" : p.hollow ? "hollow" : "dot", opacity: p.hollow ? 0.8 : 0.45 })),
         latest: { d: last.d, v: last.v, label: o.fmt(last.v) }, hits: pts,
       }) + note;
-      bindTips(box, (i) => o.tip(pts[i]));
+      const med = lines.length ? lines[0].pts.filter((q) => q.v != null) : [];
+      const t0 = pts.reduce((a, p) => (p.d < a ? p.d : a), pts[0].d);
+      const summary = med.length ? { label: "Median 4 Wochen", value: hv(o.fmt(med[med.length - 1].v), o.unitShort), period: `${pts.length} Einheiten seit ${dmS(t0)}` }
+        : { label: "Zuletzt", value: hv(o.fmt(last.v), o.unitShort), period: tipDay(last.d) };
+      bindSel(box, { summary, select: (i) => o.select(pts[i]) });
     });
   }
 
@@ -731,10 +789,11 @@
     if (!list.length) { noChart(box, "Noch keine ruhigen langen Einheiten (Lauf ≥ 60 min, Rad ≥ 90 min mit echten Watt, ≥ 80 % in Z1–2)."); return; }
     const items = list.slice().sort((a, b) => a.date.localeCompare(b.date)), vs = items.map((p) => p.v), last = items[items.length - 1];
     const ax = C.zeroAxis(Math.max(thr[1], ...vs), { min: Math.min(0, ...vs), clamp: [-100, 100] });
-    const tip = (p) => {
-      const r = p.rec, st = window.Z2.ampel(p.v, thr);
-      return tipBox(tipDay(parse(p.date)), [tRow(STATUS_COL[st], "Entkopplung", `${nf(p.v, 1)} % (${STATUS_TXT[st]})`)],
-        `${esc(r.name)}<br>${r.kind === "run" ? "Lauf" : "Rad"}, ${nf(r.km, 1)} km in ${hm(r.sec)} h<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? `, VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? ", GAP" : ""}<br>${SRC_TXT[r.hrSrc] || SRC_TXT.unknown}`);
+    const summary = { label: "Durchschnitt", value: hv(nf(mean(vs), 1), "%"), period: `${items.length} lange ${items.length === 1 ? "Einheit" : "Einheiten"} seit ${dmS(parse(items[0].date))}` };
+    const select = (i) => {
+      const p = items[i], r = p.rec, st = window.Z2.ampel(p.v, thr);
+      return { label: `Entkopplung, ${STATUS_TXT[st]}`, value: hv(nf(p.v, 1), "%"), period: tipDay(parse(p.date)),
+        detail: `${esc(r.name)}<br>${r.kind === "run" ? "Lauf" : "Rad"}, ${nf(r.km, 1)} km in ${hm(r.sec)} h<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? `, VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? ", GAP" : ""}` };
     };
     mount(box, (W) => {
       box.innerHTML = C.barChart({
@@ -742,7 +801,7 @@
         y: { ...ax, fmt: tickFmt(ax, " %") }, refs: [{ v: thr[0], label: `Ziel < ${thr[0]} %` }, { v: thr[1], label: `${thr[1]} %` }],
         bands: items.map((p) => ({ label: dmS(parse(p.date)), stacks: [{ v: p.v, color: DEC_BAR }], dot: STATUS_COL[window.Z2.ampel(p.v, thr)] })),
       });
-      bindTips(box, (i) => tip(items[i]));
+      bindSel(box, { summary, select });
     });
   }
 
@@ -754,9 +813,11 @@
     if (!weeksZ.length) { noChart(box, "Keine Daten."); return; }
     const tot = weeksZ.map((w) => w.sec.reduce((a, b) => a + b, 0));
     const ax = C.zeroAxis(Math.max(...tot) / 3600), curMon = ymdLocal(monday(new Date()));
-    const tip = (i) => {
-      const w = weeksZ[i], total = tot[i];
-      return tipBox(`Woche ab ${fmtDate(parse(w.week))}`, w.sec.map((sec, z) => tRow(ZCOL[z], `Z${z + 1}`, `${hm(sec)} h (${total ? Math.round((sec / total) * 100) : 0} %)`)).concat(tSum("Summe", `${hm(total)} h`)));
+    const summary = { label: "Ø pro Woche", value: hv(hm(mean(tot)), "h"), period: range(parse(weeksZ[0].week), addDays(parse(weeksZ[weeksZ.length - 1].week), 6)) };
+    const select = (i) => {
+      const w = weeksZ[i];
+      return { label: "Woche", value: hv(hm(tot[i]), "h"), period: range(parse(w.week), addDays(parse(w.week), 6)),
+        detail: selRows(w.sec.map((sec, z) => [ZCOL[z], "", `Z${z + 1} ${hm(sec)} (${tot[i] ? Math.round((sec / tot[i]) * 100) : 0} %)`]).filter((r, z) => w.sec[z] > 0)) };
     };
     mount(box, (W) => {
       box.innerHTML = C.barChart({
@@ -764,7 +825,7 @@
         y: { ...ax, fmt: tickFmt(ax, " h") },
         bands: weeksZ.map((w) => ({ label: dmS(parse(w.week)), current: w.week === curMon, stacks: w.sec.map((sec, z) => ({ v: sec / 3600, color: ZCOL[z] })) })),
       });
-      bindTips(box, tip);
+      bindSel(box, { summary, select });
     });
   }
 
@@ -884,7 +945,10 @@
         refs: goal ? [{ v: goal, label: `Ziel ${nf(goal)}` }] : [],
         latest: { d: last.d, v: last.v, label: nf(last.v) }, hits: pts,
       });
-      bindTips(box, (i) => { const p = pts[i]; return tipBox(`${tipDay(p.d)} @${esc(p.e.place)}`, [tRow(multi ? placeColor(p.e.place) : "var(--text-2)", setTxt(p.e), `1RM ${nf(p.v, 1)} kg`)], p.e.pr ? `<b class="t-good">PR</b>` : ""); });
+      bindSel(box, {
+        summary: { label: "1RM aktuell", value: hv(nf(last.v), "kg"), period: goal ? `Ziel ${nf(goal)} kg` : `${pts.length} ${pts.length === 1 ? "Eintrag" : "Einträge"}` },
+        select: (i) => { const p = pts[i]; return { label: p.e.pr ? "1RM, PR" : "1RM", value: hv(nf(p.v, 1), "kg"), period: `${tipDay(p.d)} @${esc(p.e.place)}`, detail: setTxt(p.e) }; },
+      });
     });
   }
 
@@ -1331,11 +1395,11 @@
     const weeks = L.weeks.slice().reverse(), sel = weeks.length - 1 - L.index, cur = weeks.length - 1;   // älteste links, aktuelle Woche rechts
     const ax = C.zeroAxis(Math.max(1, ...weeks.map((w) => w.total)));
     const aria = `Trainingsbelastung der letzten ${weeks.length} Wochen (Garmin): ${weeks.map((w) => `${dmS(parse(w.monday))} ${w.n ? nf(w.total) : "keine Werte"}`).join(", ")}`;
-    const tip = (i) => {
-      const w = weeks[i];
-      return tipBox(`${dmS(parse(w.monday))} – ${dmS(addDays(parse(w.monday), 6))}`,
-        w.n ? LOAD_ORDER.slice().reverse().map((k) => tRow(LOAD_COLORS[k], LOAD_LABEL[k], nf(w[k]))).concat(tSum("Summe", nf(w.total))) : [], w.n ? "" : "keine Belastungswerte");
-    };
+    const wk = (w) => ({ label: "Trainingsbelastung", value: w && w.n ? nf(w.total) : "–", period: w ? range(parse(w.monday), addDays(parse(w.monday), 6)) : "",
+      detail: w && w.n ? selRows(LOAD_ORDER.slice().reverse().filter((k) => w[k] > 0).map((k) => [LOAD_COLORS[k], "", `${LOAD_LABEL[k]} ${nf(w[k])}`])) : "keine Belastungswerte" });
+    const pct = L.diffPct;
+    const summary = { ...wk(weeks[sel]), value: L.sum == null ? "–" : nf(L.sum),
+      period: `${weeks[sel] ? range(parse(weeks[sel].monday), addDays(parse(weeks[sel].monday), 6)) : ""}${L.prevSum != null ? `, Vorwoche ${nf(L.prevSum)}${pct != null ? ` (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)}&nbsp;%)` : ""}` : ""}` };
     mount(box, (W) => {
       box.innerHTML = C.barChart({
         width: W, height: C.SMALL, aria, maxBar: 26, currentBg: "var(--surface-2)", y: { ...ax, fmt: tickFmt(ax) },   // aktuelle Woche neutral
@@ -1344,8 +1408,8 @@
           stacks: LOAD_ORDER.map((k) => ({ v: w[k], color: LOAD_COLORS[k] })),
         })),
       });
-      // Antippen/Klicken wählt die Woche; auf dem Touchscreen danach kurz den Tooltip zeigen
-      bindTips(box, tip, (i, ev, ptr) => { wkOffset = weeks.length - 1 - i; renderWeek(now); if (ptr !== "mouse") showTip(tip(i), ev); });
+      // Hovern zeigt die Woche oben im Kopf; Antippen/Klicken wählt die Woche für die ganze Karte
+      bindSel(box, { summary, select: (i) => wk(weeks[i]), pick: (i) => { wkOffset = weeks.length - 1 - i; renderWeek(now); } });
     });
   }
   function loadBlock(s) {
@@ -1356,7 +1420,6 @@
       : `Trainingsbelastung: <b>${nf(L.sum)}</b>${L.prevSum != null ? ` <span class="muted" style="white-space:nowrap">(Vorwoche ${nf(L.prevSum)}${pct != null ? `, ${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %` : ""})</span>` : ""}`;
     const ac = L.acute != null ? `<p class="wk-load-line">Akut ${nf(L.acute)}, chronisch ${nf(L.chronic)}${L.ratio != null ? `, Verhältnis ${nf(L.ratio, 1)}` : ""}${L.status && LOAD_STATUS[L.status] ? `<br>Garmin: <b>${LOAD_STATUS[L.status]}</b>` : ""} <span class="muted">(Stand ${fmtDate(parse(L.statusDate), { day: "2-digit", month: "2-digit" })})</span></p>` : "";
     return `<div class="mini-title">Belastung (Garmin)</div>
-      <p class="wk-load-line">${head}</p>
       <div class="chart load-box"></div>
       ${C.legend(LOAD_ORDER.slice().reverse().map((k) => ({ label: LOAD_LABEL[k], color: LOAD_COLORS[k] })))}
       ${ac}
@@ -1438,7 +1501,7 @@
     el.innerHTML = `<div class="grid g4">${tiles.join("")}</div>` +
       (more.length ? `<div class="card list-card" style="margin-top:16px"><ul class="ios-list ic">${more.map(([cat, label, value, sub]) => irow({ lead: rowIcon(cat), title: label, sub, val: `<b>${value}</b>` })).join("")}</ul></div>` : "") +
       (charts.length ? `<div class="rec-more"><button type="button" class="btn-text rec-toggle" aria-expanded="true" aria-controls="erholungVerlauf-body">Verläufe ausblenden</button></div>
-        <div class="sec-body" id="erholungVerlauf-body"><div class="grid g3" style="margin-top:12px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div></div>` : "");
+        <div class="sec-body" id="erholungVerlauf-body"><div class="grid g2 rec-charts" style="margin-top:16px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div></div>` : "");
     REC_CHARTS = charts;
     if (charts.length) {
       const btn = el.querySelector(".rec-toggle");
@@ -1457,7 +1520,8 @@
       trendLine($(`#gchart${i}`), c.pts, {
         color: "var(--text-2)", axis: ax, fmt: tickFmt(ax), val: c.fmt,
         aria: `${c.name} letzte 60 Tage, aktuell ${c.fmt(last.v)}${c.unit}`,
-        tip: (p) => tipBox(tipDay(p.d), [tRow("var(--text-2)", c.name, c.fmt(p.v) + c.unit)]),
+        summary: { label: "Durchschnitt", value: hv(c.fmt(mean(c.pts.map((p) => p.v))), c.unit.trim()), period: range(c.pts[0].d, last.d) },
+        select: (p) => ({ label: c.name, value: hv(c.fmt(p.v), c.unit.trim()), period: tipDay(p.d) }),
       });
     });
   }

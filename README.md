@@ -89,8 +89,16 @@ Die Achsen haben runde Schritte (1, 2 oder 5 × 10ⁿ) und 3–5 Ticks. Sleep Sc
 begrenzt. HRV, Ruhepuls, Gewicht und 1RM beginnen nicht bei 0. Pace wird in m:ss mit Schritten von 10, 15 oder 30 s
 angezeigt, schneller ist oben. Die X-Achse hat höchstens 6 Datumslabels.
 
-Der neueste Wert bekommt einen Punkt in der Akzentfarbe. Die laufende Woche ist hinterlegt. Antippen (iPad) oder
-Hovern zeigt einen Tooltip mit Datum und Wert. Jedes Diagramm hat `role="img"` und eine Kurzbeschreibung.
+Im Stil von Apple Health:
+
+- **Kopf:** Über jedem Diagramm steht der Kernwert groß (z. B. „Ø 75 ms“), darunter der Zeitraum.
+- **Antippen oder Hovern:** Eine dünne senkrechte Linie markiert den Punkt oder Balken, und sein Wert erscheint oben
+  im Kopf. Antippen daneben stellt zurück. Im Belastungsdiagramm wählt Antippen die Woche.
+- **Darstellung:** Balken mit runden Enden, fein gestrichelte Gitterlinien, Y-Achse rechts. Der neueste Wert bekommt
+  einen Punkt in der Akzentfarbe, die laufende Woche ist hinterlegt.
+- **Layout:** Die Erholungs-Diagramme stehen auf dem iPad quer zweispaltig.
+- **Barrierefreiheit:** Jedes Diagramm hat `role="img"` und eine Kurzbeschreibung.
+
 Tests: `node tests/charts.test.js`.
 
 ## Datenstand-Warnung
