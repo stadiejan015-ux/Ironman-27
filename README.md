@@ -58,6 +58,15 @@ Variablen am Anfang von [`css/style.css`](css/style.css).
   Schrift-Variante (`--accent-ink`, `--good-ink`, `--warn-ink`, `--bad-ink`, Sekundärgrau im hellen Modus). Flächen,
   Balken und Punkte nutzen die Systemfarben unverändert.
 
+Wiederkehrende Bausteine:
+
+- **Gruppierte Listen** im Stil der iOS-Einstellungen, z. B. Wochen-Minimum, Zuletzt gemacht, Phasen, Aktivitäten
+  und Form heute.
+- **Health-Kacheln** mit der Kategorie in Farbe, einer großen Zahl und einer grauen Einheit.
+- **Segmented Controls** für Filter.
+- **Kapseln mit Häkchen** für Auswahl.
+- **Text-Knöpfe** in Akzentfarbe.
+
 Das App-Icon erzeugt `node scripts/make_icons.js`.
 
 ## Diagramme

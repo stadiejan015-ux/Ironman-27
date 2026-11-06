@@ -84,6 +84,36 @@
   const tipDay = (d) => fmtDate(d, { weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit" });
   const dmS = (d) => fmtDate(d, { day: "2-digit", month: "2-digit" });   // „06.09.“
 
+  /* ---------- Bausteine im Apple-Stil: Symbole, Health-Kacheln, gruppierte Listen ---------- */
+  // Kleine Symbole (16 × 16, currentColor) – Kategorien: heart, sleep, activity, body, swim, bike, run, strength, other
+  const ICON = {
+    heart: '<path d="M8 13.6S2 10 2 5.9a3.1 3.1 0 0 1 6-1.4 3.1 3.1 0 0 1 6 1.4c0 4.1-6 7.7-6 7.7z" fill="currentColor"/>',
+    sleep: '<path d="M10.6 2.1a6 6 0 1 0 3.3 8 4.9 4.9 0 0 1-3.3-8z" fill="currentColor"/>',
+    activity: '<path d="M9.2 1.5 3.6 9h4.1l-1 5.5L12.4 7H8.3z" fill="currentColor"/>',
+    body: '<circle cx="8" cy="8.5" r="5.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 8.5 10.3 5.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    swim: '<path d="M1.5 6.2c1.6 0 1.6-1.3 3.2-1.3S6.3 6.2 8 6.2s1.6-1.3 3.2-1.3 1.6 1.3 3.3 1.3M1.5 10.8c1.6 0 1.6-1.3 3.2-1.3s1.6 1.3 3.3 1.3 1.6-1.3 3.2-1.3 1.6 1.3 3.3 1.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    bike: '<circle cx="3.9" cy="10.6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12.1" cy="10.6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3.9 10.6 6.5 5.4h3.6l2 5.2M6.5 5.4l1.6 5.2h-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>',
+    run: '<path d="M1.8 11.8h10.8a1.9 1.9 0 0 0 1.9-1.9c0-.8-.6-1.4-1.4-1.6l-3.1-.8-1.4-2.9H6.4l.6 1.9-2.4.6-1.1-2.4H1.8z" fill="currentColor"/>',
+    strength: '<path d="M1.3 6.6h1.9v2.8H1.3zM12.8 6.6h1.9v2.8h-1.9zM3.6 4.4h2v7.2h-2zM10.4 4.4h2v7.2h-2zM5.6 7.2h4.8v1.6H5.6z" fill="currentColor"/>',
+    other: '<circle cx="4" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="12" cy="8" r="1.6" fill="currentColor"/>',
+  };
+  const icon = (k, size = 16) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 16 16" aria-hidden="true">${ICON[k] || ICON.other}</svg>`;
+  const CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 6.4 4.8 9 9.8 3.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const CHEV_R = '<svg class="row-chev" width="8" height="13" viewBox="0 0 8 13" aria-hidden="true"><path d="M1.5 1.5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  // Health-Kachel: oben Kategorie in Kategoriefarbe (rechts grau Zeit/Datum), darunter große Zahl mit kleiner grauer Einheit
+  const htile = ({ cat = "other", label, time = "", value, sub = "", mini = false }) =>
+    `<div class="${mini ? "mtile" : "card"} kpi c-${cat}"><div class="label">${icon(cat, 15)}<span class="ht-name">${label}</span>${time ? `<span class="ht-time">${time}</span>` : ""}</div><div class="value">${value}</div>${sub ? `<div class="delta">${sub}</div>` : ""}</div>`;
+  // Zeile einer gruppierten Liste (iOS „inset grouped“): Symbol, Titel + Unterzeile, Wert rechts
+  const irow = ({ lead = "", title, sub = "", val = "", cls = "" }) =>
+    `<li class="ios-row ${cls}">${lead}<span class="row-main"><span class="row-title">${title}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span>${val !== "" ? `<span class="row-val">${val}</span>` : ""}</li>`;
+  const rowIcon = (cat) => `<span class="row-ic c-${cat}">${icon(cat, 16)}</span>`;
+  // „Heute“, „Gestern“ oder Datum – für die Zeitangabe rechts in Kacheln
+  const dayLabel = (iso) => {
+    const d = parse(iso), t = new Date();
+    const diff = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / DAY);
+    return diff === 0 ? "Heute" : diff === 1 ? "Gestern" : dmS(d);
+  };
+
   /* ---------- Diagramme (js/charts.js): echte Pixelbreite, neu zeichnen bei Größenänderung/Aufklappen ---------- */
   const C = window.Charts;
   // draw(width) schreibt das Diagramm in box; versteckte Diagramme (Breite 0) werden beim Aufklappen nachgeholt
@@ -182,20 +212,23 @@
     const n = (arr, c) => ofCat(arr, c).length;
     const longestRun = Math.max(...ofCat(acts, "run").map((a) => a.km));
     const tiles = [
-      ["Ø Triathlon-Stunden / Woche", `${nf(triH(cur) / 4, 1)} <small>h</small>`, delta(triH(cur) / 4, triH(prev) / 4, "h", 1)],
-      ["Ø Gesamt inkl. Kraft & Klettern", `${nf(allH(cur) / 4, 1)} <small>h/Wo</small>`, delta(allH(cur) / 4, allH(prev) / 4, "h", 1)],
-      [`<i class="swatch" style="background:var(--swim)"></i> Schwimmen`, `${nf(km(cur, "swim"), 1)} <small>km</small><small>${n(cur, "swim")}×</small>`, delta(km(cur, "swim"), km(prev, "swim"), "km", 1)],
-      [`<i class="swatch" style="background:var(--bike)"></i> Rad`, `${nf(km(cur, "bike"))} <small>km</small><small>${n(cur, "bike")}×</small>`, delta(km(cur, "bike"), km(prev, "bike"), "km")],
-      [`<i class="swatch" style="background:var(--run)"></i> Laufen`, `${nf(km(cur, "run"))} <small>km</small><small>${n(cur, "run")}×</small>`, delta(km(cur, "run"), km(prev, "run"), "km")],
-      ["Krafteinheiten", `${n(cur, "strength")} <small>× in 4 Wo</small>`, delta(n(cur, "strength"), n(prev, "strength"), "Einheiten")],
-      ["FTP", `${D.zones.ftp} <small>W</small><small>${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg</small>`, `bei ${nf(D.athlete.weightKg, 1)} kg Körpergewicht${latestWeight ? " (Garmin)" : ""}`],
-      ["Aktivitäts-Streak", `${D.athlete.streakWeeks} <small>Wochen</small>`, `seit Anmeldung ${Math.floor((snap - commit) / DAY / 7)} Wochen dabei`],
+      ["activity", "Triathlon", `${nf(triH(cur) / 4, 1)}<small>h</small>`, `pro Woche<br>${delta(triH(cur) / 4, triH(prev) / 4, "h", 1)}`],
+      ["other", "Gesamt", `${nf(allH(cur) / 4, 1)}<small>h</small>`, `pro Woche inkl. Kraft & Klettern<br>${delta(allH(cur) / 4, allH(prev) / 4, "h", 1)}`],
+      ["swim", "Schwimmen", `${nf(km(cur, "swim"), 1)}<small>km</small>`, `${n(cur, "swim")} Einheiten<br>${delta(km(cur, "swim"), km(prev, "swim"), "km", 1)}`],
+      ["bike", "Rad", `${nf(km(cur, "bike"))}<small>km</small>`, `${n(cur, "bike")} Einheiten<br>${delta(km(cur, "bike"), km(prev, "bike"), "km")}`],
+      ["run", "Laufen", `${nf(km(cur, "run"))}<small>km</small>`, `${n(cur, "run")} Einheiten<br>${delta(km(cur, "run"), km(prev, "run"), "km")}`],
+      ["strength", "Krafteinheiten", `${n(cur, "strength")}<small>×</small>`, `in 4 Wochen<br>${delta(n(cur, "strength"), n(prev, "strength"), "Einheiten")}`],
+      ["bike", "FTP", `${D.zones.ftp}<small>W</small>`, `${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg bei ${nf(D.athlete.weightKg, 1)} kg${latestWeight ? " (Garmin)" : ""}`],
+      ["activity", "Streak", `${D.athlete.streakWeeks}<small>Wochen</small>`, `seit Anmeldung ${Math.floor((snap - commit) / DAY / 7)} Wochen dabei`],
     ];
-    $("#kpis").innerHTML = tiles.map(([l, v, d]) => `<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="delta">${d}</div></div>`).join("");
+    $("#kpis").innerHTML = tiles.map(([cat, label, value, sub]) => htile({ cat, label, value, sub })).join("");
   }
 
   // Häkchenliste fürs Wochen-Minimum
-  const minList = (wk) => `<ul class="min-list">${wk.items.map((x) => `<li class="${x.ok ? "ok" : ""}"><span class="tick" aria-hidden="true">${x.ok ? "✓" : "○"}</span><span>${esc(x.label)}</span><b>${x.have}/${x.need}</b><span class="sr-only">${x.ok ? "erfüllt" : "offen"}</span></li>`).join("")}</ul>`;
+  const minList = (wk) => `<ul class="ios-list chk">${wk.items.map((x) => irow({
+    lead: `<span class="row-check${x.ok ? " ok" : ""}" aria-hidden="true">${x.ok ? CHECK : ""}</span>`,
+    title: `${esc(x.label)}<span class="sr-only">${x.ok ? " – erfüllt" : " – offen"}</span>`, val: `<b>${x.have}/${x.need}</b>`, cls: x.ok ? "ok" : "",
+  })).join("")}</ul>`;
 
   /* ---------- Phasen (js/phases.js) ---------- */
   // Montags-Raster wie Kalender und Wochenkarte; mit Flex-Zeitraum: Flex als eigene Phase, danach
@@ -283,8 +316,15 @@
       $("#currentPhase").innerHTML = `<p class="muted">Außerhalb des Plans.</p>`;
     }
     // chronologisch; Flex ist eine eigene Phase (gestrichelt)
-    $("#phaseList").innerHTML = PHASES.map((p) => `<li class="${[p === cp ? "current" : "", p.flex ? "flex-li" : ""].join(" ").trim()}">
-      <b>${esc(p.short)}</b><span class="dates">${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}</span><span class="hrs">${p.hours}</span></li>`).join("");
+    $("#phaseList").innerHTML = PHASES.map((p) => {
+      const st = p === cp ? "cur" : p.end <= now ? "done" : "future";
+      return irow({
+        lead: `<span class="row-dot ${st}" aria-hidden="true"></span>`,
+        title: `${esc(p.short)}${st === "cur" ? ` <span class="badge accent">aktuell</span>` : ""}`,
+        sub: `${fmtDate(p.start, { day: "2-digit", month: "short" })} – ${fmtDate(addDays(p.end, -1), { day: "2-digit", month: "short", year: "2-digit" })}`,
+        val: p.hours, cls: st,
+      });
+    }).join("");
     const afterFlex = FLEX.active ? currentPhase(addDays(FLEX.until, 1)) : null;
     setSum("saison", FLEX.active ? [`Flex bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })}`, afterFlex ? `danach ${afterFlex.short}` : null]
       : cp ? [cp.short, `noch ${Math.ceil((cp.end - now) / DAY / 7)} Wochen`] : "");
@@ -601,7 +641,7 @@
     const decRuns = Z.decouplingSeries(recs, "run");
     const kP = Z.kpi(pace, asOf, cfg.windowDays, cfg.minPoints), kW = Z.kpi(wIn, asOf, cfg.windowDays, cfg.minPoints);
     const lastOf = (pts) => pts.slice().sort((a, b) => a.date.localeCompare(b.date)).pop();
-    const tile = (label, value, sub, badge) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${badge || ""}${sub}</div></div>`;
+    const tile = (label, value, sub, badge) => htile({ cat: /^Pace/.test(label) ? "run" : /^Watt/.test(label) ? "bike" : "heart", label, value: value.replace(/ <small>/g, "<small>"), sub: `${badge || ""}${sub}` });
     const few = (n, what) => `noch zu wenig Daten (${n} ${n === 1 ? what[0] : what[1]} in 4 Wochen, mind. ${cfg.minPoints})`;
 
     // Kachel 1: Pace @ HF
@@ -624,7 +664,7 @@
     } else t3 = tile("Ø Entkopplung lange Läufe", "–", "noch keine ruhigen Läufe ≥ 60 min in den letzten 8 Wochen");
     // Kachel 4: Anteil Z1–2
     const sh = Z.zoneShare(all, asOf, cfg.windowDays, [0, 1]), sh3 = Z.zoneShare(all, asOf, cfg.windowDays, [2]);
-    const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3 ${Math.round((sh3 ? sh3.share : 0) * 100)} %, Z4–5 ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} %<br>${hm(sh.totalSec)} h Lauf & Rad, Richtwert ~80 %`)
+    const t4 = sh ? tile("Anteil Z1–2 (4 Wochen)", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3 ${Math.round((sh3 ? sh3.share : 0) * 100)} %, Z4–5 ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} %<br>${hm(sh.totalSec)} h Lauf & Rad, Richtwert ~80&nbsp;%`)
       : tile("Anteil Z1–2 (4 Wochen)", "–", "keine Einheiten mit Herzfrequenz");
     $("#z2Tiles").innerHTML = t1 + t2 + t3 + t4;
     const decAvg = decRecent.length ? decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length : null;
@@ -703,7 +743,7 @@
     const box = $("#z2Zones"), Z = window.Z2;
     const recs = Z2DATA.activities.filter((r) => r.kind);
     const weeksZ = Z.weeklyZones(recs, zoneFilter === "all" ? null : zoneFilter).slice(-16);
-    $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", c.dataset.f === zoneFilter));
+    $("#z2ZoneFilter").querySelectorAll("button").forEach((c) => c.setAttribute("aria-pressed", c.dataset.f === zoneFilter));
     if (!weeksZ.length) { noChart(box, "Keine Daten."); return; }
     const tot = weeksZ.map((w) => w.sec.reduce((a, b) => a + b, 0));
     const ax = C.zeroAxis(Math.max(...tot) / 3600), curMon = ymdLocal(monday(new Date()));
@@ -729,9 +769,10 @@
     const now = new Date(), todayIso = ymdLocal(now), mon = ymdLocal(monday(now));
     const wk = GYM.splitCounts(GYM_SESS, mon, todayIso);
     setSum("gym", [`${wk.total}× diese Woche`, wk.total ? ["Push", "Pull", "Legs"].filter((k) => wk[k]).map((k) => `${wk[k]} ${k}`).join(", ") || "ohne Split" : null]);
-    const tile = (label, value, sub) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${sub || "&nbsp;"}</div></div>`;
-    $("#gymWeek").innerHTML = ["Push", "Pull", "Legs"].map((k) => tile(`${k} diese Woche`, wk[k], k === "Legs" && !wk.Legs ? "noch kein Leg Day" : "")).join("")
-      + tile("Gym gesamt diese Woche", `${wk.total} <small>×</small>`, wk.ohne ? `davon ${wk.ohne} ohne erkannten Split` : `seit Montag, ${fmtDate(monday(now), { day: "2-digit", month: "2-digit" })}`);
+    $("#gymWeek").innerHTML = htile({
+      cat: "strength", label: "Gym diese Woche", time: `seit ${dmS(monday(now))}`, value: `${wk.total}<small>×</small>`,
+      sub: `<div class="ht-split">${["Push", "Pull", "Legs"].map((k) => `<span><b>${wk[k]}</b>${k}</span>`).join("")}${wk.ohne ? `<span><b>${wk.ohne}</b>ohne Split</span>` : ""}</div>${wk.Legs ? "" : `<div class="ht-note">Noch kein Leg Day diese Woche.</div>`}`,
+    });
 
     // Orte → feste Farben in Reihenfolge des ersten Auftretens, „unbekannt“ grau
     const places = [];
@@ -936,18 +977,21 @@
   const ACT_LIMIT = 10;
   function activities() {
     const filters = [["all", "Alle"], ["swim", "Schwimmen"], ["bike", "Rad"], ["run", "Laufen"], ["strength", "Kraft"], ["other", "Sonstiges"]];
-    $("#actFilter").innerHTML = filters.map(([k, l]) => `<button class="chip" type="button" data-f="${k}" aria-pressed="${k === filter}">${l}</button>`).join("");
-    $("#actFilter").querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; showAll = false; activities(); }));
+    $("#actFilter").innerHTML = filters.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${k === filter}">${l}</button>`).join("");
+    $("#actFilter").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; showAll = false; activities(); }));
     const list = filter === "all" ? acts : acts.filter((a) => a.cat === filter);
     $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.`;
     setSum("aktivitaeten", `${acts.length} Einträge`);
     $("#actCount").textContent = list.length > ACT_LIMIT && !showAll ? `${ACT_LIMIT} von ${list.length}` : `${list.length} Einträge`;
-    $("#actTable").innerHTML = `<thead><tr><th>Datum</th><th>Sport</th><th>Name</th><th class="num">Distanz</th><th class="num">Zeit</th><th class="num">Hm</th><th class="num">Pace / Tempo</th></tr></thead><tbody>` +
-      list.slice(0, showAll ? list.length : ACT_LIMIT).map((a) => `<tr><td>${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}</td>
-        <td><i class="swatch" style="background:${CATS[a.cat].color}"></i> ${SPORT_LABEL[a.sport] || a.sport}</td>
-        <td>${esc(a.name)}</td>
-        <td class="num">${a.km ? (a.cat === "swim" ? nf(a.km * 1000) + " m" : nf(a.km, 1) + " km") : "–"}</td>
-        <td class="num">${hm(a.sec)}</td><td class="num">${a.elev || "–"}</td><td class="num">${esc(a.info) || "–"}</td></tr>`).join("") + `</tbody>`;
+    $("#actList").innerHTML = list.slice(0, showAll ? list.length : ACT_LIMIT).map((a) => {
+      const main = a.km ? (a.cat === "swim" ? `${nf(a.km * 1000)}<small>m</small>` : `${nf(a.km, 1)}<small>km</small>`) : `${hm(a.sec)}<small>h</small>`;
+      const extra = [a.km ? `${hm(a.sec)} h` : null, a.info || null, a.elev ? `${nf(a.elev)} hm` : null].filter(Boolean).join(", ");
+      return irow({
+        lead: rowIcon(a.cat), title: esc(a.name),
+        sub: `${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}, ${esc(SPORT_LABEL[a.sport] || a.sport)}`,
+        val: `<b>${main}</b>${extra ? `<small>${esc(extra)}</small>` : ""}`,
+      });
+    }).join("");
     const more = $("#actMore");
     more.hidden = list.length <= ACT_LIMIT;
     more.textContent = showAll ? "Weniger anzeigen" : `Alle ${list.length} anzeigen`;
@@ -979,7 +1023,7 @@
     el.innerHTML = `<div class="fresh-list">${f.messages.map((m) => `<p class="fresh-item">
         <span class="dot ${DOT[m.level]}" aria-hidden="true"></span><span><span class="sr-only">${LBL[m.level]}: </span><b>${esc(m.text)}</b>${m.tip
           ? ` <span class="fresh-tip">Tipp: ${m.tip.href ? `<a href="${esc(m.tip.href)}" target="_blank" rel="noopener">${esc(m.tip.text)}</a>` : esc(m.tip.text)}</span>` : ""}</span></p>`).join("")}</div>
-      <button type="button" class="chip fresh-close" aria-label="Warnung bis zum nächsten Update ausblenden">Ausblenden</button>`;
+      <button type="button" class="btn-text fresh-close" aria-label="Warnung bis zum nächsten Update ausblenden">Ausblenden</button>`;
     el.hidden = false;
     el.querySelector(".fresh-close").addEventListener("click", () => {
       try { localStorage.setItem(FRESH_KEY, f.stamp); } catch (e) { /* ignore */ }
@@ -1133,7 +1177,7 @@
   function flexPlan(now, rd) {
     const eq = loadEquipment();
     const sg = FX.suggestFlex({ now, acts: flexActs, equipment: eq, level: rd ? rd.level : 0, cfg: FCFG, zones: D.zones.hr, paceHint: paceHint() });
-    const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
+    const chips = Object.entries(FX.EQUIPMENT).map(([k, label]) => `<button class="chip check" type="button" data-eq="${k}" aria-pressed="${eq.includes(k)}">${label}</button>`).join("");
     const e = sg.endurance;
     return `
       <div class="card today-plan">
@@ -1172,7 +1216,7 @@
         <h3 style="font-size:22px;margin:4px 0 2px"><i class="swatch" style="background:${color}"></i>${esc(s.title)}</h3>
         <div class="muted" style="font-size:15px;line-height:20px;margin-bottom:12px">${s.type === "rest" ? "Ruhetag" : fmtMin(s.min)}, ${s.type === "hard" ? "intensiv" : s.type === "rest" ? "Erholung" : "locker"}${s.phase ? `, Phase ${esc(s.phase.short)}` : ""}${s.changed ? `<br><b>angepasst: ${esc(s.changed)}</b>` : ""}</div>
         <p style="margin:0">${esc(s.detail)}</p>
-        ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="done-list">${done.map((a) => `<li><i class="swatch" style="background:${CATS[a.cat].color}"></i>${esc(a.name)}<span class="muted" style="margin-left:auto">${hm(a.sec)} h</span></li>`).join("")}</ul>` : ""}
+        ${done.length ? `<div class="mini-title">Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(a.name), val: `${hm(a.sec)} h` })).join("")}</ul>` : ""}
         <div id="sinceBox"></div>
         ${standLine}
       </div>`;
@@ -1182,7 +1226,7 @@
         ${rd ? `
           <div class="form-score"><b>${rd.R}</b><span class="badge ${lv.cls}">${lv.label}</span></div>
           <div class="muted" style="font-size:13px;margin:2px 0 10px">${FLEX.active ? FLEX_LEVEL_TEXT[rd.level] : lv.text}${rd.notes.length ? " Grund: " + esc(rd.notes.join(", ")) + "." : ""}</div>
-          <ul class="factor-list">${rd.factors.map((x) => `<li><span class="dot ${x.state}" aria-hidden="true"></span><span>${x.label}</span><b>${esc(x.value)}</b><span class="sr-only">${x.state === "good" ? "gut" : x.state === "ok" ? "mittel" : "schlecht"}</span></li>`).join("")}</ul>
+          <ul class="ios-list dots">${rd.factors.map((x) => irow({ lead: `<span class="row-dot dot ${x.state}" aria-hidden="true"></span>`, title: `${x.label}<span class="sr-only"> – ${x.state === "good" ? "gut" : x.state === "ok" ? "mittel" : "schlecht"}</span>`, val: `<b>${esc(x.value)}</b>` })).join("")}</ul>
           <div class="muted" style="font-size:13px;line-height:18px;margin-top:8px">${esc(rd.source)}<br>Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
         : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
       </div>`;
@@ -1199,7 +1243,8 @@
   const WK = window.Weekly, WCFG = window.TRAINING.weekly || {};
   let wkOffset = null;   // 0 = laufende Woche, 1 = Vorwoche …
   const TREND = { up: ["↑", "höher als in der Vorwoche"], down: ["↓", "niedriger als in der Vorwoche"], flat: ["→", "etwa wie in der Vorwoche"] };
-  const REC_FMT = { sleepH: (v) => `${hm(v * 3600)} h`, sleepScore: (v) => nf(v), hrv: (v) => `${nf(v)} ms`, rhr: (v) => `${nf(v)} bpm` };
+  const REC_FMT = { sleepH: (v) => `${hm(v * 3600)}<small>h</small>`, sleepScore: (v) => nf(v), hrv: (v) => `${nf(v)}<small>ms</small>`, rhr: (v) => `${nf(v)}<small>bpm</small>` };
+  const REC_CAT = { sleepH: "sleep", sleepScore: "sleep", hrv: "heart", rhr: "heart" };
   function renderWeek(now) {
     const box = $("#weekCard");
     if (!box) return;
@@ -1221,7 +1266,6 @@
     const rows = [
       ["Gym", s.gym.count ? `${s.gym.count}× Gym${splitTxt ? `: ${splitTxt}` : ""}${s.gym.goals ? `<div class="wk-sub">Ziele erreicht: ${s.gym.goals.reached}/${s.gym.goals.total}</div>` : ""}${s.gym.lifts.length ? `<div class="muted wk-sub">${s.gym.lifts.map((l) => esc(l.text)).join("<br>")}</div>` : ""}` : `<span class="muted">kein Gym</span>`],
       ["Ausdauer", (endu.length ? endu.map(sport).join("") : `<span class="muted">keine</span>`) + (other ? sport(other) : "")],
-      ["Gesamt", `${nf(s.totalSec / 3600, 1)} h in ${s.count} ${s.count === 1 ? "Einheit" : "Einheiten"}${s.avg4Sec ? `<div class="muted wk-sub">Ø der 4 Wochen davor ${nf(s.avg4Sec / 3600, 1)} h (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %)</div>` : ""}`],
     ];
     if (s.minimum) rows.push(["Minimum", s.minimum.ok ? `<span class="wk-ok">✓ erfüllt</span>` : `${s.running ? "fehlt noch" : "gefehlt"}: ${s.minimum.missing.map(esc).join(", ")}`]);
     box.innerHTML = `
@@ -1235,10 +1279,12 @@
       </div>
       ${s.running ? `<div class="wk-running"><span class="badge neutral">läuft noch</span></div>` : ""}
       ${s.highlight ? `<p class="wk-hl"><span aria-hidden="true">★</span><span>${esc(s.highlight.text)}</span></p>` : `<p class="muted" style="margin:10px 0 0">Keine Einheiten in dieser Woche.</p>`}
-      ${s.empty ? "" : `<div class="mini-title">Training</div><dl class="wk-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`}
+      ${s.empty ? "" : `<div class="mtiles">${htile({ mini: true, cat: "activity", label: "Gesamt", value: `${nf(s.totalSec / 3600, 1)}<small>h</small>`, sub: s.avg4Sec ? `Ø 4 Wochen davor ${nf(s.avg4Sec / 3600, 1)}&nbsp;h (${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)}&nbsp;%)` : "" })}${htile({ mini: true, cat: "other", label: "Einheiten", value: `${s.count}`, sub: s.running ? "Woche läuft noch" : "" })}</div>
+        <div class="mini-title">Training</div><dl class="wk-dl">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`}
       ${loadBlock(s)}
       ${s.recovery ? `<div class="mini-title">Erholung (Garmin, Ø der Woche)</div>
-        <div class="wk-rec">${s.recovery.map((r) => `<div><span>${r.label}</span><b>${r.value == null ? "–" : REC_FMT[r.key](r.value)}</b>${r.trend ? ` <em class="wk-trend" title="${TREND[r.trend][1]}">${TREND[r.trend][0]}</em><span class="sr-only">${TREND[r.trend][1]}</span>` : ""}</div>`).join("")}</div>` : ""}
+        <div class="mtiles four">${s.recovery.map((r) => htile({ mini: true, cat: REC_CAT[r.key] || "other", label: r.label, value: r.value == null ? "–" : REC_FMT[r.key](r.value),
+          time: r.trend ? `<em class="wk-trend" title="${TREND[r.trend][1]}">${TREND[r.trend][0]}</em><span class="sr-only">${TREND[r.trend][1]}</span>` : "" })).join("")}</div>` : ""}
       ${s.hints.length ? `<div class="mini-title">Hinweise</div><ul class="wk-hints">${s.hints.map((h) => `<li${h.strong ? ' class="wk-hint-strong"' : ""}>${h.strong ? `<span class="badge warn">Wiedereinstieg</span> ` : ""}${esc(h.text)}</li>`).join("")}</ul>` : ""}`;
     box.querySelectorAll("[data-wk]").forEach((b) => b.addEventListener("click", () => {
       wkOffset = Math.min(maxBack, Math.max(0, wkOffset + Number(b.dataset.wk)));
@@ -1304,7 +1350,6 @@
       now, acts: flexActs, cfg: window.TRAINING.sinceLast || {}, splitCfg: FCFG,
       flexActive: FLEX.active, equipment: FLEX.active ? loadEquipment() : null,
     });
-    const sel = items.find((x) => x.key === sinceSel);
     const detail = (x) => {
       if (!x.last) return `<b>${esc(x.label)}</b>: seit der Anmeldung (${fmtDate(commit, { day: "2-digit", month: "2-digit", year: "numeric" })}) noch keine Einheit${x.minMinutes ? ` ab ${fmtMin(x.minMinutes)}` : ""}.`;
       const a = x.last;
@@ -1312,14 +1357,14 @@
     };
     box.innerHTML = `
       <div class="mini-title">Zuletzt gemacht</div>
-      <div class="since-grid">${items.map((x) => `
-        <button type="button" class="since-tile ${x.state}" data-since="${x.key}" aria-expanded="${sinceSel === x.key}"
+      <ul class="ios-list dots since-list">${items.map((x) => `<li>
+        <button type="button" class="ios-row since-row ${x.state}" data-since="${x.key}" aria-expanded="${sinceSel === x.key}"
           aria-label="${esc(`${x.label}: ${x.text} – ${SINCE_STATE[x.state]}`)}">
-          <span class="since-label"><span class="dot ${SINCE_DOT[x.state]}" aria-hidden="true"></span>${esc(x.label)}</span>
-          <b>${esc(x.text)}</b>${x.note ? `<small>${esc(x.note)}</small>` : ""}
-        </button>`).join("")}
-      </div>
-      ${sel ? `<p class="since-detail" aria-live="polite">${detail(sel)}</p>` : ""}`;
+          <span class="row-dot dot ${SINCE_DOT[x.state]}" aria-hidden="true"></span>
+          <span class="row-main"><span class="row-title">${esc(x.label)}</span>${x.note ? `<span class="row-sub">${esc(x.note)}</span>` : ""}</span>
+          <span class="row-val">${esc(x.text)}</span>${CHEV_R}
+        </button>${sinceSel === x.key ? `<p class="since-detail" aria-live="polite">${detail(x)}</p>` : ""}</li>`).join("")}
+      </ul>`;
     box.querySelectorAll("[data-since]").forEach((b) => b.addEventListener("click", () => {
       sinceSel = sinceSel === b.dataset.since ? null : b.dataset.since;
       renderSince(now);
@@ -1333,24 +1378,28 @@
     if (!gDays.length) { $("#recoverySection").hidden = true; return; }
     const last = (k) => gLast(k)?.[k];
     const avg7 = (k) => gAvg(k, 7);
-    const tile = (label, value, sub) => `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="delta">${sub || "&nbsp;"}</div></div>`;
-    const v = (x, d = 0, unit = "") => (x == null ? "–" : `${nf(x, d)}${unit ? ` <small>${unit}</small>` : ""}`);
+    const v = (x, d = 0, unit = "") => (x == null ? "–" : `${nf(x, d)}${unit ? `<small>${unit}</small>` : ""}`);
+    const when = (k) => (gLast(k) ? dayLabel(gLast(k).date) : "");
+    const sleepVal = (h) => { if (h == null) return "–"; let H = Math.floor(h), M = Math.round((h - H) * 60); if (M === 60) { H++; M = 0; } return `${H}<small>h</small> ${M}<small>min</small>`; };
     const a = (k, d = 0, unit = "") => (avg7(k) == null ? "" : `Ø 7 Tage: ${nf(avg7(k), d)}${unit}`);
     const st = gLast("trainingStatus");
+    // Die vier wichtigsten als Kacheln, der Rest als gruppierte Liste
     const tiles = [
-      tile("Sleep Score", v(last("sleepScore")), a("sleepScore")),
-      tile("Schlafdauer", v(last("sleepH"), 1, "h"), a("sleepH", 1, " h")),
-      tile("HRV (Nacht)", v(last("hrv"), 0, "ms"), gLast("hrvStatus") ? `Status: ${HRV_DE[last("hrvStatus")] || last("hrvStatus")}` : a("hrv", 0, " ms")),
-      tile("Ruhepuls", v(last("rhr"), 0, "bpm"), a("rhr", 0, " bpm")),
-      tile("Body Battery", v(last("bbHigh"), 0, "max"), last("bbNow") != null ? `aktuell ${last("bbNow")}` : ""),
-      tile("Stress Ø", v(last("stressAvg")), a("stressAvg")),
-      tile("Trainingsbereitschaft", v(last("readiness")), last("recoveryH") != null ? `Erholungszeit ${nf(last("recoveryH"))} h` : ""),
-      tile("Trainingsstatus", st ? esc(statusDe(st.trainingStatus)) : "–", last("acuteLoad") != null ? `Belastung akut ${nf(last("acuteLoad"))} / chronisch ${nf(last("chronicLoad") || 0)}` : ""),
-      tile("VO2max Laufen", v(last("vo2run"), 1), ""),
-      tile("VO2max Rad", v(last("vo2bike"), 1), ""),
-      tile("Gewicht", v(last("weight"), 1, "kg"), last("bodyFat") != null ? `Körperfett ${nf(last("bodyFat"), 1)} %` : ""),
-      tile("Schritte", v(last("steps")), a("steps")),
+      htile({ cat: "sleep", label: "Schlaf", time: when("sleepH"), value: sleepVal(last("sleepH")), sub: last("sleepScore") != null ? `Sleep Score ${nf(last("sleepScore"))}` : a("sleepH", 1, " h") }),
+      htile({ cat: "heart", label: "HRV", time: when("hrv"), value: v(last("hrv"), 0, "ms"), sub: gLast("hrvStatus") ? HRV_DE[last("hrvStatus")] || last("hrvStatus") : a("hrv", 0, " ms") }),
+      htile({ cat: "heart", label: "Ruhepuls", time: when("rhr"), value: v(last("rhr"), 0, "bpm"), sub: a("rhr", 0, " bpm") }),
+      htile({ cat: "activity", label: "Bereitschaft", time: when("readiness"), value: v(last("readiness")), sub: last("recoveryH") != null ? `Erholungszeit ${nf(last("recoveryH"))} h` : "" }),
     ];
+    const more = [
+      ["sleep", "Sleep Score", v(last("sleepScore")), a("sleepScore")],
+      ["activity", "Body Battery", v(last("bbHigh"), 0, "max"), last("bbNow") != null ? `aktuell ${last("bbNow")}` : ""],
+      ["heart", "Stress Ø", v(last("stressAvg")), a("stressAvg")],
+      ["activity", "Trainingsstatus", st ? esc(statusDe(st.trainingStatus)) : "–", last("acuteLoad") != null ? `Belastung akut ${nf(last("acuteLoad"))}, chronisch ${nf(last("chronicLoad") || 0)}` : ""],
+      ["run", "VO2max Laufen", v(last("vo2run"), 1), ""],
+      ["bike", "VO2max Rad", v(last("vo2bike"), 1), ""],
+      ["body", "Gewicht", v(last("weight"), 1, "kg"), last("bodyFat") != null ? `Körperfett ${nf(last("bodyFat"), 1)} %` : ""],
+      ["activity", "Schritte", v(last("steps")), a("steps")],
+    ].filter((r) => r[2] !== "–");
     // Titel, Name/Einheit für Tooltip und aria-label, Nachkommastellen, feste Grenzen (Sleep Score, Body Battery: 0–100)
     const charts = [
       ["sleepScore", "Sleep Score", "Sleep Score", "", 0, [0, 100]],
@@ -1362,7 +1411,8 @@
     ].map(([k, label, name, unit, dec, clamp]) => ({ k, label, name, unit, fmt: (x) => nf(x, dec), clamp, pts: gDays.slice(-60).filter((d) => d[k] != null).map((d) => ({ d: parse(d.date), v: d[k], raw: d })) }))
       .filter((c) => c.pts.length >= 2);
     el.innerHTML = `<div class="grid g4">${tiles.join("")}</div>` +
-      (charts.length ? `<div class="rec-more"><button type="button" class="chip rec-toggle" aria-expanded="true" aria-controls="erholungVerlauf-body">Verläufe ausblenden</button></div>
+      (more.length ? `<div class="card list-card" style="margin-top:16px"><ul class="ios-list ic">${more.map(([cat, label, value, sub]) => irow({ lead: rowIcon(cat), title: label, sub, val: `<b>${value}</b>` })).join("")}</ul></div>` : "") +
+      (charts.length ? `<div class="rec-more"><button type="button" class="btn-text rec-toggle" aria-expanded="true" aria-controls="erholungVerlauf-body">Verläufe ausblenden</button></div>
         <div class="sec-body" id="erholungVerlauf-body"><div class="grid g3" style="margin-top:12px">${charts.map((c, i) => `<div class="card"><h3>${c.label}</h3><div class="chart" id="gchart${i}"></div></div>`).join("")}</div></div>` : "");
     REC_CHARTS = charts;
     if (charts.length) {
@@ -1508,7 +1558,7 @@
   });
   // Größenänderung (Drehen, Fenster): Diagramme mit neuer Breite zeichnen (zusätzlich zum ResizeObserver)
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { hideTip(); redrawCharts(); layoutTimeline(false); }, 150); });
-  $("#z2ZoneFilter").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
+  $("#z2ZoneFilter").querySelectorAll("button").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
   $("#toggleTable").addEventListener("click", (e) => {

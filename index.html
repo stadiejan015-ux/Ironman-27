@@ -114,10 +114,10 @@
         <div class="card">
           <div class="chart-head" style="margin-bottom:4px">
             <h3 style="margin:0">Zeit pro HF-Zone und Woche</h3>
-            <div class="controls" id="z2ZoneFilter">
-              <button class="chip" type="button" data-f="all" aria-pressed="true">Alle</button>
-              <button class="chip" type="button" data-f="run" aria-pressed="false">Laufen</button>
-              <button class="chip" type="button" data-f="ride" aria-pressed="false">Rad</button>
+            <div class="segmented" id="z2ZoneFilter" role="group" aria-label="Sportart">
+              <button type="button" data-f="all" aria-pressed="true">Alle</button>
+              <button type="button" data-f="run" aria-pressed="false">Laufen</button>
+              <button type="button" data-f="ride" aria-pressed="false">Rad</button>
             </div>
           </div>
           <div class="chart" id="z2Zones"></div>
@@ -144,9 +144,8 @@
     <section id="gym" data-collapse>
       <h2>Gym</h2>
       <p class="section-sub">Split und Hauptübung kommen aus dem Titel deiner Krafteinheit in Garmin Connect, z.&nbsp;B. „Push 6x100“, „Pull · Latzug 8x90“, „Legs 3x10x180“ oder „Push 6x100 @Bali“.</p>
-      <div class="grid g4" id="gymWeek"></div>
-      <div class="grid g3" style="margin-top:12px" id="gymLifts"></div>
-      <div class="card" style="margin-top:12px" id="gymSplit"></div>
+      <div class="grid g2 gym-top"><div id="gymWeek"></div><div class="card" id="gymSplit"></div></div>
+      <div class="grid g3" style="margin-top:16px" id="gymLifts"></div>
     </section>
 
     <!-- KALENDER -->
@@ -173,7 +172,7 @@
           </div>
           <div>
             <div class="mini-title">Alle Phasen</div>
-            <ul class="phase-list" id="phaseList"></ul>
+            <ul class="ios-list dots phase-rows" id="phaseList"></ul>
           </div>
         </div>
       </div>
@@ -186,8 +185,8 @@
       <div class="card">
         <div class="chart-head" style="justify-content:flex-end">
           <div class="controls">
-            <button class="chip" id="toggleOther" type="button" aria-pressed="false">inkl. Kraft &amp; Sonstiges</button>
-            <button class="chip" id="toggleTable" type="button" aria-pressed="false">Tabelle</button>
+            <button class="chip check" id="toggleOther" type="button" aria-pressed="false">inkl. Kraft &amp; Sonstiges</button>
+            <button class="chip check" id="toggleTable" type="button" aria-pressed="false">Tabelle</button>
           </div>
         </div>
         <div class="chart" id="volChart"></div>
@@ -235,11 +234,11 @@
       <p class="section-sub" id="actSub"></p>
       <div class="card">
         <div class="chart-head">
-          <div class="controls" id="actFilter"></div>
+          <div class="segmented" id="actFilter" role="group" aria-label="Sportart filtern"></div>
           <span class="muted" style="font-size:13px" id="actCount"></span>
         </div>
-        <div class="table-scroll"><table id="actTable"></table></div>
-        <div style="text-align:center;margin-top:12px"><button class="chip" id="actMore" type="button" aria-controls="actTable" aria-expanded="false" hidden></button></div>
+        <ul class="ios-list ic act-list" id="actList"></ul>
+        <div style="text-align:center;margin-top:4px"><button class="btn-text" id="actMore" type="button" aria-controls="actList" aria-expanded="false" hidden></button></div>
       </div>
     </section>
 
