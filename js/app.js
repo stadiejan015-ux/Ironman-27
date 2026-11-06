@@ -171,8 +171,11 @@
   const CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 6.4 4.8 9 9.8 3.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const CHEV_R = '<svg class="row-chev" width="8" height="13" viewBox="0 0 8 13" aria-hidden="true"><path d="M1.5 1.5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   // Health-Kachel: oben Kategorie in Kategoriefarbe (rechts grau Zeit/Datum), darunter große Zahl mit kleiner grauer Einheit
-  const htile = ({ cat = "other", label, time = "", value, sub = "", mini = false }) =>
-    `<div class="${mini ? "mtile" : "card"} kpi c-${cat}"><div class="label">${icon(cat, 15)}<span class="ht-name">${label}</span>${time ? `<span class="ht-time">${time}</span>` : ""}</div><div class="value">${value}</div>${sub ? `<div class="delta">${sub}</div>` : ""}</div>`;
+  // href: die ganze Kachel ist ein Link (z. B. zur Detailansicht), mit Chevron rechts oben
+  const htile = ({ cat = "other", label, time = "", value, sub = "", mini = false, href = "" }) => {
+    const tag = href ? "a" : "div";
+    return `<${tag} class="${mini ? "mtile" : "card"} kpi c-${cat}${href ? " tile-link" : ""}"${href ? ` href="${href}"` : ""}><div class="label">${icon(cat, 15)}<span class="ht-name">${label}</span>${time ? `<span class="ht-time">${time}</span>` : ""}${href ? CHEV_R : ""}</div><div class="value">${value}</div>${sub ? `<div class="delta">${sub}</div>` : ""}${href ? `<span class="sr-only">, Verlauf und Details öffnen</span>` : ""}</${tag}>`;
+  };
   // Zeile einer gruppierten Liste (iOS „inset grouped“): Symbol, Titel + Unterzeile, Wert rechts
   const irow = ({ lead = "", title, sub = "", val = "", cls = "" }) =>
     `<li class="ios-row ${cls}">${lead}<span class="row-main"><span class="row-title">${title}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span>${val !== "" ? `<span class="row-val">${val}</span>` : ""}</li>`;
@@ -760,7 +763,7 @@
   const STATUS_COL = { good: "var(--good)", warn: "var(--warn)", bad: "var(--bad)" };
   const STATUS_TXT = { good: "grün", warn: "gelb", bad: "rot" };
   const SRC_TXT = { strap: "Brustgurt", wrist: "Uhr (optisch)", unknown: "Pulsmesser unbekannt" };
-  let Z2DATA = null, HRSRC = null, zoneFilter = "all";
+  let Z2DATA = null, HRSRC = null;
 
   function zone2() {
     const cfg = window.TRAINING.z2, Z = window.Z2;
@@ -768,14 +771,17 @@
     const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
     setSum("zone2", "wird geladen …");
     Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
-      .then(([db, src]) => { Z2DATA = db; HRSRC = src; insights(); disciplines(); renderZone2(); if (FLEX.active) today(); })
+      .then(([db, src]) => { Z2DATA = db; HRSRC = src; insights(); disciplines(); renderZone2(); if (FLEX.active) today(); z2Detail(); })
       .catch(() => {
+        Z2FAIL = true; z2Detail();
         $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
         setSum("zone2", "nicht verfügbar");
         const ins = $("#z2Insight p"); if (ins) ins.textContent = "Noch keine Zone-2-Auswertung verfügbar.";
       });
   }
 
+  // Offene Zone-2-Detailansicht neu zeichnen, sobald die Daten da sind (z. B. Direktlink #erholung-z2pace)
+  const z2Detail = () => { const m = md.key && MX.byKey[md.key]; if (m && /^z2/.test(m.source || "")) renderMetric(); };
   function renderZone2() {
     const cfg = window.TRAINING.z2, Z = window.Z2, hrZ = D.zones.hr;
     const all = Z2DATA.activities.filter((r) => r.kind);
@@ -800,19 +806,22 @@
     const decRuns = Z.decouplingSeries(recs, "run");
     const kP = Z.kpi(pace, asOf, cfg.windowDays, cfg.minPoints), kW = Z.kpi(wIn, asOf, cfg.windowDays, cfg.minPoints);
     const lastOf = (pts) => pts.slice().sort((a, b) => a.date.localeCompare(b.date)).pop();
-    const tile = (label, value, sub, badge) => htile({ cat: /^Pace/.test(label) ? "run" : /^Watt/.test(label) ? "bike" : "heart", label, value: value.replace(/ <small>/g, "<small>"), sub: `${badge || ""}${sub}` });
+    // Kacheln öffnen die Detailansicht (#erholung-z2pace …); die Diagramme leben dort
+    const TILE_KEY = { Pace: "z2pace", Watt: "z2watts", Entkopplung: "z2dec", Anteil: "z2zones" };
+    const tile = (label, value, sub, badge) => { const m = MX && MX.byKey[TILE_KEY[label.split(" ")[0]]];
+      return htile({ cat: m ? m.cat : "heart", label, value: value.replace(/ <small>/g, "<small>"), sub: `${badge || ""}${sub}`, href: m ? `#${metricHash(m)}` : "" }); };
     const few = (n, what) => `noch zu wenig Daten (${n} ${n === 1 ? what[0] : what[1]} in 4 Wochen, mind. ${cfg.minPoints})`;
 
     // Kachel 1: Pace @ HF
     const lp = lastOf(pace);
     const t1 = kP.enough
-      ? tile(`Pace @ ${runMid} bpm`, `${mmss(kP.value)} <small>/km</small>`, kP.delta != null ? `${kP.delta < 0 ? "▼" : kP.delta > 0 ? "▲" : "±"} ${mmss(Math.abs(kP.delta))} ${kP.delta <= 0 ? "schneller" : "langsamer"} als die 4 Wochen davor` : `Median aus ${kP.n} Läufen`)
-      : tile(`Pace @ ${runMid} bpm`, "–", `${few(kP.n, ["Lauf", "Läufe"])}${lp ? `<br>zuletzt ${mmss(lp.v)} /km am ${fmtDate(parse(lp.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
+      ? tile(`Pace bei ${runMid} bpm`, `${mmss(kP.value)} <small>/km</small>`, kP.delta != null ? `${kP.delta < 0 ? "▼" : kP.delta > 0 ? "▲" : "±"} ${mmss(Math.abs(kP.delta))} ${kP.delta <= 0 ? "schneller" : "langsamer"} als die 4 Wochen davor` : `Median aus ${kP.n} Läufen`)
+      : tile(`Pace bei ${runMid} bpm`, "–", `${few(kP.n, ["Lauf", "Läufe"])}${lp ? `<br>zuletzt ${mmss(lp.v)} /km am ${fmtDate(parse(lp.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
     // Kachel 2: Watt @ HF (Indoor)
     const lw = lastOf(wIn);
     const t2 = kW.enough
-      ? tile(`Watt @ ${rideMid} bpm (Indoor)`, `${nf(kW.value)} <small>W</small>`, kW.delta != null ? `${kW.delta > 0 ? "▲ +" : kW.delta < 0 ? "▼ −" : "± "}${nf(Math.abs(kW.delta))} W zu den 4 Wochen davor` : `Median aus ${kW.n} Fahrten`)
-      : tile(`Watt @ ${rideMid} bpm (Indoor)`, "–", `${few(kW.n, ["Fahrt", "Fahrten"])}${lw ? `<br>zuletzt ${lw.v} W am ${fmtDate(parse(lw.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
+      ? tile(`Watt bei ${rideMid} bpm`, `${nf(kW.value)} <small>W</small>`, kW.delta != null ? `${kW.delta > 0 ? "▲ +" : kW.delta < 0 ? "▼ −" : "± "}${nf(Math.abs(kW.delta))} W zu den 4 Wochen davor` : `Median aus ${kW.n} Fahrten`)
+      : tile(`Watt bei ${rideMid} bpm`, "–", `${few(kW.n, ["Fahrt", "Fahrten"])}${lw ? `<br>zuletzt ${lw.v} W am ${fmtDate(parse(lw.date), { day: "2-digit", month: "2-digit" })}` : ""}`);
     // Kachel 3: Ø Entkopplung lange Läufe
     const since = parse(asOf).getTime() - cfg.longRunWindowDays * DAY;
     const decRecent = decRuns.filter((p) => parse(p.date).getTime() > since);
@@ -829,106 +838,25 @@
     const decAvg = decRecent.length ? decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length : null;
     setSum("zone2", [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null].filter(Boolean).length ? [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null] : "noch keine Auswertung");
 
-    // Chart 1: Pace @ HF
-    const toPts = (arr, kind) => arr.map((p) => ({ d: parse(p.date), v: p.v, rec: p.rec, kind,
-      hollow: kind === "run" ? p.rec.hrSrc !== "strap" : kind === "outdoor", gap: kind === "run" && !!(p.rec.pace && p.rec.pace.gap) }));
-    const roll = (arr) => Z.rollingMedian(arr, cfg.windowDays).map((p) => ({ d: parse(p.date), v: p.v }));
-    const recNote = (p) => `${esc(p.rec.name)}<br>${nf(p.rec.km, 1)} km in ${hm(p.rec.sec)} h${p.rec.pace ? `, ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? `, ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? ", steigungsbereinigt (GAP)" : ""}`;
-    trendChart($("#z2Pace"), toPts(pace, "run"), pace.length >= cfg.minPoints ? [{ pts: roll(pace) }] : [], {
-      invert: true, fmt: mmss, axis: (vs) => C.paceAxis(vs), color: "var(--run)", label: `Pace bei ${runMid} bpm`, unit: " pro km", minPoints: cfg.minPoints,
-      unitShort: "/km", select: (p) => ({ label: "Pace", value: hv(mmss(p.v), "/km"), period: tipDay(p.d), detail: recNote(p) }),
-    });
-    // Chart 2: Watt @ HF
-    trendChart($("#z2Watts"), toPts(wIn, "indoor").concat(toPts(wOut, "outdoor")),
-      [wIn.length >= cfg.minPoints ? { pts: roll(wIn) } : null, wOut.length >= cfg.minPoints ? { pts: roll(wOut), dash: true } : null].filter(Boolean), {
-        invert: false, fmt: (v) => nf(v), axis: (vs) => C.padAxis(vs), color: "var(--bike)", label: `Watt bei ${rideMid} bpm`, unit: " W", minPoints: cfg.minPoints,
-        unitShort: "W", select: (p) => ({ label: p.kind === "indoor" ? "Indoor" : "Outdoor", value: hv(p.v, "W"), period: tipDay(p.d), detail: recNote(p) }),
-      });
-    $("#z2OutMedian").hidden = wOut.length < cfg.minPoints;   // gestrichelte Outdoor-Linie nur mit genug Fahrten
-    // Chart 3: Entkopplung
-    decouplingChart($("#z2Dec"), Z.decouplingSeries(recs), cfg.decoupling.thresholds);
-    // Chart 4: Zonenverteilung
-    $("#z2ZoneLegend").innerHTML = C.legendItems(hrZ.map((z, i) => ({ color: ZCOL[i], label: `Z${i + 1} ${i === 0 ? "< " + hrZ[1][0] : z[1] == null ? "≥ " + z[0] : z[0] + "–" + z[1]}` })));
-    zoneChart();
-
     // Text der Karte „Zone 2 verbessern“
     const ins = $("#z2Insight p");
     if (ins) ins.innerHTML = Z.summary(recs, asOf, cfg, hrZ).map((t) => `<span class="z2-line">${esc(t)}</span>`).join("") + `<a href="#zone2">Details</a>`;
-    $("#z2Asof").textContent = `${all.length} Läufe & Fahrten seit ${fmtDate(parse(all[0].date))}, Stand ${fmtDate(parse(asOf))}${strapOnly ? ". Nur Brustgurt-Einheiten gewertet." : ""}`;
+    $("#z2Asof").textContent = `${all.length} Läufe & Fahrten seit ${fmtDate(parse(all[0].date))}, Stand ${fmtDate(parse(asOf))}${strapOnly ? ". Nur Brustgurt-Einheiten gewertet." : ""}. Tippe auf eine Kachel für Verlauf und Details.`;
     const withHr = all.filter((r) => r.hasHr), cnt = (k) => withHr.filter((r) => r.hrSrc === k).length;
-    $("#z2SrcStats").innerHTML = `<b>Pulsmesser erkannt:</b> ${cnt("strap")} × Brustgurt, ${cnt("wrist")} × Uhr, ${cnt("unknown")} × unbekannt (von ${withHr.length} Einheiten mit HF). ${HRSRC && HRSRC.updated ? `Garmin-Sensordaten Stand ${new Date(HRSRC.updated).toLocaleDateString("de-DE")}.` : "Noch keine Garmin-Sensordaten – der nächste Garmin-Lauf holt sie."}`;
+    const srcTxt = `Pulsmesser erkannt: ${cnt("strap")} × Brustgurt, ${cnt("wrist")} × Uhr, ${cnt("unknown")} × unbekannt (von ${withHr.length} Einheiten mit Puls). ${HRSRC && HRSRC.updated ? `Garmin-Sensordaten Stand ${new Date(HRSRC.updated).toLocaleDateString("de-DE")}.` : "Noch keine Garmin-Sensordaten, der nächste Garmin-Lauf holt sie."}`;
+    Z2S = { recs, all, runMid, rideMid, runBand, rideBand, srcTxt };   // für die Detailansichten
   }
-
-  // Einzelwerte als blasse Punkte, gleitender Median als Linie (Farbe der Sportart)
-  function trendChart(box, pts, lines, o) {
-    if (pts.length < 1) { noChart(box, "Noch keine gewerteten Einheiten."); return; }
-    const last = pts.reduce((a, p) => (p.d > a.d ? p : a), pts[0]);
-    const ax = o.axis(pts.map((p) => p.v));
-    const note = pts.length < o.minPoints ? `<p class="chart-note">Noch zu wenig Daten für einen Trend (${pts.length} von mind. ${o.minPoints} Werten).</p>` : "";
-    mount(box, (W) => {
-      box.innerHTML = C.lineChart({
-        width: W, height: C.LARGE, aria: `${o.label} über die Zeit, ${pts.length} Einheiten, zuletzt ${o.fmt(last.v)}${o.unit}`,
-        y: { ...ax, fmt: o.fmt, invert: o.invert },
-        series: lines.map((l) => ({ pts: l.pts, color: o.color, dash: l.dash, dots: false })),
-        scatter: pts.map((p) => ({ d: p.d, v: p.v, color: o.color, shape: p.gap ? "diamond" : p.hollow ? "hollow" : "dot", opacity: p.hollow ? 0.8 : 0.45 })),
-        latest: { d: last.d, v: last.v, label: o.fmt(last.v) }, hits: pts,
-      }) + note;
-      const med = lines.length ? lines[0].pts.filter((q) => q.v != null) : [];
-      const t0 = pts.reduce((a, p) => (p.d < a ? p.d : a), pts[0].d);
-      const summary = med.length ? { label: "Median 4 Wochen", value: hv(o.fmt(med[med.length - 1].v), o.unitShort), period: `${pts.length} Einheiten seit ${dmS(t0)}` }
-        : { label: "Zuletzt", value: hv(o.fmt(last.v), o.unitShort), period: tipDay(last.d) };
-      bindSel(box, { summary, select: (i) => o.select(pts[i]) });
-    });
-  }
+  // Tooltip-Zeilen einer Zone-2-Einheit (Name, Strecke, Zeit im Band, Pulsmesser)
+  const recNote = (p) => `${esc(p.rec.name)}<br>${nf(p.rec.km, 1)} km in ${hm(p.rec.sec)} h${p.rec.pace ? `, ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? `, ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? ", steigungsbereinigt (GAP)" : ""}`;
 
   const DEC_BAR = "color-mix(in srgb, var(--text) 30%, var(--surface))";   // neutral, Ampel nur als Punkt
-  function decouplingChart(box, list, thr) {
-    if (!list.length) { noChart(box, "Noch keine ruhigen langen Einheiten (Lauf ≥ 60 min, Rad ≥ 90 min mit echten Watt, ≥ 80 % in Z1–2)."); return; }
-    const items = list.slice().sort((a, b) => a.date.localeCompare(b.date)), vs = items.map((p) => p.v), last = items[items.length - 1];
-    const ax = C.zeroAxis(Math.max(thr[1], ...vs), { min: Math.min(0, ...vs), clamp: [-100, 100] });
-    const summary = { label: "Durchschnitt", value: hv(nf(mean(vs), 1), "%"), period: `${items.length} lange ${items.length === 1 ? "Einheit" : "Einheiten"} seit ${dmS(parse(items[0].date))}` };
-    const select = (i) => {
-      const p = items[i], r = p.rec, st = window.Z2.ampel(p.v, thr);
-      return { label: `Entkopplung, ${STATUS_TXT[st]}`, value: hv(nf(p.v, 1), "%"), period: tipDay(parse(p.date)),
-        detail: `${esc(r.name)}<br>${r.kind === "run" ? "Lauf" : "Rad"}, ${nf(r.km, 1)} km in ${hm(r.sec)} h<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? `, VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? ", GAP" : ""}` };
-    };
-    mount(box, (W) => {
-      box.innerHTML = C.barChart({
-        width: W, height: C.LARGE, minBands: 6, aria: `Entkopplung pro langer Einheit, ${items.length} Einheiten, zuletzt ${nf(last.v, 1)} %`,
-        y: { ...ax, fmt: tickFmt(ax, " %") }, refs: [{ v: thr[0], label: `Ziel < ${thr[0]} %` }, { v: thr[1], label: `${thr[1]} %` }],
-        bands: items.map((p) => ({ label: dmS(parse(p.date)), stacks: [{ v: p.v, color: DEC_BAR }], dot: STATUS_COL[window.Z2.ampel(p.v, thr)] })),
-      });
-      bindSel(box, { summary, select });
-    });
-  }
-
-  function zoneChart() {
-    const box = $("#z2Zones"), Z = window.Z2;
-    const recs = Z2DATA.activities.filter((r) => r.kind);
-    const weeksZ = Z.weeklyZones(recs, zoneFilter === "all" ? null : zoneFilter).slice(-16);
-    $("#z2ZoneFilter").querySelectorAll("button").forEach((c) => c.setAttribute("aria-pressed", c.dataset.f === zoneFilter));
-    if (!weeksZ.length) { noChart(box, "Keine Daten."); return; }
-    const tot = weeksZ.map((w) => w.sec.reduce((a, b) => a + b, 0));
-    const ax = C.zeroAxis(Math.max(...tot) / 3600), curMon = ymdLocal(monday(new Date()));
-    const summary = { label: "Ø pro Woche", value: hv(hm(mean(tot)), "h"), period: range(parse(weeksZ[0].week), addDays(parse(weeksZ[weeksZ.length - 1].week), 6)) };
-    const select = (i) => {
-      const w = weeksZ[i];
-      return { label: "Woche", value: hv(hm(tot[i]), "h"), period: range(parse(w.week), addDays(parse(w.week), 6)),
-        detail: selRows(w.sec.map((sec, z) => [ZCOL[z], "", `Z${z + 1} ${hm(sec)} (${tot[i] ? Math.round((sec / tot[i]) * 100) : 0} %)`]).filter((r, z) => w.sec[z] > 0)) };
-    };
-    mount(box, (W) => {
-      box.innerHTML = C.barChart({
-        width: W, height: C.LARGE, aria: `Zeit pro Herzfrequenzzone und Woche, ${weeksZ.length} Wochen, zuletzt ${hm(tot[tot.length - 1])} h`,
-        y: { ...ax, fmt: tickFmt(ax, " h") },
-        bands: weeksZ.map((w) => ({ label: dmS(parse(w.week)), current: w.week === curMon, stacks: w.sec.map((sec, z) => ({ v: sec / 3600, color: ZCOL[z] })) })),
-      });
-      bindSel(box, { summary, select });
-    });
-  }
-
 
   /* ---------- Gym-Tracker (js/gym.js) ---------- */
   const PLACE_COLORS = ["var(--cat1)", "var(--cat2)", "var(--cat3)", "var(--cat4)", "var(--cat5)", "var(--cat6)"];
+  // Orte → feste Farben in Reihenfolge des ersten Auftretens, „unbekannt“ grau
+  const GYM_PLACES = [];
+  GYM_SESS.forEach((x) => { const p = x.parsed && x.parsed.entry && x.parsed.place; if (p && !GYM_PLACES.includes(p)) GYM_PLACES.push(p); });
+  const placeColor = (p) => (p === "unbekannt" || !p ? "var(--other)" : PLACE_COLORS[GYM_PLACES.indexOf(p) % PLACE_COLORS.length]);
   function gymSection() {
     if (!GYM) { $("#gym").hidden = true; return; }
     const now = new Date(), todayIso = ymdLocal(now), mon = ymdLocal(monday(now));
@@ -939,15 +867,11 @@
       sub: `<div class="ht-split">${["Push", "Pull", "Legs"].map((k) => `<span><b>${wk[k]}</b>${k}</span>`).join("")}${wk.ohne ? `<span><b>${wk.ohne}</b>ohne Split</span>` : ""}</div>${wk.Legs ? "" : `<div class="ht-note">Noch kein Leg Day diese Woche.</div>`}`,
     });
 
-    // Orte → feste Farben in Reihenfolge des ersten Auftretens, „unbekannt“ grau
-    const places = [];
-    GYM_SESS.forEach((x) => { const p = x.parsed && x.parsed.entry && x.parsed.place; if (p && !places.includes(p)) places.push(p); });
-    const placeColor = (p) => (p === "unbekannt" || !p ? "var(--other)" : PLACE_COLORS[places.indexOf(p) % PLACE_COLORS.length]);
-
     const lifts = Object.entries(GCFG.mainExercise || GYM.DEFAULTS.mainExercise);
     $("#gymLifts").innerHTML = lifts.map(([split, ex]) => {
       const h = GYM.exerciseHistory(GYM_SESS, ex, GCFG);
       const gp = GYM.goalProgress(GYM_SESS, ex, GCFG);
+      const lm = MX ? MX.register(MX.liftMetric(ex, gp ? gp.goal : null)) : null;   // Detailansicht #training-1rm-…
       if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span></h3><p class="muted" style="margin:0;font-size:15px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg (geschätztes 1RM)</p>` : ""}</div>`;
       const last = h[h.length - 1];
       const scope = (GCFG.perPlace || []).includes(ex) ? h.filter((e) => e.place === last.place) : h;
@@ -955,8 +879,9 @@
       const set = (e) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${nf(e.weight, e.weight % 1 ? 1 : 0)} kg`;
       const machine = (GCFG.perPlace || []).includes(ex);
       const plan = GYM.liftPlan(GYM_SESS, ex, GCFG);
-      return `<div class="card lift">
-        <h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}${plan.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</h3>
+      const tag = lm ? "a" : "div";
+      return `<${tag} class="card lift${lm ? " tile-link" : ""}"${lm ? ` href="#${metricHash(lm)}"` : ""}>
+        <h3 class="lift-head"><span>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}${plan.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}${lm ? `<span class="sr-only">, 1RM-Verlauf und alle Einträge öffnen</span>` : ""}</span>${lm ? CHEV_R : ""}</h3>
         <div class="stats">
           <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} @${esc(last.place)}</small></div>
           <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
@@ -964,11 +889,8 @@
         </div>
         ${goalBar(gp)}
         ${goalBox(plan)}
-        <div class="chart" data-lift="${esc(ex)}"></div>
-        ${liftLegend(h, placeColor, machine)}
-      </div>`;
+      </${tag}>`;
     }).join("");
-    $("#gymLifts").querySelectorAll("[data-lift]").forEach((box) => { const gp = GYM.goalProgress(GYM_SESS, box.dataset.lift, GCFG); liftChart(box, GYM.exerciseHistory(GYM_SESS, box.dataset.lift, GCFG), placeColor, gp ? gp.goal : null); });
 
     // Split-Verteilung der letzten 4 Wochen
     const c4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), todayIso);
@@ -1017,38 +939,13 @@
     return `<div class="lift-goal">${head}${body}</div>${p.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}`;
   }
 
-  // Legende unter dem 1RM-Diagramm: Orte nur, wenn es mehrere gibt (dann farbige Punkte), PR-Ring
+  // Legende unter dem 1RM-Diagramm (Detailansicht): Orte nur, wenn es mehrere gibt (dann farbige Punkte), PR-Ring
   function liftLegend(h, placeColor, machine) {
     const places = [...new Set(h.map((e) => e.place))];
     const items = (places.length > 1 ? places.map((p) => ({ label: p, color: placeColor(p), shape: "dot" })) : [])
       .concat(h.some((e) => e.pr) ? [{ label: "PR", color: "var(--good)", shape: "ring" }] : []);
     return items.length || machine ? C.legend(items, machine ? `<span class="muted">PR nur am selben Ort</span>` : "") : "";
   }
-  function liftChart(box, hist, placeColor, goal) {
-    const pts = hist.map((e) => ({ d: parse(e.date), v: e.e1rm, e })), byDate = (a, b) => a.d - b.d;
-    const ax = C.padAxis(pts.map((p) => p.v), { include: goal ? [goal] : [] });   // Ziel immer im sichtbaren Bereich
-    const last = pts.reduce((a, p) => (p.d >= a.d ? p : a), pts[0]);
-    const places = [...new Set(pts.map((p) => p.e.place))], multi = places.length > 1;
-    // Ein Ort oder ortsübergreifend verglichen: eine neutrale Linie; sonst Linie je Ort (Maschinen nicht verbinden) + farbige Punkte
-    const series = !multi || pts.every((p) => p.e.compareKey === "alle")
-      ? [{ pts: pts.slice().sort(byDate), color: "var(--text-2)", dots: !multi }]
-      : places.map((pl) => ({ pts: pts.filter((p) => p.e.place === pl).sort(byDate), color: placeColor(pl), dots: false }));
-    const aria = `Geschätztes 1RM ${box.dataset.lift || ""}, ${pts.length} ${pts.length === 1 ? "Eintrag" : "Einträge"}, aktuell ${nf(last.v)} kg${goal ? `, Ziel ${nf(goal)} kg` : ""}`;
-    mount(box, (W) => {
-      box.innerHTML = C.lineChart({
-        width: W, height: C.SMALL, aria, y: { ...ax, fmt: tickFmt(ax) }, series,
-        scatter: multi ? pts.map((p) => ({ d: p.d, v: p.v, color: placeColor(p.e.place), shape: "dot", r: 3.5 })) : [],
-        marks: pts.filter((p) => p.e.pr).map((p) => ({ d: p.d, v: p.v, color: "var(--good)" })),
-        refs: goal ? [{ v: goal, label: `Ziel ${nf(goal)}` }] : [],
-        latest: { d: last.d, v: last.v, label: nf(last.v) }, hits: pts,
-      });
-      bindSel(box, {
-        summary: { label: "1RM aktuell", value: hv(nf(last.v), "kg"), period: goal ? `Ziel ${nf(goal)} kg` : `${pts.length} ${pts.length === 1 ? "Eintrag" : "Einträge"}` },
-        select: (i) => { const p = pts[i]; return { label: p.e.pr ? "1RM, PR" : "1RM", value: hv(nf(p.v, 1), "kg"), period: `${tipDay(p.d)} @${esc(p.e.place)}`, detail: setTxt(p.e) }; },
-      });
-    });
-  }
-
 
   /* ---------- Trainingskalender (js/calendar.js) ---------- */
   const WD_LONG = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
@@ -1544,6 +1441,8 @@
       bindSel(box, { summary, select: (i) => wk(weeks[i]), pick: (i) => { wkOffset = weeks.length - 1 - i; renderWeek(now); } });
     });
   }
+  // Zeile zur Detailansicht Trainingsbelastung (Wochensummen, akut/chronisch)
+  const loadLink = () => (MX && MX.byKey.belastung ? `<ul class="ios-list ic wk-link"><li><a class="ios-row" href="#${metricHash(MX.byKey.belastung)}">${rowIcon("activity")}<span class="row-main"><span class="row-title">Trainingsbelastung</span><span class="row-sub">Alle Wochen und akut/chronisch</span></span>${CHEV_R}</a></li></ul>` : "");
   function loadBlock(s) {
     const L = s.load;
     if (!L) return G.loads ? "" : `<div class="mini-title">Belastung (Garmin)</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
@@ -1556,7 +1455,7 @@
       ${C.legend(LOAD_ORDER.slice().reverse().map((k) => ({ label: LOAD_LABEL[k], color: LOAD_COLORS[k] })))}
       ${ac}
       ${L.withoutLoad ? `<p class="muted wk-note">${L.withoutLoad} ${L.withoutLoad === 1 ? "Einheit" : "Einheiten"} ohne Belastungswert</p>` : ""}
-      <p class="muted wk-note">Garmin berechnet die Belastung aus dem Puls. Krafttraining wird dabei nur schwach abgebildet.</p>`;
+      ${loadLink()}`;
   }
 
   /* ---------- Zuletzt gemacht (Flex.sinceLast) ---------- */
@@ -1598,79 +1497,302 @@
   const CAT_COLOR = { heart: "var(--heart)", sleep: "var(--sleep)", activity: "var(--bike)", body: "var(--body)", run: "var(--run)", bike: "var(--bike)", swim: "var(--swim)", strength: "var(--strength)", other: "var(--other)" };
   const metricHash = (m) => `${m.tab}-${m.key}`;
   const metricOfHash = (id) => (MX && id ? MX.REGISTRY.find((m) => metricHash(m) === id) || null : null);
-  const hmVal = (h) => { let H = Math.floor(h), Mi = Math.round((h - H) * 60); if (Mi === 60) { H++; Mi = 0; } return `${H}<small>h</small> ${Mi}<small>min</small>`; };
-  const mVal = (m, v) => (v == null ? "–" : m.fmt === "hm" ? hmVal(v) : hv(nf(v, m.decimals || 0), m.unit));
-  const mTxt = (m, v) => (v == null ? "–" : m.fmt === "hm" ? `${hm(v * 3600)} h` : `${nf(v, m.decimals || 0)}${m.unit ? " " + m.unit : ""}`);
   const dShort = (iso) => fmtDate(parse(iso), { day: "numeric", month: "short" });
   const dWeek = (iso) => fmtDate(parse(iso), { weekday: "short", day: "numeric", month: "short" });
   const wLabel = (w) => (w.from === w.to ? dShort(w.from) : `${dShort(w.from)} – ${dShort(w.to)}`);
-  const md = { key: null, period: null, pushed: false, opener: null };
+  const md = { key: null, period: null, pushed: false, opener: null, zf: "all" };
+  let Z2S = null, Z2FAIL = false;   // Zone-2-Auswertung für die Detailansichten (setzt renderZone2)
+  const byDate = (a, b) => a.date.localeCompare(b.date);
+  const PER = { day: ["Tag", "Tage"], week: ["Woche", "Wochen"], run: ["Lauf", "Läufe"], ride: ["Fahrt", "Fahrten"], session: ["Einheit", "Einheiten"], entry: ["Eintrag", "Einträge"] };
+  const perTxt = (m, n) => `${n} ${(PER[m.per] || PER.day)[n === 1 ? 0 : 1]}`;
+  const when = (m, iso) => (m.per === "week" ? `Woche ab ${dShort(iso)}` : dWeek(iso));
+  const placeTxt = (p) => (!p || p === "unbekannt" ? "Ort unbekannt" : `@${esc(p)}`);
   const metricSeries = (m) => MX.series(gDays, m.field);
+  const metricName = (m) => (Z2S && m.source === "z2pace" ? `Pace bei ${Z2S.runMid} bpm` : Z2S && m.source === "z2watts" ? `Watt bei ${Z2S.rideMid} bpm` : m.name);
   // Mini-Linie der letzten 7 Tage für die großen Kacheln (ohne Achsen)
   const spark7 = (m) => C.sparkline(MX.daily(metricSeries(m), MX.windowOf("7", ymdLocal(new Date()))).map((p) => p.v), { color: CAT_COLOR[m.cat] || "var(--text-2)" });
+  // Garmin-Belastung je Woche seit Beginn der Belastungsdaten: abgeschlossene Wochen (Statistik) und die laufende Woche
+  function loadWeekPts() {
+    if (!WK || !G.loads || !G.loadsSince) return { done: [], cur: null };
+    const now = new Date(), thisMon = monday(now), n = Math.round((thisMon - monday(parse(G.loadsSince))) / (7 * DAY)) + 1;
+    const all = WK.loadWeeks({ garminLoads: G.loads, acts, gymSessions: GYM_VIEW, today: now, weeks: Math.max(1, n) }).reverse()
+      .filter((w) => w.monday >= G.loadsSince).map((w) => ({ date: w.monday, v: w.total, w }));   // erste Woche nur, wenn sie ganz erfasst ist
+    const cur = ymdLocal(thisMon);
+    return { done: all.filter((p) => p.date < cur), cur: all.find((p) => p.date === cur) || null };
+  }
+  // Punkte einer Kennzahl [{ date, v, … }] aufsteigend; null = Zone-2-Daten noch nicht da
+  function metricPoints(m) {
+    const Z = window.Z2;
+    if (/^z2/.test(m.source || "") && !Z2S) return null;
+    switch (m.source) {
+      case "z2pace": return Z.paceSeries(Z2S.recs).sort(byDate);
+      case "z2watts": return Z.wattSeries(Z2S.recs, true).sort(byDate);
+      case "z2dec": return Z.decouplingSeries(Z2S.recs).sort(byDate);
+      case "z2zones": return Z.weeklyZones(Z2S.all, md.zf === "all" ? null : md.zf).map((w) => {
+        const tot = w.sec.reduce((a, b) => a + b, 0), z12 = w.sec[0] + w.sec[1];
+        return { date: w.week, v: tot ? (z12 / tot) * 100 : null, z12, tot, sec: w.sec };
+      }).filter((p) => p.tot > 0);
+      case "lift": return GYM ? GYM.exerciseHistory(GYM_SESS, m.exercise, GCFG).map((e) => ({ date: e.date, v: e.e1rm, e })).sort(byDate) : [];
+      case "weekload": return loadWeekPts().done;
+      default: return metricSeries(m);
+    }
+  }
+  // Zusatz zum „Über diese Werte“-Text aus den aktuellen Daten (Pulsband, erkannte Pulsmesser, Zonengrenzen)
+  function aboutExtra(m) {
+    if (!Z2S) return "";
+    if (m.source === "z2pace") return ` Pulsband: ${Z2S.runBand[0]}–${Z2S.runBand[1]} bpm. ${Z2S.srcTxt}`;
+    if (m.source === "z2watts") return ` Pulsband: ${Z2S.rideBand[0]}–${Z2S.rideBand[1]} bpm.`;
+    if (m.source === "z2zones") return ` Zonen: ${D.zones.hr.map((z, i) => `Z${i + 1} ${i === 0 ? "unter " + D.zones.hr[1][0] : z[1] == null ? "ab " + z[0] : z[0] + "–" + z[1]}`).join(", ")} bpm.`;
+    return "";
+  }
+  const hmVal = (h) => { let H = Math.floor(h), Mi = Math.round((h - H) * 60); if (Mi === 60) { H++; Mi = 0; } return `${H}<small>h</small> ${Mi}<small>min</small>`; };
+  const mVal = (m, v) => (v == null ? "–" : m.fmt === "hm" ? hmVal(v) : m.fmt === "pace" ? hv(mmss(v), m.unit) : hv(nf(v, m.decimals || 0), m.unit));
+  const mTxt = (m, v) => (v == null ? "–" : m.fmt === "hm" ? `${hm(v * 3600)} h` : m.fmt === "pace" ? `${mmss(v)} ${m.unit}` : `${nf(v, m.decimals || 0)}${m.unit ? " " + m.unit : ""}`);
+  // Veränderung mit Pfeil; Pace: kleiner = schneller = oben im Diagramm (↑)
+  function diffTxt(m, ch) {
+    if (!ch) return "–";
+    const eps = m.fmt === "hm" ? 1 / 120 : 0.5 / 10 ** (m.decimals || 0), d = Math.abs(ch.diff) < eps ? 0 : ch.diff, abs = mTxt(m, Math.abs(d));
+    if (!d) return `→ ±${abs}`;
+    if (m.invert) return `${d < 0 ? "↑" : "↓"} ${abs} ${d < 0 ? "schneller" : "langsamer"}`;
+    return `${d > 0 ? "↑ +" : "↓ −"}${abs}`;
+  }
+  const bandOf = (m) => { const d = gDays[gDays.length - 1] || {}; return m.band && Number.isFinite(d[m.band[0]]) && Number.isFinite(d[m.band[1]]) ? { from: d[m.band[0]], to: d[m.band[1]], color: CAT_COLOR[m.cat] } : null; };
+  const zoneFilterHtml = () => `<div class="segmented md-filter" role="group" aria-label="Sportart">${[["all", "Alle"], ["run", "Laufen"], ["ride", "Rad"]].map(([k, l]) => `<button type="button" data-zf="${k}" aria-pressed="${md.zf === k}">${l}</button>`).join("")}</div>`;
+
   function renderMetric() {
     const m = MX.byKey[md.key];
     if (!m) return;
-    const today = ymdLocal(new Date()), pts = metricSeries(m), periods = MX.availablePeriods(pts, today);
-    if (!periods.includes(md.period)) md.period = periods.includes("30") ? "30" : periods[0] || null;
-    $("#mdTitle").innerHTML = `<span class="md-ic c-${m.cat}">${icon(m.cat, 20)}</span><span class="md-name c-${m.cat}">${esc(m.name)}</span>`;
-    const body = $("#mdBody"), about = `<p class="md-about"><b>Über diese Werte</b><br>${esc(m.about)}</p>`;
-    if (!md.period) { body.innerHTML = C.empty("Noch keine Daten.") + about; return; }
-    const w = MX.windowOf(md.period, today, pts[0].date), inW = MX.inWindow(pts, w), st = MX.stats(inW);
-    const ch = MX.change(pts, w, m.summary, md.period), value = MX.summarize(inW, m.summary), pw = MX.previousWindow(w);
-    const arrow = ch ? (ch.diff > 0 ? "↑" : ch.diff < 0 ? "↓" : "→") : "";
-    const diffTxt = ch ? `${arrow} ${ch.diff > 0 ? "+" : ch.diff < 0 ? "−" : "±"}${mTxt(m, Math.abs(ch.diff))}` : "–";
-    const lastDay = gDays[gDays.length - 1] || {};
-    const hasBand = m.band && Number.isFinite(lastDay[m.band[0]]) && Number.isFinite(lastDay[m.band[1]]);
-    const legend = m.field2 ? C.legend([{ label: m.name1, color: CAT_COLOR[m.cat], shape: "line" }, { label: m.name2, color: "var(--text-2)", shape: "dash" }])
-      : hasBand ? C.legend([{ label: "Normalbereich laut Garmin", color: CAT_COLOR[m.cat], opacity: 0.3 }]) : "";
+    $("#mdTitle").innerHTML = `<span class="md-ic c-${m.cat}">${icon(m.cat, 20)}</span><span class="md-name c-${m.cat}">${esc(metricName(m))}</span>`;
+    const body = $("#mdBody"), about = `<p class="md-about"><b>Über diese Werte</b><br>${esc(m.about + aboutExtra(m))}</p>`;
+    const pts = metricPoints(m);
+    if (pts == null) { body.innerHTML = C.empty(Z2FAIL ? "Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite)." : "Zone-2-Daten werden geladen …") + about; return; }
+    const today = ymdLocal(new Date()), periods = MX.availablePeriods(pts, today, m.periods || null);
+    if (!periods.includes(md.period)) md.period = MX.defaultPeriod(m, periods);
+    const filter = m.chart === "zones" ? zoneFilterHtml() : "";
+    if (!md.period) { body.innerHTML = filter + C.empty("Noch keine Daten.") + about; bindDetail(body); return; }
+    const w = MX.windowOf(md.period, today, pts[0].date), inW = MX.inWindow(pts, w);
+    const c = { m, pts, w, inW, st: MX.stats(inW), value: MX.summarizeMetric(m, inW), ch: MX.change(pts, w, m, md.period), pw: MX.previousWindow(w) };
     body.innerHTML = `
       <div class="segmented seg-wide md-periods" role="group" aria-label="Zeitraum">${MX.PERIODS.filter((p) => periods.includes(p.key)).map((p) => `<button type="button" data-period="${p.key}" aria-pressed="${p.key === md.period}">${p.label}</button>`).join("")}</div>
-      <div class="chart md-chart" id="mdChart"></div>${legend}
-      <div class="card list-card md-stats"><ul class="ios-list">
-        ${irow({ title: "Durchschnitt", sub: `${st.n} ${st.n === 1 ? "Tag" : "Tage"} mit Daten`, val: `<b>${mVal(m, st.avg)}</b>` })}
-        ${irow({ title: "Minimum", sub: dWeek(st.minAt), val: `<b>${mVal(m, st.min)}</b>` })}
-        ${irow({ title: "Maximum", sub: dWeek(st.maxAt), val: `<b>${mVal(m, st.max)}</b>` })}
-        ${irow({ title: "Veränderung", sub: ch ? `zum Vorzeitraum ${wLabel(pw)}` : md.period === "all" ? "bei „Alle“ kein Vorzeitraum" : "keine Daten im Vorzeitraum", val: `<b>${diffTxt}</b>` })}
-        ${irow({ title: "Letzter Wert", sub: dWeek(st.lastDate), val: `<b>${mVal(m, st.last)}</b>` })}
-      </ul></div>${about}`;
-    body.querySelectorAll("[data-period]").forEach((b) => b.addEventListener("click", () => {
-      md.period = b.dataset.period; renderMetric();
-      const again = $(`#mdBody [data-period="${md.period}"]`); if (again) again.focus({ preventScroll: true });
-    }));
-    drawMetricChart(m, pts, w, value, hasBand ? { from: lastDay[m.band[0]], to: lastDay[m.band[1]], color: CAT_COLOR[m.cat] } : null);
+      ${filter}<div class="chart md-chart" id="mdChart"></div>${legendHtml(c)}${statsHtml(c)}${extraHtml(c)}${about}`;
+    bindDetail(body);
+    drawMetricChart(c);
+  }
+  function bindDetail(body) {
+    const again = (sel) => { const b = $(`#mdBody ${sel}`); if (b) b.focus({ preventScroll: true }); };
+    body.querySelectorAll("[data-period]").forEach((b) => b.addEventListener("click", () => { md.period = b.dataset.period; renderMetric(); again(`[data-period="${md.period}"]`); }));
+    body.querySelectorAll("[data-zf]").forEach((b) => b.addEventListener("click", () => { md.zf = b.dataset.zf; renderMetric(); again(`[data-zf="${md.zf}"]`); }));
+  }
+  // Zone-2-Punkte im Zeitraum (Outdoor-Fahrten hohl) und gleitende Mediane; einmal je Darstellung berechnet
+  function scatterData(c) {
+    if (c._sd) return c._sd;
+    const { m, pts, w, inW } = c, Z = window.Z2, cfg = window.TRAINING.z2, pace = m.fmt === "pace", inWin = (p) => p.date >= w.from && p.date <= w.to;
+    const outAll = m.source === "z2watts" ? Z.wattSeries(Z2S.recs, false).sort(byDate) : [];   // Outdoor: nicht in der Statistik
+    const toP = (p, outdoor) => ({ d: parse(p.date), v: p.v, date: p.date, rec: p.rec, outdoor, gap: pace && !!(p.rec.pace && p.rec.pace.gap), hollow: pace ? p.rec.hrSrc !== "strap" : outdoor });
+    const roll = (arr) => (arr.length >= cfg.minPoints ? Z.rollingMedian(arr, cfg.windowDays).filter(inWin).map((p) => ({ d: parse(p.date), v: p.v })) : []);
+    c._sd = { pace, toP, sp: inW.map((p) => toP(p, false)).concat(outAll.filter(inWin).map((p) => toP(p, true))).sort((a, b) => a.d - b.d), med: roll(pts), medOut: roll(outAll) };
+    return c._sd;
+  }
+  function legendHtml(c) {
+    const { m, inW } = c, color = CAT_COLOR[m.cat];
+    switch (m.chart) {
+      case "scatter": {   // nur, was im Diagramm zu sehen ist
+        const { sp, med, medOut } = scatterData(c), has = (f) => sp.some(f);
+        if (m.source === "z2pace") {
+          return C.legend([
+            has((p) => !p.gap && !p.hollow) && { label: "Brustgurt", color, shape: "dot", opacity: 0.45 },
+            has((p) => !p.gap && p.hollow) && { label: "Uhr / unbekannt", color, shape: "hollow" },
+            has((p) => p.gap) && { label: "GAP (hügelig)", color, shape: "diamond", opacity: 0.45 },
+            med.length > 1 && { label: "Median 4 Wochen", color, shape: "line" },
+          ].filter(Boolean), `<span class="muted">schneller = oben</span>`);
+        }
+        return C.legend([
+          has((p) => !p.outdoor) && { label: "Indoor (Zwift)", color, shape: "dot", opacity: 0.45 },
+          has((p) => p.outdoor) && { label: "Outdoor", color, shape: "hollow" },
+          med.length > 1 && { label: "Median Indoor", color, shape: "line" },
+          medOut.length > 1 && { label: "Median Outdoor", color, shape: "dash" },
+        ].filter(Boolean));
+      }
+      case "dec": return C.legend([{ label: "unter 5 %", color: "var(--good)", shape: "dot" }, { label: "5–10 %", color: "var(--warn)", shape: "dot" }, { label: "über 10 %", color: "var(--bad)", shape: "dot" }]);
+      case "zones": return C.legend(D.zones.hr.map((z, i) => ({ color: ZCOL[i], label: `Z${i + 1}` })));
+      case "lift": return liftLegend(inW.map((p) => p.e), placeColor, (GCFG.perPlace || []).includes(m.exercise));
+      case "weekload": return C.legend(LOAD_ORDER.slice().reverse().map((k) => ({ label: LOAD_LABEL[k], color: LOAD_COLORS[k] })));
+      default:
+        if (m.field2) return C.legend([{ label: m.name1, color, shape: "line" }, { label: m.name2, color: "var(--text-2)", shape: "dash" }]);
+        return bandOf(m) ? C.legend([{ label: "Normalbereich laut Garmin", color, opacity: 0.3 }]) : "";
+    }
+  }
+  // Gruppierte Statistik: Durchschnitt/Median, Minimum, Maximum, Veränderung, letzter Wert (1RM: Bestwert, letzter Eintrag, Ziel)
+  function statsHtml(c) {
+    const { m, inW, st, value, ch, pw } = c, b = (x) => `<b>${x}</b>`;
+    const chRow = irow({ title: "Veränderung", sub: ch ? `zum Vorzeitraum ${wLabel(pw)}` : md.period === "all" ? "bei „Alle“ kein Vorzeitraum" : "keine Daten im Vorzeitraum", val: b(diffTxt(m, ch)) });
+    let rows;
+    if (m.chart === "lift") {
+      const es = inW.map((p) => p.e), best = es.reduce((a, e) => (e.e1rm > a.e1rm ? e : a), es[0]), last = es[es.length - 1];
+      const gp = GYM.goalProgress(GYM_SESS, m.exercise, GCFG);
+      rows = [
+        irow({ title: "Bestes 1RM", sub: `${dWeek(best.date)} · ${setTxt(best)} ${placeTxt(best.place)}`, val: b(mVal(m, best.e1rm)) }),
+        irow({ title: "Letzter Eintrag", sub: `${dWeek(last.date)} · ${setTxt(last)} ${placeTxt(last.place)}`, val: b(mVal(m, last.e1rm)) }),
+        gp ? irow({ title: "Ziel", sub: gp.current == null ? "noch kein Eintrag" : gp.reached ? "erreicht" : `${gp.pct} % erreicht${gp.perPlace && gp.place ? ` in ${esc(gp.place)}` : ""}`, val: b(hv(nf(gp.goal), "kg")) }) : "",
+        chRow,
+      ];
+    } else {
+      let first = ["Durchschnitt", st.avg], sub = `${perTxt(m, st.n)}${m.per ? "" : " mit Daten"}`;
+      if (m.summary === "median") first = ["Median", st.median];
+      if (m.aggregate) {
+        const tot = inW.reduce((a, p) => a + p.tot, 0), z = (i) => inW.reduce((a, p) => a + i.reduce((s, k) => s + p.sec[k], 0), 0);
+        first = [m.summaryLabel, value];
+        sub = `${hm(tot)} h in ${perTxt(m, st.n)} · Z3 ${Math.round((z([2]) / tot) * 100)} %, Z4–5 ${Math.round((z([3, 4]) / tot) * 100)} %`;
+      }
+      if (m.chart === "weekload") sub = `${perTxt(m, st.n)}, nur abgeschlossene`;
+      const [lo, hi] = m.invert ? ["Schnellste", "Langsamste"] : ["Minimum", "Maximum"];
+      rows = [
+        irow({ title: first[0], sub, val: b(mVal(m, first[1])) }),
+        irow({ title: lo, sub: when(m, st.minAt), val: b(mVal(m, st.min)) }),
+        irow({ title: hi, sub: when(m, st.maxAt), val: b(mVal(m, st.max)) }),
+        chRow,
+        irow({ title: m.chart === "weekload" ? "Letzte Woche" : m.per === "week" ? "Neueste Woche" : "Letzter Wert", sub: when(m, st.lastDate), val: b(mVal(m, st.last)) }),
+      ];
+      const cur = m.chart === "weekload" ? loadWeekPts().cur : null;
+      if (cur) rows.push(irow({ title: "Diese Woche", sub: "läuft noch", val: b(cur.w.n ? mVal(m, cur.v) : "–") }));
+    }
+    return `<div class="card list-card md-stats"><ul class="ios-list">${rows.join("")}</ul></div>`;
+  }
+  // Unter der Statistik: 1RM → alle Einträge (neueste zuerst); Belastung → akut/chronisch
+  function extraHtml(c) {
+    const { m, pts } = c;
+    if (m.chart === "lift") {
+      return `<h3 class="md-sub">Alle Einträge <span class="md-count">${pts.length}</span></h3>
+        <div class="card list-card md-entries"><ul class="ios-list">${pts.slice().reverse().map((p) => irow({
+          title: `${dWeek(p.date)}${p.e.pr ? ` <span class="badge good">PR</span>` : ""}`, sub: `${setTxt(p.e)} ${placeTxt(p.e.place)}`, val: `<b>${mVal(m, p.v)}</b>` })).join("")}</ul></div>`;
+    }
+    if (m.chart === "weekload") {
+      return `<h3 class="md-sub">Akut und chronisch</h3><div class="chart md-chart" id="mdChart2"></div>
+        ${C.legend([{ label: "akut (7 Tage)", color: CAT_COLOR[m.cat], shape: "line" }, { label: "chronisch (28 Tage)", color: "var(--text-2)", shape: "dash" }])}`;
+    }
+    return "";
   }
   // Diagramm erst beim Öffnen zeichnen (dann ist die echte Breite bekannt)
-  function drawMetricChart(m, pts, w, value, band) {
-    const box = $("#mdChart"), color = CAT_COLOR[m.cat] || "var(--text-2)", refs = m.refs || [];
-    const summary = { label: MX.SUMMARY_LABEL[m.summary], value: mVal(m, value), period: wLabel(w) };
-    const aria = `${m.name}, ${wLabel(w)}: ${summary.label} ${mTxt(m, value)}`;
-    if (m.chart === "bar") {
-      const dl = MX.daily(pts, w), ax = MX.axis(m, dl.map((p) => p.v).concat(refs.map((r) => r.v)));
-      mount(box, (W) => {
-        box.innerHTML = C.barChart({ width: W, height: C.LARGE, aria, refs, maxBar: 14, y: { ...ax, fmt: tickFmt(ax, m.fmt === "hm" ? " h" : "") },
-          bands: dl.map((p) => ({ label: dmS(parse(p.date)), stacks: p.v == null ? [] : [{ v: p.v, color }] })) });
-        bindScrub(box, { summary, select: (i) => ({ label: dl[i].v == null ? "Keine Daten" : m.name, value: dl[i].v == null ? "–" : mVal(m, dl[i].v), period: dWeek(dl[i].date) }) });
-      });
-      return;
-    }
-    const inW = MX.inWindow(pts, w).map((p) => ({ d: parse(p.date), v: p.v, date: p.date }));
-    const sec = m.field2 ? MX.inWindow(MX.series(gDays, m.field2), w).map((p) => ({ d: parse(p.date), v: p.v })) : [];
-    const ax = MX.axis(m, inW.map((p) => p.v).concat(sec.map((p) => p.v), refs.map((r) => r.v), band ? [band.from, band.to] : []));
-    const v2 = new Map(sec.map((p) => [+p.d, p.v])), last = inW[inW.length - 1];
-    mount(box, (W) => {
-      box.innerHTML = C.lineChart({ width: W, height: C.LARGE, aria, band, refs, y: { ...ax, fmt: tickFmt(ax) },
-        series: [{ pts: inW, color }].concat(sec.length ? [{ pts: sec, color: "var(--text-2)", dash: true, dots: false }] : []),
-        latest: last ? { d: last.d, v: last.v, label: nf(last.v, m.decimals || 0) } : null, hits: inW });
-      bindScrub(box, { summary, select: (i) => {
-        const p = inW[i], b = v2.get(+p.d);
-        return { label: m.field2 ? `${m.name1}${b != null ? `, ${m.name2} ${nf(b)}` : ""}` : m.name, value: mVal(m, p.v), period: dWeek(p.date) };
-      } });
-    });
+  function drawMetricChart(c) {
+    const { m, w, value } = c;
+    const summary = { label: m.summaryLabel || MX.SUMMARY_LABEL[m.summary], value: mVal(m, value), period: wLabel(w) };
+    const o = { color: CAT_COLOR[m.cat] || "var(--text-2)", refs: m.refs || [], summary, aria: `${metricName(m)}, ${wLabel(w)}: ${summary.label} ${mTxt(m, value)}` };
+    (DRAW[m.chart] || DRAW.line)($("#mdChart"), c, o);
   }
+  const xr = (w) => [parse(w.from), parse(w.to)];   // x-Achse über den ganzen Zeitraum
+  const DRAW = {
+    // Tageswerte als Balken (Schlaf, Schritte), fehlende Tage leer
+    bar(box, { m, pts, w }, o) {
+      const dl = MX.daily(pts, w), ax = MX.axis(m, dl.map((p) => p.v).concat(o.refs.map((r) => r.v)));
+      mount(box, (W) => {
+        box.innerHTML = C.barChart({ width: W, height: C.LARGE, aria: o.aria, refs: o.refs, maxBar: 14, y: { ...ax, fmt: tickFmt(ax, m.fmt === "hm" ? " h" : "") },
+          bands: dl.map((p) => ({ label: dmS(parse(p.date)), stacks: p.v == null ? [] : [{ v: p.v, color: o.color }] })) });
+        bindScrub(box, { summary: o.summary, select: (i) => ({ label: dl[i].v == null ? "Keine Daten" : m.name, value: dl[i].v == null ? "–" : mVal(m, dl[i].v), period: dWeek(dl[i].date) }) });
+      });
+    },
+    // Tageswerte als Linie, optional zweite Reihe (gestrichelt), Normalbereich und Ziel-/Schwellenlinien
+    line(box, { m, w, inW: raw }, o) {
+      const band = bandOf(m), inW = raw.map((p) => ({ d: parse(p.date), v: p.v, date: p.date }));
+      const sec = m.field2 ? MX.inWindow(MX.series(gDays, m.field2), w).map((p) => ({ d: parse(p.date), v: p.v })) : [];
+      const ax = MX.axis(m, inW.map((p) => p.v).concat(sec.map((p) => p.v), o.refs.map((r) => r.v), band ? [band.from, band.to] : []));
+      const v2 = new Map(sec.map((p) => [+p.d, p.v])), last = inW[inW.length - 1];
+      mount(box, (W) => {
+        box.innerHTML = C.lineChart({ width: W, height: C.LARGE, aria: o.aria, band, refs: o.refs, y: { ...ax, fmt: tickFmt(ax) }, xRange: xr(w),
+          series: [{ pts: inW, color: o.color }].concat(sec.length ? [{ pts: sec, color: "var(--text-2)", dash: true, dots: false }] : []),
+          latest: last ? { d: last.d, v: last.v, label: nf(last.v, m.decimals || 0) } : null, hits: inW });
+        bindScrub(box, { summary: o.summary, select: (i) => {
+          const p = inW[i], b = v2.get(+p.d);
+          return { label: m.field2 ? `${m.name1}${b != null ? `, ${m.name2} ${nf(b)}` : ""}` : m.name, value: mVal(m, p.v), period: dWeek(p.date) };
+        } });
+      });
+    },
+    // Zone 2: Einzelwerte als blasse Punkte, gleitender Median (4 Wochen) als Linie; Pace mit schneller = oben
+    scatter(box, c, o) {
+      const { m, w, inW } = c, { pace, toP, sp, med, medOut } = scatterData(c), fmt = pace ? mmss : (v) => nf(v);
+      const ax = pace ? C.paceAxis(sp.map((p) => p.v)) : C.padAxis(sp.map((p) => p.v));
+      const last = inW.length ? toP(inW[inW.length - 1], false) : null;
+      mount(box, (W) => {
+        box.innerHTML = C.lineChart({ width: W, height: C.LARGE, aria: o.aria, y: { ...ax, fmt: pace ? mmss : tickFmt(ax), invert: !!m.invert }, xRange: xr(w),
+          series: [{ pts: med, color: o.color, dots: false }, { pts: medOut, color: o.color, dash: true, dots: false }].filter((s) => s.pts.length > 1),
+          scatter: sp.map((p) => ({ d: p.d, v: p.v, color: o.color, shape: p.gap ? "diamond" : p.hollow ? "hollow" : "dot", opacity: p.hollow ? 0.8 : 0.45 })),
+          latest: last ? { d: last.d, v: last.v, label: fmt(last.v) } : null, hits: sp });
+        bindScrub(box, { summary: o.summary, select: (i) => { const p = sp[i]; return { label: pace ? (p.gap ? "Pace (GAP)" : "Pace") : p.outdoor ? "Outdoor" : "Indoor", value: mVal(m, p.v), period: dWeek(p.date), detail: recNote(p) }; } });
+      });
+    },
+    // Entkopplung je langer Einheit: neutrale Balken, Ampel als Punkt, Schwellen als Linien
+    dec(box, { m, inW }, o) {
+      const Z = window.Z2, thr = window.TRAINING.z2.decoupling.thresholds, vs = inW.map((p) => p.v);
+      const ax = C.zeroAxis(Math.max(thr[1], ...vs), { min: Math.min(0, ...vs), clamp: [-100, 100] });
+      mount(box, (W) => {
+        box.innerHTML = C.barChart({ width: W, height: C.LARGE, minBands: 6, maxBar: 14, aria: o.aria, y: { ...ax, fmt: tickFmt(ax, " %") },
+          refs: [{ v: thr[0], label: `Ziel < ${thr[0]} %` }, { v: thr[1], label: `${thr[1]} %` }],
+          bands: inW.map((p) => ({ label: dmS(parse(p.date)), stacks: [{ v: p.v, color: DEC_BAR }], dot: STATUS_COL[Z.ampel(p.v, thr)] })) });
+        bindScrub(box, { summary: o.summary, select: (i) => {
+          const p = inW[i], r = p.rec, st = Z.ampel(p.v, thr);
+          return { label: `Entkopplung, ${STATUS_TXT[st]}`, value: mVal(m, p.v), period: dWeek(p.date),
+            detail: `${esc(r.name)}<br>${r.kind === "run" ? "Lauf" : "Rad"}, ${nf(r.km, 1)} km in ${hm(r.sec)} h<br>Z1–2 ${Math.round(r.decoupling.z12Share * 100)} %${r.decoupling.vi ? `, VI ${nf(r.decoupling.vi, 2)}` : ""}${r.decoupling.gap ? ", GAP" : ""}` };
+        } });
+      });
+    },
+    // Zeit pro HF-Zone und Woche (gestapelt, Z1 hell → Z5 dunkel), laufende Woche hervorgehoben
+    zones(box, { m, inW }, o) {
+      const curMon = ymdLocal(monday(new Date())), ax = C.zeroAxis(Math.max(...inW.map((p) => p.tot / 3600)));
+      mount(box, (W) => {
+        box.innerHTML = C.barChart({ width: W, height: C.LARGE, maxBar: 22, aria: o.aria, y: { ...ax, fmt: tickFmt(ax, " h") },
+          bands: inW.map((p) => ({ label: dmS(parse(p.date)), current: p.date === curMon, stacks: p.sec.map((sec, z) => ({ v: sec / 3600, color: ZCOL[z] })) })) });
+        bindScrub(box, { summary: o.summary, select: (i) => {
+          const p = inW[i];
+          return { label: `Anteil Z1–2, ${hm(p.tot)} h`, value: mVal(m, p.v), period: `${range(parse(p.date), addDays(parse(p.date), 6))}${p.date === curMon ? ", läuft noch" : ""}`,
+            detail: selRows(p.sec.map((sec, z) => [ZCOL[z], "", `Z${z + 1} ${hm(sec)}`]).filter((r, z) => p.sec[z] >= 30)) };
+        } });
+      });
+    },
+    // 1RM-Verlauf: neutrale Linie (bei mehreren Orten farbige Punkte), PR als Ring, Ziel als gestrichelte Linie
+    lift(box, { m, w, inW }, o) {
+      const goal = o.refs[0] ? o.refs[0].v : null, ps = inW.map((p) => ({ d: parse(p.date), v: p.v, date: p.date, e: p.e }));
+      const ax = C.padAxis(ps.map((p) => p.v), { include: goal ? [goal] : [] });   // Ziel immer sichtbar
+      const places = [...new Set(ps.map((p) => p.e.place))], multi = places.length > 1, last = ps[ps.length - 1];
+      // Maschinen je Ort nicht verbinden: dann eine Linie je Ort
+      const series = !multi || ps.every((p) => p.e.compareKey === "alle") ? [{ pts: ps, color: "var(--text-2)", dots: !multi }]
+        : places.map((pl) => ({ pts: ps.filter((p) => p.e.place === pl), color: placeColor(pl), dots: false }));
+      mount(box, (W) => {
+        box.innerHTML = C.lineChart({ width: W, height: C.LARGE, aria: o.aria, y: { ...ax, fmt: tickFmt(ax) }, xRange: xr(w), series, refs: o.refs,
+          scatter: multi ? ps.map((p) => ({ d: p.d, v: p.v, color: placeColor(p.e.place), shape: "dot", r: 3.5 })) : [],
+          marks: ps.filter((p) => p.e.pr).map((p) => ({ d: p.d, v: p.v, color: "var(--good)" })),
+          latest: { d: last.d, v: last.v, label: nf(last.v) }, hits: ps });
+        bindScrub(box, { summary: o.summary, select: (i) => { const p = ps[i]; return { label: p.e.pr ? "1RM, PR" : "1RM", value: mVal(m, p.v), period: `${dWeek(p.date)} ${placeTxt(p.e.place)}`, detail: setTxt(p.e) }; } });
+      });
+    },
+    // Wochensummen der Garmin-Belastung (gestapelt nach Kraft/Sonstiges/Ausdauer), dazu akut/chronisch als Linien
+    weekload(box, { m, w, inW }, o) {
+      const cur = loadWeekPts().cur, show = inW.concat(cur ? [cur] : []), ax = C.zeroAxis(Math.max(1, ...show.map((p) => p.v)));
+      mount(box, (W) => {
+        box.innerHTML = C.barChart({ width: W, height: C.LARGE, maxBar: 22, aria: o.aria, y: { ...ax, fmt: tickFmt(ax) },
+          bands: show.map((p) => ({ label: dmS(parse(p.date)), current: p === cur, stacks: LOAD_ORDER.map((k) => ({ v: p.w[k], color: LOAD_COLORS[k] })) })) });
+        bindScrub(box, { summary: o.summary, select: (i) => {
+          const p = show[i];
+          return { label: p === cur ? "Diese Woche, läuft noch" : "Trainingsbelastung", value: p.w.n ? nf(p.v) : "–", period: range(parse(p.date), addDays(parse(p.date), 6)),
+            detail: p.w.n ? selRows(LOAD_ORDER.slice().reverse().filter((k) => p.w[k] > 0).map((k) => [LOAD_COLORS[k], "", `${LOAD_LABEL[k]} ${nf(p.w[k])}`])) : "keine Belastungswerte" };
+        } });
+      });
+      const box2 = $("#mdChart2");
+      const ac = MX.inWindow(MX.series(gDays, "acuteLoad"), w).map((p) => ({ d: parse(p.date), v: p.v, date: p.date }));
+      const chr = MX.inWindow(MX.series(gDays, "chronicLoad"), w), chrOf = new Map(chr.map((p) => [p.date, p.v]));
+      if (!ac.length) { noChart(box2, "Keine akuten Belastungswerte im Zeitraum."); return; }
+      const crs = chr.map((p) => ({ d: parse(p.date), v: p.v })), lastA = ac[ac.length - 1], lastC = chrOf.get(lastA.date);
+      const ax2 = C.zeroAxis(Math.max(...ac.map((p) => p.v), ...crs.map((p) => p.v)));
+      const sum2 = { label: "Akut / chronisch", value: `${nf(lastA.v)}<small> / ${lastC != null ? nf(lastC) : "–"}</small>`, period: `Stand ${dWeek(lastA.date)}` };
+      mount(box2, (W) => {
+        box2.innerHTML = C.lineChart({ width: W, height: C.SMALL, aria: `Akute und chronische Belastung, ${wLabel(w)}: zuletzt akut ${nf(lastA.v)}${lastC != null ? `, chronisch ${nf(lastC)}` : ""}`,
+          y: { ...ax2, fmt: tickFmt(ax2) }, xRange: xr(w), series: [{ pts: ac, color: o.color }, { pts: crs, color: "var(--text-2)", dash: true, dots: false }],
+          latest: { d: lastA.d, v: lastA.v, label: nf(lastA.v) }, hits: ac });
+        bindScrub(box2, { summary: sum2, select: (i) => { const p = ac[i], b = chrOf.get(p.date); return { label: `akut${b != null ? `, chronisch ${nf(b)}` : ""}`, value: nf(p.v), period: dWeek(p.date) }; } });
+      });
+    },
+  };
   function openMetric(key) {
     const bd = $("#metricSheet");
-    if (md.key !== key) { md.key = key; md.period = null; }
+    if (md.key !== key) { md.key = key; md.period = null; md.zf = "all"; }
     if (bd.hidden) openSheet("metricSheet", md.opener || document.activeElement);
     renderMetric();
   }
@@ -1910,7 +2032,6 @@
   $("#resetViewBtn").addEventListener("click", () => { resetLayout(); closeSheet(settings); });
   // Größenänderung (Drehen, Fenster): Diagramme mit neuer Breite zeichnen (zusätzlich zum ResizeObserver)
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { hideTip(); redrawCharts(); layoutTimeline(false); }, 150); });
-  $("#z2ZoneFilter").querySelectorAll("button").forEach((c) => c.addEventListener("click", () => { zoneFilter = c.dataset.f; if (Z2DATA) zoneChart(); }));
   $("#toggleOther").setAttribute("aria-pressed", showOther);
   $("#toggleOther").addEventListener("click", (e) => { showOther = !showOther; e.currentTarget.setAttribute("aria-pressed", showOther); volumeChart(); });
   $("#toggleTable").addEventListener("click", (e) => {

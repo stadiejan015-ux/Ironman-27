@@ -147,13 +147,14 @@
   // Liniendiagramm über die Zeit
   // o = { width, height, aria, y: { lo, hi, ticks, fmt, invert }, series: [{ pts:[{d,v}], color, dash, dots }],
   //       scatter: [{ d, v, color, shape, opacity }], marks: [{ d, v, color }], band: { from, to, color },
-  //       refs: [{ v, label }], latest: { d, v, label }, hits: [{ d, v }] }
+  //       refs: [{ v, label }], latest: { d, v, label }, hits: [{ d, v }], xRange: [von, bis] (ganzer Zeitraum, auch bei wenigen Punkten) }
   function lineChart(o) {
     const W = Math.round(o.width), H = o.height || SMALL, ax = o.y;
     const m = { t: 16, r: axisWidth(ax.ticks.map(ax.fmt)), b: 22, l: 8 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const all = [].concat(...(o.series || []).map((s) => s.pts), o.scatter || [], o.hits || []).map((p) => +p.d);
     let t0 = Math.min(...all), t1 = Math.max(...all);
+    if (o.xRange) { t0 = Math.min(t0, +o.xRange[0]); t1 = Math.max(t1, +o.xRange[1]); }
     if (t1 - t0 < 14 * DAY) t0 = t1 - 14 * DAY;   // mind. 2 Wochen, der neueste Wert bleibt rechts
     const x = (d) => m.l + ((+d - t0) / (t1 - t0 || 1)) * iw;
     const y = (v) => (ax.invert ? m.t + ((v - ax.lo) / (ax.hi - ax.lo)) * ih : m.t + ih - ((v - ax.lo) / (ax.hi - ax.lo)) * ih);

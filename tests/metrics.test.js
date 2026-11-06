@@ -19,8 +19,8 @@ test("Register: alle Start-Kennzahlen mit Pflichtfeldern", () => {
   const keys = M.REGISTRY.map((m) => m.key);
   for (const k of ["sleep", "sleepScore", "hrv", "rhr", "bodyBattery", "stress", "readiness", "load", "vo2run", "vo2bike", "weight", "steps"]) assert.ok(keys.includes(k), k);
   for (const m of M.REGISTRY) {
-    assert.ok(m.name && m.cat && m.field && m.tab, m.key);
-    assert.ok(["avg", "sum", "last"].includes(m.summary), m.key);
+    assert.ok(m.name && m.cat && (m.field || m.source) && m.tab, m.key);   // Garmin-Feld oder eigene Quelle (Zone 2, Woche)
+    assert.ok(["avg", "median", "sum", "last", "max"].includes(m.summary), m.key);
     assert.ok(m.about && m.about.length > 20, `Über-Text ${m.key}`);
   }
   assert.equal(new Set(keys).size, keys.length);
@@ -61,6 +61,8 @@ test("Zusammenfassung per Durchschnitt, Summe und letztem Wert; Minimum/Maximum 
   assert.equal(M.summarize(pts, "avg"), 20);
   assert.equal(M.summarize(pts, "sum"), 60);
   assert.equal(M.summarize(pts, "last"), 20);
+  assert.equal(M.summarize(pts, "median"), 20);
+  assert.equal(M.summarize(pts.concat({ date: "2026-11-05", v: 100 }), "median"), 25);   // gerade Anzahl: Mitte der beiden mittleren, Ausreißer zählt kaum
   const s = M.stats(pts);
   assert.deepEqual([s.min, s.minAt, s.max, s.maxAt, s.last, s.lastDate], [10, "2026-11-01", 30, "2026-11-02", 20, "2026-11-04"]);
 });
@@ -102,6 +104,51 @@ test("Achsengrenzen aus dem Register: 0–100, Null-Start nur bei Mengen", () =>
   assert.equal(sleep.lo, 0);
   const empty = M.axis(M.byKey.hrv, []);
   assert.ok(empty.ticks.length >= 2);
+});
+
+test("Schritt 2: Zone 2, Woche und 1RM im Register", () => {
+  for (const k of ["z2pace", "z2watts", "z2dec", "z2zones", "belastung"]) assert.ok(M.byKey[k], k);
+  assert.equal(M.byKey.z2pace.invert, true);                        // Pace: schneller = oben
+  assert.deepEqual(M.byKey.belastung.periods, ["30", "60", "all"]);  // Wochensummen: kein 7 T
+  assert.equal(M.slug("Bankdrücken"), "bankdruecken");
+  assert.equal(M.slug("Latzug (Maschine)"), "latzug-maschine");
+  const lm = M.register(M.liftMetric("Beinpresse", 300));
+  assert.equal(lm.key, "1rm-beinpresse"); assert.equal(lm.tab, "training"); assert.equal(lm.summary, "max");
+  assert.deepEqual(lm.refs, [{ v: 300, label: "Ziel 300" }]);
+  assert.equal(M.byKey["1rm-beinpresse"], lm);
+  M.register(M.liftMetric("Beinpresse", 310));                       // gleicher Schlüssel → ersetzt, nicht doppelt
+  assert.equal(M.REGISTRY.filter((m) => m.key === "1rm-beinpresse").length, 1);
+  assert.equal(M.byKey["1rm-beinpresse"].refs[0].v, 310);
+});
+
+test("Zusammenfassung per Bestwert und per eigener Rechnung (zeitgewichteter Z1–2-Anteil)", () => {
+  const pts = [{ date: "2026-10-01", v: 240 }, { date: "2026-10-20", v: 253.3 }, { date: "2026-11-02", v: 250 }];
+  assert.equal(M.summarize(pts, "max"), 253.3);
+  assert.equal(M.summarizeMetric(M.liftMetric("Beinpresse"), pts), 253.3);
+  // Woche 1: 9 h, davon 8 h Z1–2 (89 %); Woche 2: 1 h, davon 0 h (0 %) → nach Zeit gewichtet 80 %, nicht Ø 44 %
+  const weeks = [{ date: "2026-10-26", v: 88.9, z12: 8 * 3600, tot: 9 * 3600 }, { date: "2026-11-02", v: 0, z12: 0, tot: 3600 }];
+  assert.ok(Math.abs(M.summarizeMetric(M.byKey.z2zones, weeks) - 80) < 1e-9);
+  assert.equal(M.summarizeMetric(M.byKey.z2zones, []), null);
+  // Veränderung nutzt dieselbe Rechnung: Zeitraum 31.10.–06.11. (Woche 02.11.: 0 %) gegen 24.10.–30.10. (Woche 26.10.: 88,9 %)
+  const c = M.change(weeks, M.windowOf("7", "2026-11-06"), M.byKey.z2zones);
+  assert.ok(c && c.cur === 0 && Math.abs(c.prev - 88.888888) < 1e-3 && c.diff < 0);
+});
+
+test("Verfügbare Zeiträume mit Einschränkung je Kennzahl", () => {
+  const weekly = []; for (let i = 10; i >= 0; i--) weekly.push({ date: M.addDays("2026-11-02", -7 * i), v: 300 });
+  assert.deepEqual(M.availablePeriods(weekly, "2026-11-06", ["30", "60", "all"]), ["30", "60", "all"]);
+  assert.deepEqual(M.availablePeriods(weekly, "2026-11-06"), ["7", "30", "60", "all"]);
+  assert.deepEqual(M.byKey.z2zones.periods, ["30", "60", "all"]);    // Wochenwerte: kein 7 T
+});
+
+test("Zeitraum beim Öffnen: 30 T, eigener Standard oder kompletter Verlauf", () => {
+  assert.equal(M.defaultPeriod(M.byKey.hrv, ["7", "30", "60", "all"]), "30");
+  assert.equal(M.defaultPeriod(M.byKey.hrv, ["60", "all"]), "60");          // 30 T fehlt → erster vorhandener
+  assert.equal(M.defaultPeriod(M.byKey.belastung, ["30", "60", "all"]), "60");
+  const lift = M.liftMetric("Bankdrücken");
+  assert.equal(M.defaultPeriod(lift, ["7", "30", "60", "all"]), "all");     // 1RM: kompletter Verlauf
+  assert.equal(M.defaultPeriod(lift, ["7", "30", "60"]), "60");             // „Alle“ wäre gleich 60 T → längster
+  assert.equal(M.defaultPeriod(lift, []), null);
 });
 
 console.log(`\n${n} Tests bestanden.`);

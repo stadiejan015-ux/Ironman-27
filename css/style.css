@@ -148,6 +148,10 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 .md-stats { margin-top: 16px; }
 .md-stats .row-val b { font-size: 17px; }
 .md-about { margin: 16px 0 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
+.md-filter { margin: -4px 0 12px; }
+.md-sub { margin: 24px 0 8px; }
+.md-count { color: var(--text-2); font-weight: 400; margin-left: 4px; }
+.md-entries .row-title .badge { margin-left: 6px; vertical-align: 2px; }
 .md-about b { font-weight: 600; }
 @media (min-width: 768px) { .sheet-detail { width: 700px; height: auto; max-height: 90vh; } }
 /* Kacheln und Listenzeilen, die eine Detailansicht öffnen */
@@ -161,7 +165,7 @@ a.ios-row:active { background: var(--fill); }
 .ht-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
 .ht-main { min-width: 0; }
 .spark { flex: none; margin-bottom: 4px; }
-@media (max-width: 600px) { .grid.rec-tiles { grid-template-columns: minmax(0, 1fr); gap: 12px; } }   /* iPhone: Kacheln untereinander wie in Health */
+@media (max-width: 600px) { .grid.rec-tiles, .grid.z2-tiles { grid-template-columns: minmax(0, 1fr); gap: 12px; } }   /* iPhone: Kacheln untereinander wie in Health */
 @media (min-width: 768px) { .sheet-backdrop { align-items: center; padding: 24px; } .sheet { border-radius: 14px; padding-bottom: 24px; } }
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet-backdrop { transition: none; } }
 
@@ -381,12 +385,12 @@ button.ios-row:active { background: var(--fill); }
 .chart .cursor { stroke: var(--text-2); stroke-width: 1; pointer-events: none; }
 .chart .sel-dot { fill: var(--text); stroke: var(--surface); stroke-width: 2; pointer-events: none; }
 .ch-head { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 70px; margin: 0 0 4px; }
-.ch-main { min-width: 0; flex: none; }
+.ch-main { min-width: 0; flex: 0 1 auto; }
 .ch-label { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--text-2); }
 .ch-value { font-family: var(--font-rounded); font-variant-numeric: tabular-nums; font-size: 28px; line-height: 34px; font-weight: 600; color: var(--text); white-space: nowrap; }
 .ch-value small { font-family: var(--font); font-size: 15px; font-weight: 500; color: var(--text-2); margin-left: 3px; }
 .ch-period { font-size: 13px; line-height: 18px; color: var(--text-2); }
-.ch-detail { flex: 0 1 auto; min-width: 0; max-width: 58%; margin-top: 18px; max-height: 54px; overflow: hidden; text-align: right; font-size: 13px; line-height: 18px; color: var(--text-2); }   /* höchstens 3 Zeilen neben dem Kernwert – das Diagramm springt nicht */
+.ch-detail { flex: 0 100 auto; min-width: min-content; max-width: 58%; margin-top: 18px; max-height: 54px; overflow: hidden; text-align: right; font-size: 13px; line-height: 18px; color: var(--text-2); }   /* höchstens 3 Zeilen neben dem Kernwert – das Diagramm springt nicht; bei Platzmangel bricht zuerst diese Spalte um */
 .ch-rows { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0 12px; }
 .ch-rows > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; color: var(--text); }
 .ch-rows .lg { width: 8px; height: 8px; }
@@ -527,6 +531,9 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .lift .stat b { font-size: 17px; line-height: 22px; overflow-wrap: anywhere; }
 .lift .stats { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #gymLifts { align-items: start; }   /* Übungskarten nicht auf gleiche Höhe strecken */
+.lift-head { display: flex; align-items: center; gap: 8px; }
+.lift-head > span:first-child { flex: 1; min-width: 0; }
+.card.lift > :last-child { margin-bottom: 0; }
 .lift .stat { padding: 8px; }
 .goal-bar { margin: -2px 0 12px; }
 .goal-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; line-height: 18px; color: var(--text-2); margin-bottom: 6px; }
@@ -595,6 +602,7 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .wk-hints { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; line-height: 20px; }
 .wk-load-line { margin: 0 0 8px; font-size: 15px; line-height: 20px; }
 .wk-note { font-size: 13px; line-height: 18px; margin: 4px 0 0; }
+.wk-link { margin-top: 10px; border-top: .5px solid var(--separator); }
 @media (max-width: 600px) {
   .wk-dl { grid-template-columns: 1fr; gap: 2px; }
   .wk-dl dd { margin-bottom: 6px; }

@@ -152,9 +152,24 @@ Darstellung und Bedienung:
   Link führt direkt hin.
 - **Erholung-Tab:** Die 4 großen Kacheln zeigen eine Mini-Linie der letzten 7 Tage. Alle Kacheln und Listenzeilen
   öffnen ihre Detailansicht.
+- **Zone 2:** Die Kacheln Pace bei 144 bpm, Watt bei 140 bpm, Entkopplung und Anteil Z1–2 öffnen
+  `#erholung-z2pace`, `-z2watts`, `-z2dec` und `-z2zones`. Die Diagramme stehen jetzt dort. Pace und Watt zeigen
+  den Median der Einheiten, die Pace mit „schneller = oben“. Beim Z1–2-Anteil kannst du zwischen Alle, Laufen und
+  Rad wechseln; der Anteil ist nach Zeit gewichtet. Die Texte aus „Wie wird gemessen?“ stehen unter
+  „Über diese Werte“.
+- **Gym:** Jede Übungskarte öffnet `#training-1rm-<übung>`, z. B. `#training-1rm-beinpresse`. Dort siehst du den
+  ganzen 1RM-Verlauf mit Ziellinie und PR-Ringen sowie die Liste aller Einträge (Datum, Satz, Ort, geschätztes 1RM,
+  PR).
+- **Woche:** Die Zeile „Trainingsbelastung“ in der Wochenkarte öffnet `#heute-belastung`. Dort stehen die
+  Wochensummen; Durchschnitt, Minimum und Maximum zählen nur abgeschlossene Wochen. Darunter folgt akut/chronisch
+  aus Garmin.
+- **Zeitraum:** Die x-Achse zeigt immer den ganzen gewählten Zeitraum, auch wenn es nur wenige Punkte gibt.
+  Wochenwerte bieten kein „7 T“. Eine Woche zählt zum Zeitraum, wenn ihr Montag darin liegt.
 
-Register und Berechnungen (Zeitraumfilter, Durchschnitt/Min/Max/Summe/letzter Wert, Vorzeitraum, fehlende Tage,
-Achsengrenzen) stehen in [`js/metrics.js`](js/metrics.js). Tests: `node tests/metrics.test.js`.
+Register und Berechnungen stehen in [`js/metrics.js`](js/metrics.js): Zeitraumfilter,
+Durchschnitt/Median/Min/Max/Summe/letzter Wert/Bestwert, eigene Rechnung je Kennzahl (zeitgewichteter Z1–2-Anteil),
+Vorzeitraum, fehlende Tage, erlaubte Zeiträume, Standard-Zeitraum und Achsengrenzen. Die 1RM-Kennzahlen trägt die
+Seite für jede Hauptübung zur Laufzeit ein (`Metrics.liftMetric`, `Metrics.register`). Tests: `node tests/metrics.test.js`.
 
 **Wie weit die Daten zurückreichen** (Stand 06.11.2026):
 
@@ -200,7 +215,8 @@ ruhiger Einheiten und Zeit pro HF-Zone. Das abendliche Update lädt die Streams 
 steigungsbereinigter Pace (GAP, Minetti-Modell) gewertet. Ob Brustgurt oder Uhr gemessen hat, erkennt
 [`scripts/update_hr_sources.py`](scripts/update_hr_sources.py) in der Garmin-Action aus den Sensordaten
 (`data/hr-sources.json`); `#gurt` / `#uhr` im Strava-Titel oder in der Beschreibung hat Vorrang. Eigene HF-Zonen und alle Grenzen stehen in
-`js/data.js` unter `zones` und `z2`. Tests: `node tests/z2.test.js`.
+`js/data.js` unter `zones` und `z2`. Die Kacheln öffnen die Detailansichten mit den Diagrammen (siehe
+[Detailansichten](#detailansichten-wie-apple-health)). Tests: `node tests/z2.test.js`.
 
 ## Flex-Modus
 
@@ -224,7 +240,7 @@ Titel der Krafteinheit in Garmin Connect: `Push 6x100`, `Pull · Latzug 8x90`, `
 Komma-Dezimalen (82,5) sind erlaubt, auch die Beschreibung wird geprüft. `scripts/update_garmin.py`
 speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym.js) erkennt Split,
 Übung, Wiederholungen, Gewicht, Sätze und Ort und berechnet das 1RM nach Epley. Alle Hauptübungen werden
-ortsübergreifend verglichen (PRs, bestes 1RM, Ziele; im Diagramm eine Linie, Punkte nach Ort gefärbt). Wer einzelne
+ortsübergreifend verglichen (PRs, bestes 1RM, Ziele; im Diagramm der Detailansicht eine Linie, Punkte nach Ort gefärbt). Wer einzelne
 Übungen nur am selben Ort vergleichen will (z. B. Maschinen), trägt sie in `gym.perPlace` ein – dann zählen dafür nur
 Einträge vom aktuellen Ort (letzte Einheit mit @Ort). Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
 **Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Latzug und
@@ -232,7 +248,8 @@ Beinpresse 5–8 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zur
 1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Badge „Ziel erreicht“ und Hinweis bei Stagnation
 (3 Einträge ohne neues bestes 1RM).
 **1RM-Ziel** je Hauptübung (`gym.goals`, z. B. Bankdrücken 100, Latzug 140, Beinpresse 300 kg): Fortschrittsbalken unter
-dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm.
+dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm. Die Übungskarte öffnet die Detailansicht mit
+dem kompletten 1RM-Verlauf und allen Einträgen.
 **Namen in Listen:** In „Heute schon erledigt“ und in der Aktivitäten-Liste steht bei Krafteinheiten der Garmin-Titel,
 wenn er als Gym-Titel erkannt wird (z. B. „Push 5×70kg @Bali“). Sonst steht dort der Strava-Name, etwa wenn Garmin
 nur „Krafttraining“ heißt (`Gym.displayName`).
