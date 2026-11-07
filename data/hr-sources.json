@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-07T10:00+00:00",
+  "updated": "2026-11-07T17:44+00:00",
   "version": 2,
   "activities": [
     {"id": "23439888775", "start": "2026-07-01T10:58", "type": "cycling", "source": "strap", "sensors": ["GARMIN ANTPLUS"]},
@@ -63,6 +63,7 @@
     {"id": "24901142603", "start": "2026-10-30T10:32", "type": "running", "source": "wrist", "sensors": []},
     {"id": "24949844897", "start": "2026-11-03T18:37", "type": "treadmill_running", "source": "wrist", "sensors": []},
     {"id": "24958625212", "start": "2026-11-04T08:52", "type": "treadmill_running", "source": "wrist", "sensors": []},
-    {"id": "24991936819", "start": "2026-11-07T07:15", "type": "running", "source": "strap", "sensors": ["GARMIN ANTPLUS"]}
+    {"id": "24991936819", "start": "2026-11-07T07:15", "type": "running", "source": "strap", "sensors": ["GARMIN ANTPLUS"]},
+    {"id": "24997186825", "start": "2026-11-07T20:21", "type": "virtual_ride", "source": "unknown", "sensors": []}
   ]
 }
