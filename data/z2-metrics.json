@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-04T06:56Z",
+  "updated": "2026-11-07T04:41Z",
   "zones": [[0,129],[130,152],[153,175],[176,200],[201,null]],
   "activities": [
     {"id":"19134936896","date":"2026-07-01T10:58","sport":"Ride","name":"Aerobars testen","km":33.1,"sec":3659,"elev":163,"kind":"ride","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[0,1935,1468,195,0],"pace":null,"watts":null,"decoupling":null,"status":{"watts":"keine echten Watt (geschätzt)","decoupling":"keine echten Watt (geschätzt)"},"highShare":0.065,"hrMed":153},
@@ -62,6 +62,7 @@
     {"id":"20728068051","date":"2026-10-25T15:11","sport":"VirtualRide","name":"Letzte Fahrt des Jahres","km":63.8,"sec":6226,"elev":184,"kind":"ride","indoor":true,"hasHr":true,"deviceWatts":true,"zoneSec":[967,4869,381,0,0],"pace":null,"watts":{"w":189,"bandSec":3307},"decoupling":{"pct":10.6,"z12Share":0.93,"vi":1.08,"durSec":5618},"status":{"watts":"ok","decoupling":"ok"},"highShare":0,"hrMed":140},
     {"id":"20787374339","date":"2026-10-30T10:32","sport":"Run","name":"Abu Dhabi 🇦🇪","km":5,"sec":1459,"elev":22,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[65,167,280,951,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"intensiv/Intervalle (90 % ≥ Z4)","decoupling":"intensiv/Intervalle (90 % ≥ Z4)"},"highShare":0.904,"hrMed":189},
     {"id":"20840947521","date":"2026-11-03T18:55","sport":"Run","name":"Laufband","km":5.102,"sec":1500,"elev":0,"status":{"all":"keine Streams (manuell erfasst)"}},
-    {"id":"20850950346","date":"2026-11-04T08:52","sport":"Run","name":"Laufband","km":5.2,"sec":1852,"elev":0,"kind":"run","indoor":true,"hasHr":true,"deviceWatts":false,"zoneSec":[143,770,939,0,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"Laufband","decoupling":"Laufband"},"highShare":0,"hrMed":155}
+    {"id":"20850950346","date":"2026-11-04T08:52","sport":"Run","name":"Laufband","km":5.2,"sec":1852,"elev":0,"kind":"run","indoor":true,"hasHr":true,"deviceWatts":false,"zoneSec":[143,770,939,0,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"Laufband","decoupling":"Laufband"},"highShare":0,"hrMed":155},
+    {"id":"20888627975","date":"2026-11-07T07:15","sport":"Run","name":"Bali 🇮🇩","km":7.8,"sec":2586,"elev":233,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[76,527,1169,790,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"zu hügelig (29,9 Hm/km)","decoupling":"zu hügelig (29,9 Hm/km)"},"highShare":0.402,"hrMed":173}
   ]
 }
