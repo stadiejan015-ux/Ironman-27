@@ -1,11 +1,12 @@
 /* Automatisch erzeugt von scripts/update_strava.py – nicht von Hand bearbeiten. */
 window.STRAVA = {
   "snapshotDate": "2026-11-07",
-  "snapshotAt": "2026-11-07T04:41+00:00",
+  "snapshotAt": "2026-11-07T13:41+00:00",
   "athlete": {"weightKg": 73, "focus": "Build – Zone 2 verbessern und schneller am berg werden", "streakWeeks": 65},
   "zones": {"ftp": 286, "hr": [[0, 134], [135, 155], [156, 175], [176, 200], [201, null]], "power": [[0, 157], [158, 215], [216, 257], [258, 300], [301, 343], [344, 429], [430, null]], "run": [[0, 2.83], [2.83, 3.288], [3.288, 3.662], [3.662, 3.912], [3.912, 4.162], [4.162, null]]},
   "bests": {"run": [["1 Meile", 380, "2026-04-02"], ["5 km", 1288, "2026-03-27"], ["10 km", 2945, "2026-07-19"], ["Halbmarathon", 9805, "2026-03-07"]], "bike": [["5 s", "646 W", "2024-12-25"], ["1 min", "336 W", "2024-12-25"], ["5 min", "281 W", "2025-07-22"], ["20 min", "240 W", "2026-04-14"], ["1 h", "157 W", "2026-03-31"], ["Längste Fahrt", "206 km", "2023-09-05"], ["Größter Anstieg", "1.861 m", "2025-08-15"]]},
   "activities": [
+    ["2026-11-07T15:25", "Hike", "Zu sehr tuffe Strand", 1.8, 2244, 196],
     ["2026-11-07T07:15", "Run", "Bali 🇮🇩", 7.75, 2586, 233, "5:34 /km"],
     ["2026-11-06T09:51", "WeightTraining", "Push", 0.0, 5727, 0],
     ["2026-11-05T09:32", "WeightTraining", "Legs", 0.0, 3972, 0],
