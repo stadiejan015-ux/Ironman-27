@@ -101,6 +101,14 @@ Startbildschirm „Heute“ wie in Apple Fitness:
 
 Das App-Icon erzeugt `node scripts/make_icons.js`.
 
+## Design-Skills für Claude
+
+In [`.claude/skills/`](.claude/skills/) liegen 14 Skills von Emil Kowalski
+([emilkowalski/skills](https://github.com/emilkowalski/skills), MIT-Lizenz). Sie enthalten Regeln für Design und
+Animation, die Claude in jeder Session für dieses Projekt nutzen kann. Dazu gehören zum Beispiel `emil-design-eng`
+(Hauptskill), `apple-design`, `mobile-native`, `animate`, `gestures` und `review-animations`. Quelle, Stand und
+Lizenz stehen in [`.claude/skills/QUELLE.md`](.claude/skills/QUELLE.md).
+
 ## Diagramme
 
 Alle Diagramme nutzen einen gemeinsamen Baukasten, [`js/charts.js`](js/charts.js). Darin stecken Achsen,
