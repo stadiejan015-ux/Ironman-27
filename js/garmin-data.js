@@ -1,6 +1,6 @@
 /* Automatisch erzeugt von scripts/update_garmin.py – nicht von Hand bearbeiten. */
 window.GARMIN = {
-  "updated": "2026-11-10T17:00+00:00",
+  "updated": "2026-11-10T23:15+00:00",
   "days": [
     {"date": "2026-08-06", "rhr": 49, "stressAvg": 30, "bbHigh": 87, "bbLow": 20, "bbNow": 22, "bbCharged": 65, "steps": 12074, "sleepScore": 78, "sleepQuality": "FAIR", "sleepH": 9.2, "deepH": 1.07, "remH": 0.7, "lightH": 7.43, "awakeH": 0.05, "sleepHrv": 66.0, "hrv": 66, "hrvWeekly": 64, "hrvStatus": "BALANCED", "hrvLow": 64, "hrvHigh": 90, "readiness": 59, "readinessLevel": "MODERATE", "recoveryH": 2.0, "vo2run": 57.6, "trainingStatus": "RECOVERY_2", "acuteLoad": 47, "chronicLoad": 423, "loadRatio": 0.1, "loadAerobicLow": 948.0, "loadAerobicHigh": 390.0, "loadAnaerobic": 263.0},
     {"date": "2026-08-07", "rhr": 45, "stressAvg": 22, "bbHigh": 100, "bbLow": 22, "bbNow": 39, "bbCharged": 82, "steps": 6204, "sleepScore": 90, "sleepQuality": "EXCELLENT", "sleepH": 9.27, "deepH": 1.12, "remH": 2.02, "lightH": 6.13, "awakeH": 0.28, "sleepHrv": 77.0, "bbChange": 78, "hrv": 77, "hrvWeekly": 66, "hrvStatus": "BALANCED", "hrvLow": 64, "hrvHigh": 90, "readiness": 85, "readinessLevel": "HIGH", "recoveryH": 0.0, "vo2run": 57.6, "trainingStatus": "RECOVERY_2", "acuteLoad": 28, "chronicLoad": 395, "loadRatio": 0.0, "loadAerobicLow": 829.0, "loadAerobicHigh": 390.0, "loadAnaerobic": 235.0},
