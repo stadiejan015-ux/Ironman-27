@@ -2,6 +2,7 @@
  * Flex-Modus („Gym-Block & Reisen“) – reine Funktionen (kein DOM, kein Date.now()).
  * -----------------------------------------------------------------------------------
  *   flexState(cfg, date)                    → ist der Flex-Zeitraum aktiv, Tage bis Ende, Wiedereinstieg?
+ *   isIgnored({ date, sport, name }, cfg)   → Zwift-Fahrt im Flex-Zeitraum, die nicht zählt (flex.ignoreVirtualRides)
  *   splitOf(text, cfg)                      → "Push" | "Pull" | "Legs" | null
  *   gymSessions(acts, cfg)                  → Krafteinheiten mit erkanntem Split
  *   nextSplit(sessions, cfg)                → nächster Split der Rotation
@@ -37,6 +38,17 @@
     if (day > until || (from && day < from)) return { active: false };
     const daysLeft = Math.round((until - day) / DAY);
     return { active: true, from, until, daysLeft, reentry: daysLeft <= (cfg.reentryDays ?? 14), label: cfg.label || "Flex-Phase" };
+  }
+
+  // Zwift-Fahrt im Flex-Zeitraum, die nicht zählt (flex.ignoreVirtualRides). a = { date (Date oder ISO), sport, name }:
+  // Strava „VirtualRide“, Garmin „virtual_ride“ oder eine Radfahrt mit „Zwift“ im Namen. Läufe zählen immer.
+  function isIgnored(a, cfg) {
+    if (!a || !cfg || !cfg.ignoreVirtualRides) return false;
+    const sport = String(a.sport || ""), name = String(a.name || "");
+    const virtual = sport === "VirtualRide" || sport === "virtual_ride" || (/ride|cycling/i.test(sport) && /zwift/i.test(name));
+    if (!virtual || !a.date) return false;
+    const dt = a.date instanceof Date ? a.date : new Date(String(a.date).length === 10 ? `${a.date}T00:00` : String(a.date).slice(0, 16));
+    return flexState(cfg, dt).active;
   }
 
   /* ---------- Splits ---------- */
@@ -235,5 +247,5 @@
     return { gym, endurance, week, next, afterLegs, notes };
   }
 
-  return { flexState, splitOf, gymSessions, mergeActs, nextSplit, weekMinimum, minimumRest, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
+  return { flexState, isIgnored, splitOf, gymSessions, mergeActs, nextSplit, weekMinimum, minimumRest, suggestFlex, sinceLast, lastWhere, daysBetween, agoText, mondayOf, EQUIPMENT, SINCE_DEFAULTS };
 });

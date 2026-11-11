@@ -248,6 +248,12 @@ Bis zum Datum `flex.until` in `js/data.js` (aktuell 10.01.2027) läuft die Seite
 und eine optionale lockere Ausdauereinheit passend zur gewählten Ausstattung vor Ort; statt
 Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 20 min; Schwimmen ist keine Pflicht,
 `flex.minimum.swim: 0`).
+**Zwift im Flex-Zeitraum:** Zwift-Fahrten in dieser Zeit fährt jemand anderes über den Account. Deshalb zählen sie
+nirgends: nicht in der Aktivitätenliste, Woche, Minimum, Kalender, Umfängen, Zone 2 und der Garmin-Belastung je Woche.
+Erkannt werden Strava „VirtualRide“, Garmin „virtual_ride“ und Radfahrten mit „Zwift“ im Namen; Läufe zählen immer.
+Zwift-Fahrten vor dem Flex-Beginn und nach dem Ende zählen normal. Die Liste nennt, wie viele ausgeblendet sind.
+Schalter: `flex.ignoreVirtualRides`. Garmins eigene Tageswerte (akute Belastung, Trainingsstatus) rechnet Garmin
+selbst und enthalten solche Fahrten, wenn sie in Garmin Connect landen.
 `flex.active: false` schaltet alles zurück. Tests: `node tests/flex.test.js`.
 
 Der **Saisonplan** passt sich an ([`js/phases.js`](js/phases.js)): Phasen beginnen montags (wie das Wochenraster),
