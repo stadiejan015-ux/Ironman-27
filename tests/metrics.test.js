@@ -154,4 +154,14 @@ test("Zeitraum beim Öffnen: 30 T, eigener Standard oder kompletter Verlauf", ()
   assert.equal(M.defaultPeriod(lift, []), null);
 });
 
+test("Eigene Symbole: Schritte, Body Battery und Belastung statt überall dem Blitz", () => {
+  assert.equal(M.byKey.steps.icon, "steps");
+  assert.equal(M.byKey.bodyBattery.icon, "battery");
+  assert.equal(M.byKey.load.icon, "trend");
+  assert.equal(M.byKey.belastung.icon, "trend");
+  // Symbole nur aus der bekannten Liste; ohne icon gilt das Symbol der Kategorie
+  const known = ["steps", "battery", "trend"];
+  for (const m of M.REGISTRY) if (m.icon) assert.ok(known.includes(m.icon), `${m.key}: ${m.icon}`);
+});
+
 console.log(`\n${n} Tests bestanden.`);

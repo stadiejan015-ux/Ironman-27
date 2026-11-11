@@ -160,13 +160,13 @@
 
     <div class="tab-panel" id="tab-training" data-tab="training" role="tabpanel" aria-labelledby="tabbtn-training" hidden>
       <header class="tab-head"><h1>Training</h1></header>
-      <section id="gym" data-collapse>
+      <section id="gym">
         <h2>Gym</h2>
         <p class="section-sub">Split und Hauptübung kommen aus dem Titel deiner Krafteinheit in Garmin Connect, z.&nbsp;B. „Push 6x100“, „Pull 5x20“ (Klimmzüge mit 20&nbsp;kg Zusatzgewicht), „Legs 3x10x180“ oder „Push 6x100 @Bali“.</p>
         <div class="grid g2 gym-top"><div id="gymWeek"></div><div class="card" id="gymSplit"></div></div>
         <div class="grid g3" style="margin-top:16px" id="gymLifts"></div>
       </section>
-      <section id="kalender" data-collapse>
+      <section id="kalender">
         <h2>Kalender</h2>
         <p class="section-sub">Die letzten 10 Wochen – Farbe nach Sportart, kräftiger bei längerer Gesamtdauer. Tippe auf einen Tag für die Details.</p>
         <div class="card">
@@ -174,12 +174,12 @@
           <div class="legend" id="calLegend" style="margin-top:10px"></div>
         </div>
       </section>
-      <section id="letzte4" data-collapse>
+      <section id="letzte4">
         <h2>Die letzten 4 Wochen</h2>
         <p class="section-sub" id="kpiSub"></p>
         <div class="grid g4" id="kpis"></div>
       </section>
-      <section id="umfang" data-collapse>
+      <section id="umfang">
         <h2>Wochenumfang</h2>
         <p class="section-sub">Trainingsstunden pro Woche (Montag–Sonntag), Bewegungszeit laut Strava.</p>
         <div class="card">
@@ -194,22 +194,15 @@
           <div class="table-scroll" id="volTable" hidden></div>
         </div>
       </section>
-      <section id="disziplinen" data-collapse>
+      <section id="disziplinen">
         <h2>Disziplinen</h2>
         <p class="section-sub">Alle Einheiten seit der Anmeldung am 27.06.2026 je Sportart.</p>
         <div class="grid g3" id="disciplines"></div>
       </section>
-      <section id="aktivitaeten" data-collapse>
+      <section id="aktivitaeten">
         <h2>Aktivitäten</h2>
         <p class="section-sub" id="actSub"></p>
-        <div class="card">
-          <div class="chart-head">
-            <div class="segmented" id="actFilter" role="group" aria-label="Sportart filtern"></div>
-            <span class="muted" style="font-size:13px" id="actCount"></span>
-          </div>
-          <ul class="ios-list ic act-list" id="actList"></ul>
-          <div style="text-align:center;margin-top:4px"><button class="btn-text" id="actMore" type="button" aria-controls="actList" aria-expanded="false" hidden></button></div>
-        </div>
+        <div class="card list-card"><ul class="ios-list ic act-list" id="actList"></ul></div>
       </section>
     </div>
 
@@ -222,7 +215,7 @@
           <div id="recovery"><div class="grid g4 rec-tiles sk-wrap" aria-hidden="true"><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div></div></div>
         </div>
       </section>
-      <section id="zone2" data-collapse>
+      <section id="zone2">
         <h2>Zone-2-Entwicklung</h2>
         <p class="section-sub" id="z2Asof">Wird ein Mal pro Tag aus den Strava-Streams berechnet.</p>
         <div class="grid g4 z2-tiles" id="z2Tiles"><div class="sk-wrap sk-contents" aria-hidden="true"><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div><div class="card kpi sk-tile"><div class="sk sk-line sk-w50"></div><div class="sk sk-num"></div><div class="sk sk-line sk-w70"></div></div></div></div>
@@ -231,12 +224,12 @@
 
     <div class="tab-panel" id="tab-plan" data-tab="plan" role="tabpanel" aria-labelledby="tabbtn-plan" hidden>
       <header class="tab-head"><h1>Plan</h1></header>
-      <section id="stand" data-collapse>
+      <section id="stand">
         <h2>Wo du gerade stehst</h2>
         <p class="section-sub">Automatisch aus deinen Strava-Daten abgeleitet – Einschätzungen, keine Messwerte.</p>
         <div class="grid g2" id="insights"></div>
       </section>
-      <section id="saison" data-collapse>
+      <section id="saison">
         <h2>Saisonplan bis zum Rennen</h2>
         <p class="section-sub">Periodisierung rückwärts vom Renntag gerechnet. Stundenangaben sind Richtwerte pro Woche.</p>
         <div class="card">
@@ -248,13 +241,13 @@
               <div id="currentPhase"></div>
             </div>
             <div>
-              <div class="mini-title">Alle Phasen</div>
+              <div class="mini-title">Phasen</div>
               <ul class="ios-list dots phase-rows" id="phaseList"></ul>
             </div>
           </div>
         </div>
       </section>
-      <section id="rennen" data-collapse>
+      <section id="rennen">
         <h2>Rennvorbereitung</h2>
         <p class="section-sub">Deine Zielzeiten im Vergleich zur Prognose „Wenn heute Renntag wäre“ – und die längsten Einheiten im Vergleich zur Ironman-Distanz.</p>
         <div class="grid g2">
@@ -284,6 +277,17 @@
 
   </main>
 
+  <!-- Eigene Ansicht, die von rechts hereinschiebt (lange Listen: „Alle anzeigen ›“); Hash z. B. #training-aktivitaeten.
+       Die Tab-Leiste bleibt sichtbar; zurück mit „‹ Training“, Wischen vom linken Rand oder dem Zurück des Browsers. -->
+  <div class="push-view" id="pushView" role="region" aria-labelledby="pushTitle" hidden>
+    <div class="push-bar"><div class="push-bar-bg"></div>
+      <button type="button" class="push-back" id="pushBack"><svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="pushBackLabel"></span></button>
+      <div class="push-bar-title" id="pushBarTitle" aria-hidden="true"></div>
+    </div>
+    <div class="push-edge" aria-hidden="true"></div>
+    <div class="push-scroll" id="pushScroll"><div class="push-wrap"><h1 id="pushTitle"></h1><div id="pushBody"></div></div></div>
+  </div>
+
   <!-- Einstellungen (Blatt von unten) -->
   <div class="sheet-backdrop" id="settingsSheet" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
@@ -304,9 +308,6 @@
           <li class="ios-row"><span class="row-main"><span class="row-title">Strava</span><span class="row-sub">Einheiten, Bestzeiten, Zonen und Zone 2 (aus den Streams werden nur Kennzahlen gespeichert)</span></span></li>
           <li class="ios-row"><span class="row-main"><span class="row-title">Garmin Connect</span><span class="row-sub">Schlaf, HRV, Ruhepuls, Body Battery, Belastung, Gewicht und die Titel der Krafteinheiten</span></span></li>
           <li class="ios-row"><span class="row-main"><span class="row-title">Berechnet</span><span class="row-sub">Prognose, Wochen-Minimum, Tagesvorschlag und Hinweise – Einschätzungen, keine Messwerte</span></span></li>
-        </ul></div>
-        <div class="card list-card sheet-list" style="margin-top:16px"><ul class="ios-list">
-          <li><button type="button" class="ios-row" id="resetViewBtn"><span class="row-main"><span class="row-title">Ansicht zurücksetzen</span><span class="row-sub">Ein- und ausgeklappte Abschnitte wie am Anfang</span></span></button></li>
         </ul></div>
       </div>
     </div>
@@ -353,7 +354,7 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/layout.js", "js/phases.js", "js/charts.js", "js/metrics.js", "js/native.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
+    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/phases.js", "js/charts.js", "js/metrics.js", "js/native.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
       var s = document.createElement("script");
       s.src = f + "?v=" + window.__v;
       s.async = false; // Reihenfolge beibehalten

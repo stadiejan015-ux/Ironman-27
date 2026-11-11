@@ -188,6 +188,10 @@
     run: '<path d="M1.8 11.8h10.8a1.9 1.9 0 0 0 1.9-1.9c0-.8-.6-1.4-1.4-1.6l-3.1-.8-1.4-2.9H6.4l.6 1.9-2.4.6-1.1-2.4H1.8z" fill="currentColor"/>',
     strength: '<path d="M1.3 6.6h1.9v2.8H1.3zM12.8 6.6h1.9v2.8h-1.9zM3.6 4.4h2v7.2h-2zM10.4 4.4h2v7.2h-2zM5.6 7.2h4.8v1.6H5.6z" fill="currentColor"/>',
     other: '<circle cx="4" cy="8" r="1.6" fill="currentColor"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="12" cy="8" r="1.6" fill="currentColor"/>',
+    // eigene Symbole statt überall dem Blitz: Schritte (Fußspuren), Body Battery (Batterie), Trainingsstatus/Belastung (Trendpfeil)
+    steps: '<path d="M5.1 1.3c1.4 0 2.2 1.7 2.2 3.6 0 1.8-.7 3.2-2 3.2S3.3 6.8 3.3 5c0-2 .5-3.7 1.8-3.7zM3.6 9.1h3.1c.1 1.5-.4 2.8-1.6 2.8S3.4 10.7 3.6 9.1zM10.9 4.3c1.3 0 1.8 1.7 1.8 3.7 0 1.8-.7 3-2 3s-2-1.4-2-3.2c0-1.9.8-3.5 2.2-3.5zM9.3 12.1h3.1c.2 1.6-.3 2.8-1.5 2.8s-1.7-1.2-1.6-2.8z" fill="currentColor"/>',
+    battery: '<rect x="1.4" y="4.4" width="11.6" height="7.2" rx="2.1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="3.2" y="6.2" width="5.6" height="3.6" rx=".8" fill="currentColor"/><path d="M14.4 6.7v2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+    trend: '<path d="M1.8 12.2 6.1 7.9l2.7 2.7 4.7-4.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.9 5.3h4v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
   };
   const icon = (k, size = 16) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 16 16" aria-hidden="true">${ICON[k] || ICON.other}</svg>`;
   const CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.2 6.4 4.8 9 9.8 3.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -201,7 +205,7 @@
   // Zeile einer gruppierten Liste (iOS „inset grouped“): Symbol, Titel + Unterzeile, Wert rechts
   const irow = ({ lead = "", title, sub = "", val = "", cls = "" }) =>
     `<li class="ios-row ${cls}">${lead}<span class="row-main"><span class="row-title">${title}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span>${val !== "" ? `<span class="row-val">${val}</span>` : ""}</li>`;
-  const rowIcon = (cat) => `<span class="row-ic c-${cat}">${icon(cat, 16)}</span>`;
+  const rowIcon = (cat, key) => `<span class="row-ic c-${cat}">${icon(key || cat, 16)}</span>`;   // key: eigenes Symbol (Schritte …)
   // „Heute“, „Gestern“ oder Datum – für die Zeitangabe rechts in Kacheln
   const dayLabel = (iso) => {
     const d = parse(iso), t = new Date();
@@ -375,7 +379,6 @@
     const from = addDays(snapEnd, -28), prevFrom = addDays(snapEnd, -56);
     const cur = inRange(from, snapEnd), prev = inRange(prevFrom, from);
     $("#kpiSub").textContent = `${fmtDate(from)} – ${fmtDate(snap)}, verglichen mit den 4 Wochen davor.`;
-    setSum("letzte4", [`${nf(sum(cur, (a) => a.sec) / 3600, 1)} h`, `${cur.length} Einheiten`]);
     const delta = (a, b, unit, d = 0) => {
       const diff = a - b; if (Math.abs(diff) < 0.05) return "± 0 zur Vorperiode";
       if (FLEX.active && diff < 0) return `<span class="neutral-delta">−${nf(Math.abs(diff), d)} ${unit}, Flex-Phase ohne Soll</span>`;
@@ -491,8 +494,12 @@
     } else {
       $("#currentPhase").innerHTML = `<p class="muted">Außerhalb des Plans.</p>`;
     }
-    // chronologisch; Flex ist eine eigene Phase (gestrichelt)
-    $("#phaseList").innerHTML = PHASES.map((p) => {
+    // chronologisch; im Tab die aktuelle und die nächsten zwei, alle in der eigenen Ansicht (#plan-phasen)
+    const from = Math.max(0, Math.min(PHASES.length - 3, PHASES.findIndex((p) => p.end > now)));
+    $("#phaseList").innerHTML = phaseRows(PHASES.slice(from, from + 3), cp, now) + (PHASES.length > 3 ? moreRow("plan-phasen", PHASES.length) : "");
+  }
+  function phaseRows(list, cp, now) {
+    return list.map((p) => {
       const st = p === cp ? "cur" : p.end <= now ? "done" : "future";
       return irow({
         lead: `<span class="row-dot ${st}" aria-hidden="true"></span>`,
@@ -501,10 +508,8 @@
         val: p.hours, cls: st,
       });
     }).join("");
-    const afterFlex = FLEX.active ? currentPhase(addDays(FLEX.until, 1)) : null;
-    setSum("saison", FLEX.active ? [`Flex bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })}`, afterFlex ? `danach ${afterFlex.short}` : null]
-      : cp ? [cp.short, `noch ${Math.ceil((cp.end - now) / DAY / 7)} Wochen`] : "");
   }
+  const renderAllPhases = (body) => { const now = new Date(); body.innerHTML = `<div class="card list-card"><ul class="ios-list dots phase-rows">${phaseRows(PHASES, currentPhase(now), now)}</ul></div>`; };
 
   /* ---------- Wochenumfang (gestapelte Balken) ---------- */
   const firstWeek = monday(acts[acts.length - 1].date);
@@ -522,7 +527,6 @@
     const keys = showOther ? ["swim", "bike", "run", "strength", "other"] : ["swim", "bike", "run"];
     const lastW = weeks[weeks.length - 1], curMon = monday(new Date()).getTime();
     const total = (w) => keys.reduce((a, k) => a + w[k], 0);
-    if (lastW) setSum("umfang", `${lastW.start.getTime() === curMon ? "Diese Woche" : `Woche ab ${dmS(lastW.start)}`} ${nf(total(lastW), 1)} h`);
     const colors = { swim: "var(--swim)", bike: "var(--bike)", run: "var(--run)", strength: "var(--strength)", other: "var(--other)" };
     const labels = { swim: "Schwimmen", bike: "Rad", run: "Laufen", strength: "Kraft", other: "Sonstiges" };
     $("#volLegend").innerHTML = C.legendItems(keys.map((k) => ({ label: labels[k], color: colors[k] })));
@@ -588,7 +592,6 @@
   function disciplines() {
     const swims = ofCat(acts, "swim"), bikes = ofCat(acts, "bike"), runs = ofCat(acts, "run");
     const z2b = z2PaceRange();   // grobe Zone-2-Pace [schnell, langsam] aus der Zone-2-Auswertung, sonst null
-    setSum("disziplinen", [`Schwimmen ${swims.length}×`, `Rad ${bikes.length}×`, `Laufen ${runs.length}×`]);
     const weeksN = weeks.length;
     const stat = (l, v) => `<div class="stat"><small>${l}</small><b>${v}</b></div>`;
 
@@ -692,7 +695,6 @@
       { key: "run", label: "Laufen", color: "var(--run)", goal: toSec(g.run), pred: p.run, unit: (t) => `${mmss(t / runKm)} /km` },
     ];
     const goalTotal = sum(legs, (l) => l.goal);
-    setSum("rennen", [`Prognose ${hm(p.total.realistic)}`, `Ziel ${hm(goalTotal)}`]);
     $("#predAsOf").textContent = `Wenn heute Renntag wäre, Stand ${fmtDate(parse(p.asOf))}`;
 
     // Zwei gestapelte Balken auf derselben Zeitskala
@@ -791,14 +793,11 @@
     const cfg = window.TRAINING.z2, Z = window.Z2;
     if (!cfg || !Z) { $("#zone2").hidden = true; return; }
     const get = (f) => fetch(`${f}?v=${window.__v || Date.now()}`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); });
-    setSum("zone2", "wird geladen …");
     Promise.all([get("data/z2-metrics.json"), get("data/hr-sources.json").catch(() => null)])
-      .then(([db, src]) => { Z2DATA = db; HRSRC = src; insights(); disciplines(); renderZone2(); if (FLEX.active) today(); z2Detail(); })
+      .then(([db, src]) => { Z2DATA = db; HRSRC = src; renderZone2(); insights(); disciplines(); if (FLEX.active) today(); z2Detail(); })
       .catch(() => {
-        Z2FAIL = true; z2Detail();
+        Z2FAIL = true; z2Detail(); insights();
         $("#z2Tiles").innerHTML = `<p class="muted">Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).</p>`;
-        setSum("zone2", "nicht verfügbar");
-        const ins = $("#z2Insight p"); if (ins) ins.textContent = "Noch keine Zone-2-Auswertung verfügbar.";
       });
   }
 
@@ -857,16 +856,12 @@
     const t4 = sh ? tile("Anteil Z1–2", `${Math.round(sh.share * 100)} <small>%</small>`, `Z3 ${Math.round((sh3 ? sh3.share : 0) * 100)} %, Z4–5 ${Math.round((1 - sh.share - (sh3 ? sh3.share : 0)) * 100)} %<br>${hm(sh.totalSec)} h Lauf & Rad in 4 Wochen, Richtwert ~80&nbsp;%`)
       : tile("Anteil Z1–2", "–", "keine Einheiten mit Herzfrequenz");
     $("#z2Tiles").innerHTML = t1 + t2 + t3 + t4;
-    const decAvg = decRecent.length ? decRecent.reduce((a, p) => a + p.v, 0) / decRecent.length : null;
-    setSum("zone2", [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null].filter(Boolean).length ? [sh ? `Z1–2-Anteil ${Math.round(sh.share * 100)} %` : null, decAvg != null ? `Entkopplung ${decAvg < 0 ? "−" : ""}${nf(Math.abs(decAvg), 1)} %` : null] : "noch keine Auswertung");
 
-    // Text der Karte „Zone 2 verbessern“
-    const ins = $("#z2Insight p");
-    if (ins) ins.innerHTML = Z.summary(recs, asOf, cfg, hrZ).map((t) => `<span class="z2-line">${esc(t)}</span>`).join("") + `<a href="#zone2">Details</a>`;
     $("#z2Asof").textContent = `${all.length} Läufe & Fahrten seit ${fmtDate(parse(all[0].date))}, Stand ${fmtDate(parse(asOf))}${strapOnly ? ". Nur Brustgurt-Einheiten gewertet." : ""}. Tippe auf eine Kachel für Verlauf und Details.`;
     const withHr = all.filter((r) => r.hasHr), cnt = (k) => withHr.filter((r) => r.hrSrc === k).length;
     const srcTxt = `Pulsmesser erkannt: ${cnt("strap")} × Brustgurt, ${cnt("wrist")} × Uhr, ${cnt("unknown")} × unbekannt (von ${withHr.length} Einheiten mit Puls). ${HRSRC && HRSRC.updated ? `Garmin-Sensordaten Stand ${new Date(HRSRC.updated).toLocaleDateString("de-DE")}.` : "Noch keine Garmin-Sensordaten, der nächste Garmin-Lauf holt sie."}`;
-    Z2S = { recs, all, runMid, rideMid, runBand, rideBand, srcTxt };   // für die Detailansichten
+    // für die Detailansichten und das Highlight „Zone 2“ unter „Wo du gerade stehst“
+    Z2S = { recs, all, runMid, rideMid, runBand, rideBand, srcTxt, share: sh ? sh.share : null, summary: Z.summary(recs, asOf, cfg, hrZ) };
   }
   // Tooltip-Zeilen einer Zone-2-Einheit (Name, Strecke, Zeit im Band, Pulsmesser)
   const recNote = (p) => `${esc(p.rec.name)}<br>${nf(p.rec.km, 1)} km in ${hm(p.rec.sec)} h${p.rec.pace ? `, ${Math.round(p.rec.pace.bandSec / 60)} min im Band` : p.rec.watts ? `, ${Math.round(p.rec.watts.bandSec / 60)} min im Band` : ""}<br>${SRC_TXT[p.rec.hrSrc] || SRC_TXT.unknown}${p.rec.hrSrcFrom ? ` (${p.rec.hrSrcFrom})` : ""}${p.gap ? ", steigungsbereinigt (GAP)" : ""}`;
@@ -907,7 +902,7 @@
     });
   }
   document.addEventListener("click", (e) => {
-    const b = e.target && e.target.closest ? e.target.closest(".info-btn") : null;
+    const b = e.target && e.target.closest ? e.target.closest("button[data-info]") : null;   // ⓘ-Knöpfe und Highlights
     const h = b && HELP[b.dataset.info];
     if (!h) return;
     e.preventDefault(); e.stopPropagation();
@@ -927,7 +922,6 @@
     if (!GYM) { $("#gym").hidden = true; return; }
     const now = new Date(), todayIso = ymdLocal(now), mon = ymdLocal(monday(now));
     const wk = GYM.splitCounts(GYM_SESS, mon, todayIso);
-    setSum("gym", [`${wk.total}× diese Woche`, wk.total ? ["Push", "Pull", "Legs"].filter((k) => wk[k]).map((k) => `${wk[k]} ${k}`).join(", ") || "ohne Split" : null]);
     $("#gymWeek").innerHTML = htile({
       cat: "strength", label: "Gym diese Woche", time: `seit ${dmS(monday(now))}`, value: `${wk.total}<small>×</small>`,
       sub: `<div class="ht-split">${["Push", "Pull", "Legs"].map((k) => `<span><b>${wk[k]}</b>${k}</span>`).join("")}${wk.ohne ? `<span><b>${wk.ohne}</b>ohne Split</span>` : ""}</div>${wk.Legs ? "" : `<div class="ht-note">Noch kein Leg Day diese Woche.</div>`}`,
@@ -938,25 +932,43 @@
       const h = GYM.exerciseHistory(GYM_SESS, ex, GCFG);
       const gp = GYM.goalProgress(GYM_SESS, ex, GCFG);
       const lm = MX ? MX.register(MX.liftMetric(ex, gp ? gp.goal : null, isBodyweight(ex) ? BODY_KG : null)) : null;   // Detailansicht #training-1rm-…
-      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span></h3><p class="muted" style="margin:0;font-size:15px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "5x20" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg ${isBodyweight(ex) ? "Zusatzgewicht für eine Wiederholung" : "(geschätztes 1RM)"}</p>` : ""}</div>`;
+      if (!h.length) return `<div class="card lift c-strength"><div class="lift-head"><span class="lift-name">${icon("strength", 15)}${esc(ex)} <span class="lift-split">${split}</span></span></div><p class="muted" style="margin:0;font-size:15px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "5x20" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg ${isBodyweight(ex) ? "Zusatzgewicht für eine Wiederholung" : "(geschätztes 1RM)"}</p>` : ""}</div>`;
       const last = h[h.length - 1];
-      const scope = (GCFG.perPlace || []).includes(ex) ? h.filter((e) => e.place === last.place) : h;
-      const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
-      const set = (e) => `${e.sets > 1 ? e.sets + "×" : ""}${e.reps}×${nf(e.weight, e.weight % 1 ? 1 : 0)} kg`;
       const machine = (GCFG.perPlace || []).includes(ex);
-      const plan = GYM.liftPlan(GYM_SESS, ex, GCFG);
-      const tag = lm ? "a" : "div";
-      return `<${tag} class="card lift${lm ? " tile-link" : ""}"${lm ? ` href="#${metricHash(lm)}"` : ""}>
-        <h3 class="lift-head"><span>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span>${last.pr ? ` <span class="badge good">PR</span>` : ""}${plan.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}${lm ? `<span class="sr-only">, 1RM-Verlauf und alle Einträge öffnen</span>` : ""}</span>${lm ? CHEV_R : ""}</h3>
-        <div class="stats">
-          <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} @${esc(last.place)}</small></div>
-          <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
-          <div class="stat"><small>${isBodyweight(ex) ? "1RM Zusatz" : "1RM geschätzt"}${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>${isBodyweight(ex) ? "mit Körpergewicht" : "Epley"}</small></div>
+      const scope = machine ? h.filter((e) => e.place === last.place) : h;
+      const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
+      const plan = GYM.liftPlan(GYM_SESS, ex, GCFG), pr = plan.prog;
+      const tag = lm ? "a" : "div", at = machine ? ` (${esc(last.place)})` : "";
+      const dmy = (e) => fmtDate(parse(e.date), { day: "2-digit", month: "2-digit" });
+      // oben einmal der große 1RM-Wert, daneben ein kleiner Ring zum Block-Ziel und das Ziel
+      const goal = gp ? `<div class="lift-goalring">${C.rings({ size: 48, stroke: 6, gap: 0,
+        items: [{ frac: gp.current != null ? gp.current / gp.goal : 0, color: gp.reached ? "var(--good)" : "var(--strength)" }],
+        aria: gp.current == null ? `Ziel ${nf(gp.goal)} kg, noch kein Eintrag${gp.place ? ` in ${gp.place}` : ""}` : `${gp.pct} % vom Ziel ${nf(gp.goal)} kg` })}
+        <div><b>${gp.current == null ? "–" : `${gp.pct}&nbsp;%`}</b><span>Ziel ${nf(gp.goal)}&nbsp;kg</span></div></div>` : "";
+      const next = plan.target ? { val: setTxt(plan.target), sub: `zuletzt ${setTxt(plan.last, false)} · ${pr.reps[0]}–${pr.reps[1]} Wdh., +${kgTxt(pr.step)} kg` }
+        : plan.noEntryAtPlace ? { val: "–", sub: `Noch kein Eintrag in ${esc(plan.place)} – Startgewicht frei wählen` } : { val: "–", sub: "" };
+      return `<${tag} class="card lift c-strength${lm ? " tile-link" : ""}"${lm ? ` href="#${metricHash(lm)}"` : ""}>
+        <div class="lift-head"><span class="lift-name">${icon("strength", 15)}${esc(ex)} <span class="lift-split">${split}</span></span>${last.pr ? `<span class="badge good">PR</span>` : ""}${plan.reached ? `<span class="badge good">Wdh.-Ziel ✓</span>` : ""}${lm ? CHEV_R : ""}</div>
+        <div class="lift-top">
+          <div class="lift-main"><div class="lift-label">${isBodyweight(ex) ? "1RM Zusatzgewicht" : "1RM geschätzt"}${at}</div><div class="lift-val">${nf(best.e1rm, 1)}<small>kg</small></div></div>
+          ${goal}
         </div>
-        ${goalBar(gp)}
-        ${goalBox(plan)}
+        <div class="lift-spark" data-spark="${scope.map((e) => e.e1rm.toFixed(1)).join(" ")}"></div>
+        <ul class="ios-list lift-rows">
+          ${irow({ title: "Letzter Eintrag", sub: `${dmy(last)} ${placeTxt(last.place)}`, val: `<b>${setTxt(last)}</b>` })}
+          ${irow({ title: `Bester Satz${at}`, sub: dmy(best), val: `<b>${setTxt(best)}</b>` })}
+          ${irow({ title: `Nächstes Ziel${plan.perPlace && plan.place ? ` (${esc(plan.place)})` : ""}`, sub: next.sub, val: `<b>${next.val}</b>` })}
+        </ul>
+        ${plan.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}
+        ${lm ? `<span class="sr-only">, 1RM-Verlauf und alle Einträge öffnen</span>` : ""}
       </${tag}>`;
     }).join("");
+    // Mini-Linie des 1RM-Verlaufs (bei Maschinen nur am selben Ort) in voller Kartenbreite, gezeichnet sobald die Breite bekannt ist
+    $("#gymLifts").querySelectorAll("[data-spark]").forEach((box) => {
+      const vals = box.dataset.spark.split(" ").map(Number);
+      if (vals.length < 2) { box.remove(); return; }
+      mount(box, (W) => { box.innerHTML = C.sparkline(vals, { w: W, h: 36, color: "var(--strength)" }); });
+    });
 
     // Split-Verteilung der letzten 4 Wochen
     const c4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), todayIso);
@@ -968,18 +980,6 @@
       <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}</p>`;
   }
   const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-  /* ---------- 1RM-Ziel (Gym.goalProgress) ---------- */
-  function goalBar(gp) {
-    if (!gp) return "";
-    const where = gp.perPlace && gp.place ? ` in ${esc(gp.place)}` : "";
-    if (gp.current == null) return `<div class="goal-bar"><div class="goal-label"><span>Ziel ${nf(gp.goal)} kg, noch kein Eintrag${gp.place ? ` in ${esc(gp.place)}` : ""}</span></div><div class="ready-track goal-track"></div></div>`;
-    const label = `Ziel ${nf(gp.goal)} kg, aktuell ${nf(Math.round(gp.current))} kg${where} (${gp.pct} %)`;
-    return `<div class="goal-bar">
-      <div class="goal-label"><span>${label}</span>${gp.reached ? ` <span class="badge good">Ziel erreicht</span>` : ""}</div>
-      <div class="ready-track goal-track" role="progressbar" aria-label="1RM-Ziel" aria-valuemin="0" aria-valuemax="${gp.goal}" aria-valuenow="${Math.round(gp.current)}" aria-valuetext="${label}"><div class="ready-fill" style="width:${Math.min(100, gp.pct)}%;background:${gp.reached ? "var(--good)" : "var(--strength)"}"></div></div>
-    </div>`;
-  }
 
   /* ---------- Nächstes Ziel (doppelte Progression, Gym.liftPlan) ---------- */
   const kgTxt = (w) => nf(w, w % 1 ? 1 : 0);
@@ -995,16 +995,6 @@
         : `<span class="muted">Noch kein Eintrag für ${esc(ex)} – z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "5x20" : "6x100"} @Ort“ als Titel.</span>`;
     return `<p class="gym-target">${txt}</p>`;
   }
-  // Block in der Übungskarte
-  function goalBox(p) {
-    const pr = p.prog, range = `${pr.reps[0]}–${pr.reps[1]} Wdh., +${kgTxt(pr.step)} kg`;
-    const head = `<small>Nächstes Ziel${p.perPlace && p.place ? ` (${esc(p.place)})` : ""}</small>`;
-    const body = p.target ? `<b>${setTxt(p.target)}</b><small>zuletzt ${setTxt(p.last, false)}<br>${range}</small>`
-      : p.noEntryAtPlace ? `<span class="muted">Noch kein Eintrag in ${esc(p.place)} – Startgewicht frei wählen.</span><small>${range}<br>Werte anderer Orte werden nicht übernommen</small>`
-        : `<span class="muted">Noch kein Eintrag.</span>`;
-    return `<div class="lift-goal">${head}${body}</div>${p.stagnation ? `<p class="lift-note">${STAG_TXT(pr.stagnation)}</p>` : ""}`;
-  }
-
   // Legende unter dem 1RM-Diagramm (Detailansicht): Orte nur, wenn es mehrere gibt (dann farbige Punkte), PR-Ring
   function liftLegend(h, placeColor, machine) {
     const places = [...new Set(h.map((e) => e.place))];
@@ -1057,7 +1047,6 @@
       </div>${selDay ? detail(selDay) : ""}`;
     }).join("");
     box.innerHTML = head + rows;
-    setSum("kalender", [`Diese Woche ${nf(cal.weeks[0].totalSec / 3600, 1)} h`, `${cal.weeks[0].count} Einheiten`]);
     box.querySelectorAll(".cal-cell").forEach((b) => b.addEventListener("click", () => {
       const d = cal.weeks[+b.dataset.w].days[+b.dataset.d];
       calSel = calSel === d.date ? null : d.date;
@@ -1070,65 +1059,94 @@
   }
 
   /* ---------- Insights ---------- */
+  /* ---------- Wo du gerade stehst: Highlights wie in Apple Health ---------- */
+  // Oben Symbol und Titel in der Sportfarbe, ein kurzer Satz und eine Kennzahl; der ausführliche Text steht im Blatt (wie ⓘ)
   function insights() {
     const swims = ofCat(acts, "swim").filter((a) => a.km >= 0.9);
     const paces = swims.map((a) => a.sec / (a.km * 10));
-    const avgSwim = sum(swims, (a) => a.km) / swims.length;
-    const longestBike = Math.max(...ofCat(acts, "bike").map((a) => a.km));
-    const longestRun = Math.max(...acts.filter((a) => a.sport === "Run").map((a) => a.km));
+    const avgSwim = swims.length ? sum(swims, (a) => a.km) / swims.length : null;
+    const longestBike = Math.max(0, ...ofCat(acts, "bike").map((a) => a.km));
+    const longestRun = Math.max(0, ...acts.filter((a) => a.sport === "Run").map((a) => a.km));
     const trail = acts.filter((a) => a.sport === "TrailRun").sort((a, b) => b.km - a.km)[0];
     const firstSwim = ofCat(acts, "swim").reduce((m, a) => (a.date < m ? a.date : m), snapEnd);
     const passes = ofCat(acts, "bike").filter((a) => a.elev >= 1000).length;
     const str = ofCat(acts, "strength").length;
     const last3 = inRange(addDays(snapEnd, -21), snapEnd);
     const tri3 = sum(last3.filter((a) => ["swim", "bike", "run"].includes(a.cat)), (a) => a.sec) / 3600 / 3;
+    const dm = (d) => fmtDate(d, { day: "2-digit", month: "2-digit" });
+    const z2 = D.zones.hr[1];
     const items = [
-      ["warn", "Baustelle", "Schwimmen ist der größte Hebel", `Erste Schwimmeinheit erst am ${fmtDate(firstSwim, { day: "2-digit", month: "2-digit" })} – seitdem Ø ${nf(avgSwim, 1)} km pro Einheit, Pace schwankt zwischen ${mmss(Math.min(...paces))} und ${mmss(Math.max(...paces))} /100m. Für 3,8 km im Rennen: regelmäßig 3× pro Woche, Technik vor Umfang, Einheiten schrittweise Richtung 3 km.`],
-      ["good", "Stärke", "Rad-Basis ist da", `Längste Fahrt seit der Anmeldung: ${nf(longestBike, 1)} km – bereits über Renndistanz, dazu ${passes} Ausfahrten mit über 1.000 Hm. FTP ${D.zones.ftp} W (${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg). Für dein Ziel „schneller am Berg“: Sweet-Spot- und Bergintervalle im Winter auf Zwift.`],
-      ["good", "Im Plan", "Laufen solide", `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe in Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm – nach Puls, nicht nach Tempo${paceHint() ? ` (grobe Pace laut Zone-2-Auswertung: ${paceHint()})` : ""}. Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.`],
-      FLEX.active && GYM
-        ? ["good", "Schwerpunkt", "Krafttraining im Fokus", (() => {
-          const now = new Date(), gym4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), ymdLocal(now)).total;
-          const minGym = (FCFG.minimum || {}).gym || 4;
-          return `${gym4} Krafteinheiten in den letzten 4 Wochen (Ø ${nf(gym4 / 4, 1)}/Woche). Bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })} liegt der Schwerpunkt auf dem Gym – Wochen-Minimum ${minGym}× Gym. Danach neben dem Ausdauertraining auf 1–2 Erhaltungseinheiten pro Woche reduzieren.`;
-        })()]
-        : ["good", "Stärke", "Krafttraining konsequent", `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.`],
+      { key: "swim", cat: "swim", title: "Schwimmen", text: "Der größte Hebel bis zum Rennen: regelmäßig ins Wasser.",
+        value: avgSwim != null ? nf(avgSwim, 1) : "–", unit: "km", cap: "Ø pro Einheit",
+        detail: `Erste Schwimmeinheit erst am ${dm(firstSwim)}${swims.length ? ` – seitdem Ø ${nf(avgSwim, 1)} km pro Einheit, Pace schwankt zwischen ${mmss(Math.min(...paces))} und ${mmss(Math.max(...paces))} /100m` : ""}. Für 3,8 km im Rennen: regelmäßig 3× pro Woche, Technik vor Umfang, Einheiten schrittweise Richtung 3 km.` },
+      { key: "bike", cat: "bike", title: "Rad", text: longestBike >= 180 ? "Die Basis ist da: längste Fahrt schon über Renndistanz." : "Lange Fahrten Schritt für Schritt Richtung 180 km.",
+        value: nf(longestBike, 1), unit: "km", cap: "längste Fahrt",
+        detail: `Längste Fahrt seit der Anmeldung: ${nf(longestBike, 1)} km${longestBike >= 180 ? " – bereits über Renndistanz" : ""}, dazu ${passes} Ausfahrten mit über 1.000 Hm. FTP ${D.zones.ftp} W (${nf(D.zones.ftp / D.athlete.weightKg, 2)} W/kg). Für dein Ziel „schneller am Berg“: Sweet-Spot- und Bergintervalle im Winter auf Zwift.` },
+      { key: "run", cat: "run", title: "Laufen", text: "Solide. Den langen Lauf bis zum Frühjahr langsam steigern.",
+        value: nf(longestRun, 1), unit: "km", cap: "längster Straßenlauf",
+        detail: `Längster Straßenlauf ${nf(longestRun, 1)} km${trail ? `, Trail ${nf(trail.km, 1)} km mit ${nf(trail.elev)} Hm` : ""}. Lockere Läufe in Zone 2: ${z2[0]}–${z2[1]} bpm – nach Puls, nicht nach Tempo${paceHint() ? ` (grobe Pace laut Zone-2-Auswertung: ${paceHint()})` : ""}. Langen Lauf bis zum Frühjahr langsam auf 20–24 km steigern.` },
+      FLEX.active && GYM ? (() => {
+        const now = new Date(), gym4 = GYM.splitCounts(GYM_SESS, ymdLocal(addDays(now, -27)), ymdLocal(now)).total;
+        const minGym = (FCFG.minimum || {}).gym || 4;
+        return { key: "strength", cat: "strength", title: "Kraft", text: `Schwerpunkt bis ${dm(FLEX.until)}, mindestens ${minGym}× Gym pro Woche.`,
+          value: nf(gym4 / 4, 1), unit: "× pro Woche", cap: "Ø letzte 4 Wochen",
+          detail: `${gym4} Krafteinheiten in den letzten 4 Wochen (Ø ${nf(gym4 / 4, 1)}/Woche). Bis ${dm(FLEX.until)} liegt der Schwerpunkt auf dem Gym – Wochen-Minimum ${minGym}× Gym. Danach neben dem Ausdauertraining auf 1–2 Erhaltungseinheiten pro Woche reduzieren.` };
+      })() : { key: "strength", cat: "strength", title: "Kraft", text: "Konsequent dabei. Ab Februar auf Erhaltung reduzieren.",
+        value: nf(str / weeks.length, 1), unit: "× pro Woche", cap: `Ø seit ${weeks.length} Wochen`,
+        detail: `${str} Krafteinheiten in ${weeks.length} Wochen (Ø ${nf(str / weeks.length, 1)}/Woche). Ideal für Grundlage 1 – ab Februar auf 1–2 Erhaltungseinheiten reduzieren.` },
       FLEX.active
-        ? ["neutral", "Flex", FLEX.label, `Bis ${fmtDate(FLEX.until, { day: "2-digit", month: "2-digit" })} zählt das Wochen-Minimum statt eines Umfangsziels: Schwerpunkt Gym, Ausdauer zur Erhaltung. In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche.`]
-        : [tri3 < 5 ? "warn" : "good", tri3 < 5 ? "Achtung" : "Gut", "Reise-Wochen", `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche (Klettern, Reisen). Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen.`],
-      ["good", "Fokus", "Zone 2 verbessern", `Herzfrequenz-Zone 2: ${D.zones.hr[1][0]}–${D.zones.hr[1][1]} bpm. Die Entwicklung wird aus deinen Läufen und Fahrten berechnet …`, "z2Insight"],
+        ? { key: "volume", cat: "other", icon: "activity", title: FLEX.label, text: `Bis ${dm(FLEX.until)} zählt das Wochen-Minimum statt eines Umfangsziels.`,
+          value: nf(tri3, 1), unit: "h pro Woche", cap: "Swim/Bike/Run, letzte 3 Wochen",
+          detail: `Bis ${dm(FLEX.until)} zählt das Wochen-Minimum statt eines Umfangsziels: Schwerpunkt Gym, Ausdauer zur Erhaltung. In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche.` }
+        : { key: "volume", cat: "other", icon: "activity", title: "Umfang", text: tri3 < 5 ? "Zuletzt wenig Ausdauer. Danach wieder Richtung 8–11 h aufbauen." : "Der Ausdauerumfang passt zur Grundlage.",
+          value: nf(tri3, 1), unit: "h pro Woche", cap: "Swim/Bike/Run, letzte 3 Wochen",
+          detail: `In den letzten 3 Wochen Ø ${nf(tri3, 1)} h Swim/Bike/Run pro Woche. ${tri3 < 5 ? "Kein Problem in der Grundlage – danach wieder Richtung 8–11 h aufbauen." : "Weiter so, Richtwert in der Grundlage 8–11 h."}` },
+      (() => {
+        const sh = Z2S && Z2S.share != null ? Math.round(Z2S.share * 100) : null;
+        const text = Z2FAIL ? "Noch keine Zone-2-Auswertung verfügbar." : !Z2S ? "Wird aus deinen Läufen und Fahrten berechnet …"
+          : sh == null ? "Noch keine Einheiten mit Herzfrequenz." : sh >= 75 ? "Der Großteil deiner Lauf- und Radzeit ist locker." : "Mehr ruhige Einheiten in Zone 2, Richtwert ~80 %.";
+        return { key: "z2", cat: "heart", title: "Zone 2", text, value: sh == null ? "–" : String(sh), unit: "%", cap: "Anteil Z1–2, 4 Wochen",
+          detail: `<p>Herzfrequenz-Zone 2: ${z2[0]}–${z2[1]} bpm. Der Anteil zählt die Zeit in Zone 1–2 aller Läufe und Fahrten der letzten 4 Wochen; Richtwert ~80 %.</p>${Z2S && Z2S.summary ? Z2S.summary.map((t) => `<p>${esc(t)}</p>`).join("") : ""}<p class="muted">Alle Werte und Verläufe: Abschnitt „Zone 2“ im Tab Erholung.</p>` };
+      })(),
     ];
-    const warn = items.find((i) => i[0] === "warn");
-    setSum("stand", [`${items.length} Einschätzungen`, warn ? warn[2] : null]);
-    $("#insights").innerHTML = items.map(([cls, badge, title, text, id]) => `<div class="card insight"${id ? ` id="${id}"` : ""}><span class="badge ${cls}">${badge}</span><div><b>${title}</b><p>${text}</p></div></div>`).join("");
+    items.forEach((it) => { HELP[`hl-${it.key}`] = { title: it.title, html: () => it.detail }; });
+    $("#insights").innerHTML = items.map((it) => `<button type="button" class="card hl c-${it.cat}" data-info="hl-${it.key}" aria-haspopup="dialog">
+      <span class="hl-head">${icon(it.icon || it.cat, 15)}<span class="hl-title">${esc(it.title)}</span>${CHEV_R}</span>
+      <span class="hl-text">${it.text}</span>
+      <span class="hl-fig"><span class="hl-val">${it.value}${it.value !== "–" ? `<small>${it.unit}</small>` : ""}</span><span class="hl-cap">${it.cap}</span></span>
+    </button>`).join("");
   }
 
   /* ---------- Aktivitäten ---------- */
-  let filter = "all", showAll = false;
-  const ACT_LIMIT = 10;
-  function activities() {
-    const filters = [["all", "Alle"], ["swim", "Schwimmen"], ["bike", "Rad"], ["run", "Laufen"], ["strength", "Kraft"], ["other", "Sonstiges"]];
-    $("#actFilter").innerHTML = filters.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${k === filter}">${l}</button>`).join("");
-    $("#actFilter").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; showAll = false; activities(); }));
-    const list = filter === "all" ? acts : acts.filter((a) => a.cat === filter);
-    $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.${ignoredCount ? ` ${ignoredCount} Zwift-${ignoredCount === 1 ? "Fahrt" : "Fahrten"} im Flex-Zeitraum ${ignoredCount === 1 ? "zählt" : "zählen"} nicht (anderer Fahrer).` : ""}`;
-    setSum("aktivitaeten", `${acts.length} Einträge`);
-    $("#actCount").textContent = list.length > ACT_LIMIT && !showAll ? `${ACT_LIMIT} von ${list.length}` : `${list.length} Einträge`;
-    $("#actList").innerHTML = list.slice(0, showAll ? list.length : ACT_LIMIT).map((a) => {
-      const main = a.km ? (a.cat === "swim" ? `${nf(a.km * 1000)}<small>m</small>` : `${nf(a.km, 1)}<small>km</small>`) : `${hm(a.sec)}<small>h</small>`;
-      const extra = [a.km ? `${hm(a.sec)} h` : null, a.info || null, a.elev ? `${nf(a.elev)} hm` : null].filter(Boolean).join(", ");
-      return irow({
-        lead: rowIcon(a.cat), title: esc(actName(a)),
-        sub: `${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}, ${esc(SPORT_LABEL[a.sport] || a.sport)}`,
-        val: `<b>${main}</b>${extra ? `<small>${esc(extra)}</small>` : ""}`,
-      });
-    }).join("");
-    const more = $("#actMore");
-    more.hidden = list.length <= ACT_LIMIT;
-    more.textContent = showAll ? "Weniger anzeigen" : `Alle ${list.length} anzeigen`;
-    more.setAttribute("aria-expanded", String(showAll));
+  // Im Tab nur die letzten Einträge, dazu „Alle anzeigen ›“ → eigene Ansicht von rechts mit Filter (#training-aktivitaeten)
+  let filter = "all";
+  const ACT_LIMIT = 5;
+  const ACT_FILTERS = [["all", "Alle"], ["swim", "Schwimmen"], ["bike", "Rad"], ["run", "Laufen"], ["strength", "Kraft"], ["other", "Sonstiges"]];
+  function actRow(a) {
+    const main = a.km ? (a.cat === "swim" ? `${nf(a.km * 1000)}<small>m</small>` : `${nf(a.km, 1)}<small>km</small>`) : `${hm(a.sec)}<small>h</small>`;
+    const extra = [a.km ? `${hm(a.sec)} h` : null, a.info || null, a.elev ? `${nf(a.elev)} hm` : null].filter(Boolean).join(", ");
+    return irow({
+      lead: rowIcon(a.cat), title: esc(actName(a)),
+      sub: `${fmtDate(a.date, { weekday: "short", day: "2-digit", month: "2-digit" })}, ${esc(SPORT_LABEL[a.sport] || a.sport)}`,
+      val: `<b>${main}</b>${extra ? `<small>${esc(extra)}</small>` : ""}`,
+    });
   }
-
+  // Zeile „Alle anzeigen ›“ am Ende einer gekürzten Liste
+  const moreRow = (href, count) => `<li><a class="ios-row more-row" href="#${href}"><span class="row-main"><span class="row-title">Alle anzeigen</span></span>${count != null ? `<span class="row-val">${count}</span>` : ""}${CHEV_R}</a></li>`;
+  function activities() {
+    $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.${ignoredCount ? ` ${ignoredCount} Zwift-${ignoredCount === 1 ? "Fahrt" : "Fahrten"} im Flex-Zeitraum ${ignoredCount === 1 ? "zählt" : "zählen"} nicht (anderer Fahrer).` : ""}`;
+    $("#actList").innerHTML = acts.slice(0, ACT_LIMIT).map(actRow).join("") + (acts.length > ACT_LIMIT ? moreRow("training-aktivitaeten", acts.length) : "");
+  }
+  function renderAllActivities(body) {
+    const list = filter === "all" ? acts : acts.filter((a) => a.cat === filter);
+    body.innerHTML = `<div class="segmented seg-wide push-filter" role="group" aria-label="Sportart filtern">${ACT_FILTERS.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${k === filter}">${l}</button>`).join("")}</div>
+      <p class="push-count">${list.length} ${list.length === 1 ? "Eintrag" : "Einträge"}</p>
+      <div class="card list-card"><ul class="ios-list ic act-list">${list.map(actRow).join("")}</ul></div>`;
+    body.querySelectorAll("[data-f]").forEach((b) => b.addEventListener("click", () => {
+      filter = b.dataset.f; renderAllActivities(body);
+      const again = body.querySelector(`[data-f="${filter}"]`); if (again) again.focus({ preventScroll: true });
+    }));
+  }
 
   /* ---------- Datenstand: Warnung bei ausgefallenem Sync (js/freshness.js) ---------- */
   const FRESH_KEY = "ironman.freshDismiss";
@@ -1525,7 +1543,7 @@
     });
   }
   // Zeile zur Detailansicht Trainingsbelastung (Wochensummen, akut/chronisch)
-  const loadLink = () => (MX && MX.byKey.belastung ? `<ul class="ios-list ic wk-link"><li><a class="ios-row" href="#${metricHash(MX.byKey.belastung)}">${rowIcon("activity")}<span class="row-main"><span class="row-title">Trainingsbelastung</span><span class="row-sub">Alle Wochen und akut/chronisch</span></span>${CHEV_R}</a></li></ul>` : "");
+  const loadLink = () => (MX && MX.byKey.belastung ? `<ul class="ios-list ic wk-link"><li><a class="ios-row" href="#${metricHash(MX.byKey.belastung)}">${rowIcon("activity", "trend")}<span class="row-main"><span class="row-title">Trainingsbelastung</span><span class="row-sub">Alle Wochen und akut/chronisch</span></span>${CHEV_R}</a></li></ul>` : "");
   function loadBlock(s) {
     const L = s.load;
     if (!L) return G.loads ? "" : `<div class="mini-title">Belastung (Garmin) ${infoBtn("load", "Belastung")}</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
@@ -1645,7 +1663,7 @@
   function renderMetric() {
     const m = MX.byKey[md.key];
     if (!m) return;
-    $("#mdTitle").innerHTML = `<span class="md-ic c-${m.cat}">${icon(m.cat, 20)}</span><span class="md-name c-${m.cat}">${esc(metricName(m))}</span>`;
+    $("#mdTitle").innerHTML = `<span class="md-ic c-${m.cat}">${icon(m.icon || m.cat, 20)}</span><span class="md-name c-${m.cat}">${esc(metricName(m))}</span>`;
     const body = $("#mdBody"), about = `<p class="md-about"><b>Über diese Werte</b><br>${esc(m.about + aboutExtra(m))}</p>`;
     const pts = metricPoints(m);
     if (pts == null) {   // Zone-2-Daten kommen per fetch: Platzhalter statt leerer Fläche
@@ -1883,6 +1901,94 @@
     if (bd.hidden) openSheet("metricSheet", md.opener || document.activeElement);
     renderMetric();
   }
+  /* ---------- Eigene Ansicht von rechts (wie ein iOS-Push) für lange Listen: „Alle anzeigen ›“ ---------- */
+  // Die Tab-Leiste bleibt sichtbar; der Tab dahinter rückt ein Stück nach links (Parallaxe). Zurück: „‹ Training“,
+  // Wischen vom linken Rand (folgt dem Finger 1:1, Schnippen reicht), Esc oder das Zurück des Browsers.
+  const PUSH = {
+    "training-aktivitaeten": { tab: "training", back: "Training", title: "Aktivitäten", render: (b) => renderAllActivities(b) },
+    "plan-phasen": { tab: "plan", back: "Plan", title: "Alle Phasen", render: (b) => renderAllPhases(b) },
+  };
+  const pv = { id: null, pushed: false, opener: null };
+  const pushEl = $("#pushView"), pushScroll = $("#pushScroll"), mainEl = $("main");
+  const PARALLAX = 24;   // % um die der Tab dahinter nach links rückt
+  function updatePushBar() {
+    if (!pv.id || !NV) return;
+    const h1 = $("#pushTitle"), bar = pushEl.querySelector(".push-bar"), r = h1.getBoundingClientRect();
+    const p = NV.titleProgress(r.top, r.height, bar.offsetHeight);
+    pushEl.querySelector(".push-bar-bg").style.opacity = p ? String(Math.round(p * 100) / 100) : "";
+    pushEl.classList.toggle("compact", p > 0.85);
+  }
+  pushScroll.addEventListener("scroll", () => requestAnimationFrame(updatePushBar), { passive: true });
+  function openPush(id) {
+    const P = PUSH[id];
+    pv.id = id;
+    $("#pushBackLabel").textContent = P.back;
+    $("#pushBack").setAttribute("aria-label", `Zurück zu ${P.back}`);
+    $("#pushTitle").textContent = P.title; $("#pushBarTitle").textContent = P.title;
+    P.render($("#pushBody"));
+    pushEl.hidden = false; pushScroll.scrollTop = 0;
+    document.documentElement.classList.add("push-open");
+    mainEl.setAttribute("inert", "");
+    void pushEl.offsetWidth;   // Startzustand zeichnen, dann hereinschieben
+    pushEl.classList.add("open");
+    updatePushBar();
+    $("#pushBack").focus({ preventScroll: true });
+  }
+  function closePush() {
+    if (!pv.id) return;
+    const opener = pv.opener;
+    pv.id = null; pv.pushed = false; pv.opener = null;
+    pushEl.classList.remove("open", "dragging"); mainEl.classList.remove("dragging");
+    pushEl.style.transform = ""; mainEl.style.transform = "";
+    document.documentElement.classList.remove("push-open");
+    mainEl.removeAttribute("inert");
+    setTimeout(() => { if (!pv.id) pushEl.hidden = true; }, reduceMotion() ? 220 : 420);
+    if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+  }
+  // Zurück: per Link geöffnet → im Verlauf zurück; per Direktlink → Hash des Tabs setzen
+  function pushBack() {
+    if (!pv.id) return;
+    if (pv.pushed) { history.back(); return; }
+    history.replaceState(null, "", `#${PUSH[pv.id].tab}`);
+    route();
+  }
+  $("#pushBack").addEventListener("click", pushBack);
+  // Esc: auch wenn der Fokus nach dem Wischen auf der Seite liegt; ein offenes Blatt darüber schließt zuerst
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.defaultPrevented || !pv.id || document.querySelector(".sheet-backdrop.open")) return;
+    e.preventDefault(); pushBack();
+  });
+  // Wischen vom linken Rand (schmale Leiste .push-edge, damit Listen und Filter normal scrollen)
+  (function edgeSwipe() {
+    const edge = pushEl.querySelector(".push-edge");
+    let x0 = null, pid = null, dx = 0, track = [];
+    edge.addEventListener("pointerdown", (e) => {
+      if (x0 != null || !pv.id) return;
+      x0 = e.clientX; pid = e.pointerId; dx = 0; track = [{ x: 0, t: performance.now() }];
+      pushEl.classList.add("dragging"); mainEl.classList.add("dragging");
+      try { edge.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    edge.addEventListener("pointermove", (e) => {
+      if (x0 == null || e.pointerId !== pid) return;
+      dx = Math.max(0, e.clientX - x0);
+      pushEl.style.transform = `translateX(${dx}px)`;
+      if (!reduceMotion()) mainEl.style.transform = `translateX(${(-PARALLAX * (1 - Math.min(1, dx / window.innerWidth))).toFixed(2)}%)`;
+      const now = performance.now();
+      track.push({ x: dx, t: now });
+      while (track.length > 2 && now - track[0].t > 100) track.shift();
+    });
+    const end = (e) => {
+      if (x0 == null || (e && e.pointerId !== pid)) return;
+      const a = track[0], b = track[track.length - 1], v = b && a && b.t > a.t ? (b.x - a.x) / (b.t - a.t) : 0;
+      x0 = null; pid = null;
+      pushEl.classList.remove("dragging"); mainEl.classList.remove("dragging");
+      if (dx > window.innerWidth * 0.35 || (dx > 10 && v > 0.3)) { pushBack(); return; }
+      pushEl.style.transform = ""; mainEl.style.transform = "";   // zurückfedern
+    };
+    edge.addEventListener("pointerup", end);
+    edge.addEventListener("pointercancel", end);
+  })();
+
   const wks = { open: false, pushed: false, opener: null };
   function openWeek() {
     wkOffset = null;   // immer mit der Standardwoche beginnen
@@ -1913,7 +2019,7 @@
     const mtile = (key, label, value, sub, time) => {
       const m = MX.byKey[key];
       return `<a class="card kpi tile-link c-${m.cat}" href="#${metricHash(m)}">
-        <div class="label">${icon(m.cat, 15)}<span class="ht-name">${label}</span>${time ? `<span class="ht-time">${time}</span>` : ""}${CHEV_R}</div>
+        <div class="label">${icon(m.icon || m.cat, 15)}<span class="ht-name">${label}</span>${time ? `<span class="ht-time">${time}</span>` : ""}${CHEV_R}</div>
         <div class="ht-bottom"><div class="ht-main"><div class="value">${value}</div>${sub ? `<div class="delta">${sub}</div>` : ""}</div>${spark7(m)}</div>
         <span class="sr-only">, Verlauf und Details öffnen</span></a>`;
     };
@@ -1935,109 +2041,15 @@
     ].filter((r) => r[2] !== "–");
     el.innerHTML = `<div class="grid g4 rec-tiles">${tiles.join("")}</div>` +
       (more.length ? `<div class="card list-card" style="margin-top:16px"><ul class="ios-list ic">${more.map(([key, label, value, sub]) => { const m = MX.byKey[key];
-        return `<li><a class="ios-row" href="#${metricHash(m)}">${rowIcon(m.cat)}<span class="row-main"><span class="row-title">${label}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span><span class="row-val"><b>${value}</b></span>${CHEV_R}</a></li>`; }).join("")}</ul></div>` : "");
+        return `<li><a class="ios-row" href="#${metricHash(m)}">${rowIcon(m.cat, m.icon)}<span class="row-main"><span class="row-title">${label}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span><span class="row-val"><b>${value}</b></span>${CHEV_R}</a></li>`; }).join("")}</ul></div>` : "");
     $("#recoverySub").textContent = `Garmin-Daten, zuletzt aktualisiert ${G.updated ? new Date(G.updated).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr" : "–"}. Tippe auf einen Wert für Verlauf und Details.`;
   }
 
-  /* ---------- Einklappbare Abschnitte (js/layout.js) ---------- */
-  const LAY = window.Layout, LCFG = window.TRAINING.layout || {}, LAY_KEY = "ironman.layout";
-  const LAY_PHASE = LAY ? LAY.phaseOf(FLEX.active) : "normal";
-  const UNITS = {};   // id → { btn, body, sum, host, label }
-  let LOPEN = {}, laySaved = null;
-  const CHEV = `<svg class="sec-chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  // Beim Aufklappen: Diagramme im Abschnitt mit echter Breite zeichnen (redrawCharts), dazu Sonderfälle
-  const REDRAW = {
-    saison: () => layoutTimeline(true),
-  };
-  const redrawUnit = (id, body) => { redrawCharts(body); if (REDRAW[id]) REDRAW[id](); };
   const reduceMotion = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  const loadLayout = () => { try { return JSON.parse(localStorage.getItem(LAY_KEY) || "null"); } catch (e) { return null; } };
-  const saveLayout = (v) => { try { if (v) localStorage.setItem(LAY_KEY, JSON.stringify(v)); else localStorage.removeItem(LAY_KEY); } catch (e) { /* ignore */ } };
-  function layoutState() {
-    const ids = Object.keys(UNITS);
-    if (!LAY) return Object.fromEntries(ids.map((id) => [id, true]));
-    const r = LAY.resolve({ ids, cfg: LCFG, phase: LAY_PHASE, saved: loadLayout() });
-    if (r.reset) saveLayout(null);   // Wahl aus der vorigen Phase verwerfen
-    laySaved = r.saved;
-    return r.open;
-  }
-  // Kurzfassung neben der Überschrift; mehrere Angaben als Liste → mit Abstand statt „·“
-  function setSum(id, text) {
-    const u = UNITS[id];
-    if (!u || !u.sum) return;
-    const parts = (Array.isArray(text) ? text : [text]).filter(Boolean);
-    u.sum.innerHTML = parts.map((t) => `<span>${esc(t)}</span>`).join("");
-    u.sum.hidden = LOPEN[id] !== false || !parts.length;
-  }
-  function setupSections() {
-    document.querySelectorAll("section[data-collapse]").forEach((sec) => {
-      const h2 = sec.querySelector(":scope > h2");
-      if (!h2 || !sec.id) return;
-      const id = sec.id, body = document.createElement("div");
-      body.className = "sec-body"; body.id = `${id}-body`;
-      [...sec.children].filter((c) => c !== h2).forEach((c) => body.appendChild(c));
-      const head = document.createElement("div");
-      head.className = "sec-head";
-      head.innerHTML = `<h2><button type="button" class="sec-toggle" aria-expanded="true" aria-controls="${body.id}"><span class="sec-title">${h2.innerHTML}</span>${CHEV}</button></h2><span class="sec-sum" id="${id}-sum" hidden></span>`;
-      h2.replaceWith(head);
-      sec.appendChild(body);
-      const btn = head.querySelector(".sec-toggle");
-      UNITS[id] = { btn, body, sum: head.querySelector(".sec-sum"), host: sec };
-      btn.addEventListener("click", () => toggleUnit(id));
-    });
-  }
-  // Auf-/Zuklappen; animate: kurze Höhen-Animation (nicht bei „Bewegung reduzieren“), redraw: Diagramme neu zeichnen
-  function applyUnit(id, open, animate = true, redraw = true) {
-    const u = UNITS[id];
-    if (!u) return;
-    LOPEN[id] = open;
-    u.btn.setAttribute("aria-expanded", String(open));
-    if (u.host) u.host.classList.toggle("is-collapsed", !open);
-    if (u.sum) { u.sum.hidden = open || !u.sum.textContent; if (open) u.btn.removeAttribute("aria-describedby"); else u.btn.setAttribute("aria-describedby", u.sum.id); }
-    if (u.label) u.label(open);
-    const body = u.body, tok = (body._tok = {});
-    const done = (fn) => { const f = () => { body.removeEventListener("transitionend", f); if (body._tok === tok) fn(); }; body.addEventListener("transitionend", f); setTimeout(f, 450); };
-    if (!animate || reduceMotion()) {
-      body.hidden = !open; body.style.height = ""; body.classList.remove("animating");
-      if (open && redraw) redrawUnit(id, body);
-      return;
-    }
-    if (open) {
-      body.hidden = false;
-      if (redraw) redrawUnit(id, body);   // jetzt sichtbar → richtige Breite
-      const h = body.scrollHeight;
-      body.classList.add("animating"); body.style.height = "0px";
-      void body.offsetHeight;
-      body.style.height = `${h}px`;
-      done(() => { body.style.height = ""; body.classList.remove("animating"); });
-    } else {
-      body.style.height = `${body.scrollHeight}px`; body.classList.add("animating");
-      void body.offsetHeight;
-      body.style.height = "0px";
-      done(() => { body.hidden = true; body.style.height = ""; body.classList.remove("animating"); });
-    }
-  }
-  function toggleUnit(id) {
-    const open = LOPEN[id] === false;
-    applyUnit(id, open, true, true);
-    if (LAY) { laySaved = LAY.remember(laySaved, LAY_PHASE, id, open); saveLayout(laySaved); }
-  }
-  // Navigation / Anker: eingeklappten Abschnitt sofort öffnen (nur für diesen Besuch, nicht gespeichert)
-  function revealSection(id, scroll) {
-    if (!id) return;
-    if (UNITS[id] && LOPEN[id] === false) applyUnit(id, true, false, true);
-    if (scroll) { const el = document.getElementById(id); if (el) el.scrollIntoView({ block: "start" }); }
-  }
+  try { localStorage.removeItem("ironman.layout"); } catch (e) { /* alte Einklapp-Wahl aufräumen */ }
 
   /* ---------- Init ---------- */
-  $("#actMore").addEventListener("click", () => {
-    showAll = !showAll; activities();
-    if (!showAll) $("#aktivitaeten").scrollIntoView({ block: "start" });   // beim Zuklappen nicht im Leeren landen
-  });
-  setupSections();
   setupHelp();
-  LOPEN = layoutState();
-  Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, false));
   today(); recovery(); gymSection(); calendarSection();
   freshBanner();
   hero(); kpis(); insights(); season(); volumeChart(); disciplines(); raceReady(); predictionHistory(); zone2(); activities();
@@ -2091,6 +2103,13 @@
   function route() {
     const id = decodeURIComponent(location.hash.slice(1));
     // Detailansicht, z. B. #erholung-hrv: passenden Tab zeigen und das Blatt öffnen
+    if (PUSH[id]) {   // eigene Ansicht von rechts (z. B. #training-aktivitaeten)
+      if (md.key) closeMetric();
+      if (wks.open) closeWeek();
+      if (showTab(PUSH[id].tab)) window.scrollTo(0, tabScroll[curTab] || 0);
+      if (pv.id !== id) { if (pv.id) closePush(); else mdScrollY = window.scrollY; openPush(id); }
+      return;
+    }
     const metric = metricOfHash(id);
     if (metric) {
       if (showTab(metric.tab)) window.scrollTo(0, tabScroll[curTab] || 0);
@@ -2104,12 +2123,12 @@
       if (!wks.open) { mdScrollY = window.scrollY; openWeek(); }
       return;
     }
-    const fromMetric = !!md.key || wks.open;   // „Zurück“ aus einem Blatt: schließen, Scroll-Position behalten
+    const fromMetric = !!md.key || wks.open || !!pv.id;   // „Zurück“ aus Blatt oder Ansicht: schließen, Scroll-Position behalten
     if (md.key) closeMetric();
     if (wks.open) closeWeek();
+    if (pv.id) closePush();
     const changed = showTab(tabOf(id));
     if (id && !TABS.includes(id) && document.getElementById(id)) {
-      revealSection(id, false);
       requestAnimationFrame(() => { const el = document.getElementById(id); if (el) el.scrollIntoView({ block: "start" }); });
     } else if (fromMetric && !changed) {
       window.scrollTo(0, mdScrollY);   // der Browser springt sonst zum Abschnitt #erholung
@@ -2125,6 +2144,7 @@
     const h = decodeURIComponent(a.getAttribute("href").slice(1));
     if (metricOfHash(h)) { md.pushed = true; md.opener = a; }
     else if (h === "heute-woche") { wks.pushed = true; wks.opener = a; }
+    else if (PUSH[h]) { pv.pushed = true; pv.opener = a; }
   });
   const wSheet = $("#weekSheet");
   setupSheet(wSheet);
@@ -2147,6 +2167,7 @@
   document.querySelectorAll(".tabbar .tab").forEach((t) => t.addEventListener("click", (e) => {
     if (t.getAttribute("href") !== `#${curTab}` || md.key || wks.open) return;
     e.preventDefault();
+    if (pv.id) { history.replaceState(null, "", `#${curTab}`); route(); return; }   // wie iOS: zurück zur Übersicht des Tabs
     if (location.hash !== `#${curTab}`) history.replaceState(null, "", `#${curTab}`);
     window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" });
   }));
@@ -2157,7 +2178,7 @@
   // währenddessen neu gezeichnet (z. B. wenn Zone 2 nachlädt), läuft das Zählen auf der neuen an derselben Stelle weiter.
   const COUNT_MS = RING_MS, counted = new Map();   // Schlüssel (Tab + Kachel) → Startzeit
   const countKey = (el) => {
-    const panel = el.closest(".tab-panel"), tile = el.closest(".kpi, .ring-legend > div"), label = tile && tile.querySelector(".label, .rl-name");
+    const panel = el.closest(".tab-panel"), tile = el.closest(".kpi, .ring-legend > div, .lift, .hl"), label = tile && tile.querySelector(".label, .rl-name, .lift-name, .hl-title");
     return panel && label ? `${panel.id}|${label.textContent.trim()}` : null;
   };
   function runCount(el, t0) {
@@ -2181,7 +2202,7 @@
     items.forEach((it) => { it.span.textContent = NV.countText(it.p, Math.max(0, (performance.now() - t0) / COUNT_MS)); });
     requestAnimationFrame(step);
   }
-  const COUNT_SEL = ".tab-panel .kpi .value, .tab-panel .rl-val b";
+  const COUNT_SEL = ".tab-panel .kpi .value, .tab-panel .rl-val b, .tab-panel .lift-val, .tab-panel .hl-val";
   const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight; };
   const startCount = (el, k) => { const t0 = performance.now(); counted.set(k, t0); runCount(el, t0); };
   // Erst sichtbar werdende Zahlen (weiter unten): kurz bevor sie ins Bild kommen, damit nie der Endwert aufblitzt
@@ -2246,12 +2267,6 @@
     $("#aboutStand").innerHTML = rows.map(([title, val, sub]) => irow({ title, sub, val: `<b>${esc(val)}</b>` })).join("");
   }
   $("#settingsBtn").addEventListener("click", (e) => { renderAbout(); openSheet("settingsSheet", e.currentTarget); });
-  const resetLayout = () => {
-    saveLayout(null);
-    LOPEN = layoutState();
-    Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, true));
-  };
-  $("#resetViewBtn").addEventListener("click", () => { resetLayout(); closeSheet(settings); });
   // Größenänderung (Drehen, Fenster): Diagramme mit neuer Breite zeichnen (zusätzlich zum ResizeObserver)
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { hideTip(); redrawCharts(); layoutTimeline(false); }, 150); });
   $("#toggleOther").setAttribute("aria-pressed", showOther);

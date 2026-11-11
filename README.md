@@ -4,12 +4,12 @@ Eine statische Website, die einen strukturierten Überblick über mein Ironman-T
 
 - **Countdown & aktuelle Phase** bis zum Renntag
 - **Die letzten 4 Wochen** – Umfang je Disziplin im Vergleich zur Vorperiode, FTP, Streak
-- **Wo du gerade stehst** – automatisch abgeleitete Stärken & Baustellen
+- **Wo du gerade stehst** – Highlights wie in Apple Health: je Sport ein kurzer Satz und eine Kennzahl
 - **Saisonplan** – Periodisierung (Grundlage → Aufbau → Peak → Taper) rückwärts vom Renntag
 - **Wochenumfang** – gestapelte Stunden Schwimmen/Rad/Laufen (optional inkl. Kraft & Sonstiges, Tabellenansicht)
 - **Disziplinen** – Kennzahlen, Pace-Verlauf und Wochenkilometer
 - **Rennvorbereitung** – längste Einheit vs. Renndistanz und Zielzeiten
-- **Aktivitäten** – filterbare Liste, die neuesten 10 sichtbar, alle per Knopf aufklappbar
+- **Aktivitäten** – die neuesten 5, „Alle anzeigen ›“ öffnet die ganze Liste mit Filter
 
 ## Ansehen
 
@@ -46,14 +46,19 @@ Kopie), `js/pwa.js`; Icons erzeugt `node scripts/make_icons.js` aus einer SVG (b
 - **Übergänge:** Beim Tab-Wechsel blendet der neue Tab kurz ein (200 ms). Die Zahlen in den Ringen und in den
   großen Kacheln zählen beim ersten Anzeigen hoch, im selben Tempo wie die Ringe. Das passiert einmal pro Kachel und
   Sitzung, Uhrzeiten und Pace zählen nicht.
+- **Eigene Ansicht von rechts:** Lange Listen zeigen im Tab nur die ersten Einträge und „Alle anzeigen ›“. Das
+  öffnet eine eigene Ansicht, die von rechts hereinschiebt, mit „‹ Training“ bzw. „‹ Plan“ oben links. Zurück geht
+  es auch durch Wischen vom linken Rand (folgt dem Finger, Schnippen reicht), mit Esc, mit dem Zurück des Browsers
+  oder durch erneutes Tippen auf den Tab. Adressen: `#training-aktivitaeten` (alle Aktivitäten mit Filter) und
+  `#plan-phasen` (alle Phasen).
 - **Bewegung reduzieren:** Kein Einblenden, kein Hochzählen, kein Pulsieren der Platzhalter, und der Spinner
-  dreht sich nicht.
+  dreht sich nicht. Die Ansicht von rechts blendet nur ein.
 
 ## Automatische Aktualisierung
 
 Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden mittags und abends
 von einer geplanten Claude-Aufgabe aktualisiert (Ablauf: [`scripts/UPDATE.md`](scripts/UPDATE.md),
-Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht unten auf der Seite.
+Zusammenführen: [`scripts/update_strava.py`](scripts/update_strava.py)). Der Stand steht im Einstellungen-Blatt unter „Über die Daten“.
 Die geplante Aufgabe neu anlegen (unabhängig von einem Chat): [`scripts/STRAVA_AUFGABE.md`](scripts/STRAVA_AUFGABE.md).
 
 ## Tabs
@@ -69,24 +74,17 @@ Die Seite ist in vier Tabs aufgeteilt, wie eine iOS-App:
 
 - **Tab-Leiste:** Auf dem iPhone sitzt sie unten (durchscheinend), auf dem iPad schwebt sie oben als Kapsel.
 - **Adressen:** Umschalten geht über `#heute`, `#training`, `#erholung` und `#plan`. Alte Anker wie `#zone2` öffnen
-  den passenden Tab, klappen den Abschnitt auf und scrollen hin.
+  den passenden Tab und scrollen hin.
+- **Überschriften:** Abschnitte lassen sich nicht mehr einklappen. Lange Listen sind stattdessen gekürzt (siehe
+  „Eigene Ansicht von rechts“ oben).
 - **Verhalten:** Jeder Tab merkt sich seine Scroll-Position. Erneutes Tippen auf den aktiven Tab scrollt nach oben.
 - **Knöpfe:** Neben „Heute“ stehen Aktualisieren und das Zahnrad. Das Zahnrad öffnet ein Blatt mit dem
   Erscheinungsbild (Automatisch / Hell / Dunkel) und „Über die Daten“. Dort stehen der Datenstand von Strava und
-  Garmin, wann die nächsten Updates kommen, die Quellen und „Ansicht zurücksetzen“. Eine Fußzeile gibt es nicht mehr.
+  Garmin, wann die nächsten Updates kommen und die Quellen. Eine Fußzeile gibt es nicht mehr.
 - **Hilfetexte:** Erklärungen stehen nicht mehr als Untertitel unter den Überschriften, sondern hinter einem kleinen
   ⓘ daneben, das ein kurzes Blatt öffnet. Das gilt z. B. für das Titel-Format im Gym, die Quellen der Split-Verteilung
   und Garmins Belastung.
 - **Blätter:** Sie schließen über „Fertig“, durch Wischen nach unten, Tippen daneben oder Esc.
-
-## Einklappbare Abschnitte
-
-Alle Abschnitte außer Heute lassen sich über ihre Überschrift ein- und ausklappen (Tastatur,
-`aria-expanded`); eingeklappt steht eine Kurzfassung daneben. In „Erholung“ bleiben die Kacheln sichtbar, nur die
-Verläufe sind separat einklappbar. Standard: im Flex-Zeitraum Zone 2, Disziplinen, Rennen und die Erholungs-Verläufe
-zu, sonst nur die Verläufe (`layout` in `js/data.js`). Die eigene Wahl wird gemerkt, bis die Phase wechselt;
-„Ansicht zurücksetzen“ im Einstellungen-Blatt. Anker öffnen eingeklappte Abschnitte. Logik:
-[`js/layout.js`](js/layout.js), Tests: `node tests/layout.test.js`.
 
 ## Design
 
@@ -107,6 +105,10 @@ Wiederkehrende Bausteine:
 - **Gruppierte Listen** im Stil der iOS-Einstellungen, z. B. Wochen-Minimum, Zuletzt gemacht, Phasen, Aktivitäten
   und Bereitschaft.
 - **Health-Kacheln** mit der Kategorie in Farbe, einer großen Zahl und einer grauen Einheit.
+- **Highlights** („Wo du gerade stehst“): Symbol und Titel in der Sportfarbe, ein kurzer Satz und eine Kennzahl.
+  Antippen öffnet ein Blatt mit dem ausführlichen Text.
+- **Symbole:** Jede Sportart hat ihr Symbol. Schritte haben Fußspuren, Body Battery eine Batterie, Trainingsstatus
+  und Belastung einen Trendpfeil (`icon` im Register in `js/metrics.js`).
 - **Segmented Controls** für Filter.
 - **Kapseln mit Häkchen** für Auswahl.
 - **Text-Knöpfe** in Akzentfarbe.
@@ -157,7 +159,7 @@ Lizenz stehen in [`.claude/skills/QUELLE.md`](.claude/skills/QUELLE.md).
 Alle Diagramme nutzen einen gemeinsamen Baukasten, [`js/charts.js`](js/charts.js). Darin stecken Achsen,
 Gitterlinien, Linie, Balken (auch gestapelt), Punkte, Ziel- und Schwellenlinien, Legende und Leerzustand. Gezeichnet
 wird in der echten Pixelbreite des Containers. Dadurch bleibt die Schrift immer 11 px groß. Bei Größenänderung,
-beim Drehen und beim Aufklappen eines Abschnitts wird neu gezeichnet. Die Höhen sind einheitlich: 160 px (klein) und
+beim Drehen und beim Öffnen einer Ansicht wird neu gezeichnet. Die Höhen sind einheitlich: 160 px (klein) und
 220 px (groß).
 
 Die Achsen haben runde Schritte (1, 2 oder 5 × 10ⁿ) und 3–5 Ticks. Sleep Score und Body Battery sind auf 0–100
@@ -308,11 +310,13 @@ aus Garmin-Waage und eigenem Eintrag (`gym.bodyWeight`, zurzeit 75 kg vom 11.11.
 „Klimmzüge“. Ein „Latzug“ im Titel zählt weiter als eigene Übung und nicht als Klimmzug (`gym.bodyweight`, `gym.aliases`).
 **Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Weighted Pull-ups
 5–8 Wdh./+2,5 kg, Beinpresse 5–8 Wdh./+10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
-1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Badge „Ziel erreicht“ und Hinweis bei Stagnation
-(3 Einträge ohne neues bestes 1RM).
-**1RM-Ziel** je Hauptübung (`gym.goals`: Bankdrücken 100 kg, Weighted Pull-ups 50 kg Zusatzgewicht, Beinpresse 300 kg): Fortschrittsbalken unter
-dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm. Die Übungskarte öffnet die Detailansicht mit
-dem kompletten 1RM-Verlauf und allen Einträgen.
+1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Badge „Wdh.-Ziel ✓“, wenn das letzte Wiederholungsziel
+geschafft ist (nicht zu verwechseln mit dem 1RM-Ziel), und Hinweis bei Stagnation (3 Einträge ohne neues bestes 1RM).
+**1RM-Ziel** je Hauptübung (`gym.goals`: Bankdrücken 100 kg, Weighted Pull-ups 50 kg Zusatzgewicht, Beinpresse 300 kg):
+kleiner Fortschrittsring neben dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm.
+**Übungskarte:** oben einmal der große 1RM-Wert, daneben der Ring mit Prozent und Ziel. Darunter eine Mini-Linie des
+1RM-Verlaufs und eine Liste mit letztem Eintrag, bestem Satz und nächstem Ziel, ohne Kästen. Die Karte öffnet die
+Detailansicht mit dem kompletten 1RM-Verlauf und allen Einträgen.
 **Namen in Listen:** In der Aktivitäten-Liste steht bei Krafteinheiten der Garmin-Titel,
 wenn er als Gym-Titel erkannt wird (z. B. „Push 5×70kg @Bali“). Sonst steht dort der Strava-Name, etwa wenn Garmin
 nur „Krafttraining“ heißt (`Gym.displayName`).

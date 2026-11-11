@@ -1,7 +1,7 @@
 /*
  * Kennzahlen-Register und Berechnungen für die Detailansichten (wie in Apple Health).
  * --------------------------------------------------------------------------------
- * Pro Kennzahl: Schlüssel, Name, Kategorie (Farbe + Icon), Einheit, Datenquelle (Feld in den Garmin-Tagesdaten),
+ * Pro Kennzahl: Schlüssel, Name, Kategorie (Farbe + Icon; icon: eigenes Symbol), Einheit, Datenquelle (Feld in den Garmin-Tagesdaten),
  * Zusammenfassung (avg = Durchschnitt, median, sum = Summe, last = letzter Wert, max = Bestwert), Formatierung,
  * Achsengrenzen (clamp, zero) und optional Ziel-/Schwellenwerte (refs) bzw. ein Normalbereich (band).
  * Statt eines Garmin-Felds (field) kann die Seite eine eigene Quelle liefern (source: Zone 2, 1RM, Wochenbelastung).
@@ -44,13 +44,13 @@
       about: "Herzfrequenzvariabilität im Schlaf (Durchschnitt der Nacht). Wichtig ist der Vergleich mit deinem eigenen Normalbereich (Band im Diagramm), nicht mit anderen. Liegt sie mehrere Tage darunter, ist Erholung wichtiger als Training." },
     { key: "rhr", name: "Ruhepuls", cat: "heart", tab: "erholung", field: "rhr", unit: "bpm", summary: "avg",
       about: "Niedrigster Puls des Tages laut Garmin. Steigt er mehrere Tage um 5 bpm oder mehr über deinen Schnitt, kann das auf Müdigkeit, Hitze oder eine beginnende Krankheit hindeuten." },
-    { key: "bodyBattery", name: "Body Battery", cat: "activity", tab: "erholung", field: "bbHigh", unit: "", summary: "avg", clamp: [0, 100],
+    { key: "bodyBattery", name: "Body Battery", cat: "activity", icon: "battery", tab: "erholung", field: "bbHigh", unit: "", summary: "avg", clamp: [0, 100],
       about: "Höchster Body-Battery-Wert des Tages (0–100), meist morgens nach dem Schlaf. Garmin berechnet ihn aus HRV, Stress, Schlaf und Aktivität." },
     { key: "stress", name: "Stress", cat: "heart", tab: "erholung", field: "stressAvg", unit: "", summary: "avg", clamp: [0, 100], refs: [{ v: 50, label: "hoch ab 51" }],
       about: "Durchschnittlicher Stresswert des Tages (0–100), von Garmin aus der Herzfrequenzvariabilität geschätzt. Bis 25 gilt als Ruhe, 26–50 als niedrig, ab 51 als hoch." },
     { key: "readiness", name: "Trainingsbereitschaft", cat: "activity", tab: "erholung", field: "readiness", unit: "", summary: "avg", clamp: [0, 100],
       about: "Garmins Einschätzung von 0 bis 100 aus Schlaf, Erholungszeit, HRV-Status und Belastung. Daraus leitet die Seite auch den Tagesvorschlag ab." },
-    { key: "load", name: "Belastung akut/chronisch", cat: "activity", tab: "erholung", field: "acuteLoad", field2: "chronicLoad", name1: "akut", name2: "chronisch", unit: "", summary: "last", zero: true,
+    { key: "load", name: "Belastung akut/chronisch", cat: "activity", icon: "trend", tab: "erholung", field: "acuteLoad", field2: "chronicLoad", name1: "akut", name2: "chronisch", unit: "", summary: "last", zero: true,
       about: "Akute Belastung (letzte 7 Tage, gewichtet) und chronische Belastung (28 Tage) laut Garmin, aus dem Puls deiner Einheiten. Liegt akut deutlich über chronisch, steigt das Risiko für Überlastung; deutlich darunter bedeutet Formerhalt oder Pause. Krafttraining bildet Garmin nur schwach ab." },
     { key: "vo2run", name: "VO2max Laufen", cat: "run", tab: "erholung", field: "vo2run", unit: "", decimals: 1, summary: "last",
       about: "Geschätzte maximale Sauerstoffaufnahme in ml/kg/min aus Läufen mit Puls und GPS. Steigt meist langsam über Wochen; kurze Sprünge entstehen oft durch Hitze oder Gelände." },
@@ -58,7 +58,7 @@
       about: "Geschätzte maximale Sauerstoffaufnahme in ml/kg/min aus Fahrten mit Leistungsmesser und Puls (z. B. Zwift)." },
     { key: "weight", name: "Gewicht", cat: "body", tab: "erholung", field: "weight", unit: "kg", decimals: 1, summary: "avg",
       about: "Gewicht aus Garmin Connect (Waage oder manuell eingetragen). Fließt auch in die Rad-Prognose (W/kg) ein." },
-    { key: "steps", name: "Schritte", cat: "activity", tab: "erholung", field: "steps", unit: "", summary: "avg", chart: "bar", zero: true,
+    { key: "steps", name: "Schritte", cat: "activity", icon: "steps", tab: "erholung", field: "steps", unit: "", summary: "avg", chart: "bar", zero: true,
       about: "Schritte pro Tag laut Garmin-Uhr. Der Durchschnitt bezieht sich auf die Tage mit Daten." },
     // Zone 2 (Punkte je Einheit aus data/z2-metrics.json; Quelle stellt die Seite bereit)
     { key: "z2pace", name: "Pace bei Zone-2-Puls", cat: "run", tab: "erholung", source: "z2pace", unit: "/km", fmt: "pace", invert: true, summary: "median", per: "run", chart: "scatter",
@@ -71,7 +71,7 @@
       aggregate: (ps) => { const tot = ps.reduce((a, p) => a + (p.tot || 0), 0); return tot ? (ps.reduce((a, p) => a + (p.z12 || 0), 0) / tot) * 100 : null; },
       about: "Anteil der Trainingszeit in Z1 und Z2 an allen Läufen und Fahrten mit Herzfrequenz, nach Zeit gewichtet. Für Ironman-Training gelten rund 80 % als Richtwert. Eine Woche zählt zum Zeitraum, wenn ihr Montag darin liegt. Die Zonenverteilung zählt das Aufwärmen mit, weil es echte Trainingszeit ist." },
     // Woche: Garmin-Trainingsbelastung je Woche (Summe der Einheiten)
-    { key: "belastung", name: "Trainingsbelastung", cat: "activity", tab: "heute", source: "weekload", unit: "", summary: "avg", summaryLabel: "Ø pro Woche", per: "week", chart: "weekload", zero: true, periods: ["30", "60", "all"], defaultPeriod: "60",
+    { key: "belastung", name: "Trainingsbelastung", cat: "activity", icon: "trend", tab: "heute", source: "weekload", unit: "", summary: "avg", summaryLabel: "Ø pro Woche", per: "week", chart: "weekload", zero: true, periods: ["30", "60", "all"], defaultPeriod: "60",
       about: "Summe der Garmin-Trainingsbelastung aller Einheiten einer Woche (Montag–Sonntag), aufgeteilt in Ausdauer, Kraft und Sonstiges. Garmin berechnet sie aus dem Puls; Krafttraining wird dabei nur schwach abgebildet. Durchschnitt, Minimum und Maximum zählen nur abgeschlossene Wochen; die laufende Woche ist hervorgehoben. Darunter akute (7 Tage) und chronische Belastung (28 Tage) aus Garmin." },
   ];
   const byKey = Object.fromEntries(REGISTRY.map((m) => [m.key, m]));

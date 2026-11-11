@@ -79,7 +79,8 @@
     const lines = [...el.querySelectorAll("line")];
     let y0 = null, armed = false, busy = false;
     const blocked = (t) => document.documentElement.classList.contains("sheet-open")
-      || !!(t && t.closest && t.closest(".sheet-backdrop, .timeline-scroll, .table-scroll, .md-chart"));
+      || document.documentElement.classList.contains("push-open")
+      || !!(t && t.closest && t.closest(".sheet-backdrop, .push-view, .timeline-scroll, .table-scroll, .md-chart"));
     const show = (d) => {
       const st = N.pullState(d, TH);
       armed = st.armed;
