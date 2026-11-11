@@ -80,12 +80,6 @@ window.TRAINING = {
     minBuild2Weeks: 3,  // Aufbau 2 (14–18 h) mindestens
   },
 
-  // Einklappbare Abschnitte: was standardmäßig zugeklappt ist (ids der Abschnitte).
-  // Eigene Auf-/Zuklapp-Wahl hat Vorrang, bis die Phase wechselt.
-  layout: {
-    flex:   { collapsed: ["zone2", "disziplinen", "rennen"] },
-    normal: { collapsed: [] },
-  },
 
   // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull 5x20“ (Klimmzüge, 20 kg Zusatz),
   // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
