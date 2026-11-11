@@ -78,11 +78,14 @@
   const SUMMARY_LABEL = { avg: "Durchschnitt", median: "Median", sum: "Gesamt", last: "Aktuell", max: "Bestwert" };
   // „Beinpresse“ → „beinpresse“, „Bankdrücken“ → „bankdruecken“ (für Schlüssel und Hash)
   const slug = (t) => String(t).toLowerCase().replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  // 1RM-Verlauf einer Gym-Übung (Hash z. B. #training-1rm-beinpresse); goal = Ziel-1RM als Linie
-  const liftMetric = (exercise, goal) => ({
+  // 1RM-Verlauf einer Gym-Übung (Hash z. B. #training-1rm-beinpresse); goal = Ziel-1RM als Linie;
+  // bodyKg: Übung mit Körpergewicht (Klimmzüge), das 1RM ist dann das Zusatzgewicht
+  const liftMetric = (exercise, goal, bodyKg = null) => ({
     key: `1rm-${slug(exercise)}`, name: `${exercise}: 1RM`, cat: "strength", tab: "training", source: "lift", exercise, unit: "kg", decimals: 1, summary: "max", summaryLabel: "Bestes 1RM", per: "entry", chart: "lift", defaultPeriod: "all",
     refs: goal ? [{ v: goal, label: `Ziel ${goal}` }] : [],
-    about: `Geschätztes 1RM nach Epley (Gewicht × (1 + Wiederholungen ÷ 30)) aus den Titeln deiner Krafteinheiten in Garmin Connect, z. B. „Push 6x100 @Bali“. Ein PR ist ein neues bestes 1RM.${goal ? ` Ziel: ${goal} kg.` : ""}`,
+    about: bodyKg
+      ? `Geschätztes 1RM als Zusatzgewicht aus den Titeln deiner Krafteinheiten in Garmin Connect, z. B. „Pull 5x20 @Bali“ (5 Wiederholungen mit 20 kg Zusatz). Das Körpergewicht zählt mit: (Körpergewicht + Zusatz) × (1 + Wiederholungen ÷ 30) − Körpergewicht, mit ${String(bodyKg).replace(".", ",")} kg aus Garmin. Ein PR ist ein neues bestes 1RM.${goal ? ` Ziel: ${goal} kg Zusatzgewicht für eine Wiederholung.` : ""}`
+      : `Geschätztes 1RM nach Epley (Gewicht × (1 + Wiederholungen ÷ 30)) aus den Titeln deiner Krafteinheiten in Garmin Connect, z. B. „Push 6x100 @Bali“. Ein PR ist ein neues bestes 1RM.${goal ? ` Ziel: ${goal} kg.` : ""}`,
   });
   // Weitere Kennzahl zur Laufzeit ins Register (z. B. eine 1RM-Übung); gleicher Schlüssel wird ersetzt
   function register(m) {
