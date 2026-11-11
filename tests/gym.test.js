@@ -263,4 +263,16 @@ test("Weighted Pull-ups: Hauptübung für Pull, 1RM mit Körpergewicht, Ziel 50 
   assert.deepEqual([plan.target.reps, plan.target.weight], [7, 20]);   // 5–8 Wdh., dann +2,5 kg
 });
 
+test("Körpergewicht: der neuere Wert aus Garmin-Waage und eigenem Eintrag", () => {
+  const days = [{ date: "2026-10-02", weight: 74.7 }, { date: "2026-10-10", weight: 73.9 }, { date: "2026-11-01" }];
+  const own = { kg: 75, date: "2026-11-11" };
+  assert.deepEqual(G.currentBodyKg(days, own, 73), { kg: 75, date: "2026-11-11", source: "eigener Eintrag" });
+  assert.deepEqual(G.currentBodyKg(days.concat({ date: "2026-11-20", weight: 74.2 }), own, 73), { kg: 74.2, date: "2026-11-20", source: "Garmin" });   // neuere Waage gewinnt
+  assert.equal(G.currentBodyKg([{ date: "2026-11-11", weight: 76 }], own).source, "eigener Eintrag");   // gleicher Tag: eigener Eintrag
+  assert.deepEqual(G.currentBodyKg(days, null, 73), { kg: 73.9, date: "2026-10-10", source: "Garmin" });
+  assert.deepEqual(G.currentBodyKg([], null, 73), { kg: 73, date: null, source: "Strava-Profil" });
+  assert.equal(G.currentBodyKg([], null, null), null);
+  assert.ok(Math.abs(G.oneRepMax(20, 5, 75) - 35.83) < 0.01);   // 5 × 20 kg bei 75 kg
+});
+
 console.log(`\n${n} Tests bestanden.`);

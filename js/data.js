@@ -101,6 +101,7 @@ window.TRAINING = {
     // Übungen mit Körpergewicht: Im Titel steht das Zusatzgewicht („Pull 5x20“ = 5 Klimmzüge mit 20 kg),
     // das 1RM rechnet das aktuelle Körpergewicht (Garmin) mit und zeigt wieder das Zusatzgewicht
     bodyweight: ["Weighted Pull-ups"],
+    bodyWeight: { kg: 75, date: "2026-11-11" },   // eigenes Körpergewicht dafür; ein neuerer Garmin-Wert (Waage) ersetzt es
     perPlace: [],   // Übungen, die nur am selben Gym-Ort verglichen werden, z. B. ["Beinpresse"]; leer = alle ortsübergreifend
     // Nächstes Ziel nach doppelter Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt in kg
     progression: {

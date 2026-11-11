@@ -273,9 +273,10 @@ ortsübergreifend verglichen (PRs, bestes 1RM, Ziele; im Diagramm der Detailansi
 Übungen nur am selben Ort vergleichen will (z. B. Maschinen), trägt sie in `gym.perPlace` ein – dann zählen dafür nur
 Einträge vom aktuellen Ort (letzte Einheit mit @Ort). Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
 **Hauptübungen:** Push = Bankdrücken, Pull = Weighted Pull-ups (Klimmzüge mit Zusatzgewicht), Legs = Beinpresse.
-Für die Klimmzüge steht im Titel das Zusatzgewicht. Das 1RM rechnet das Körpergewicht aus Garmin mit:
+Für die Klimmzüge steht im Titel das Zusatzgewicht. Das 1RM rechnet das Körpergewicht mit, und zwar den neueren Wert
+aus Garmin-Waage und eigenem Eintrag (`gym.bodyWeight`, zurzeit 75 kg vom 11.11.):
 (Körpergewicht + Zusatz) × (1 + Wdh. ÷ 30) − Körpergewicht. Angezeigt wird wieder das Zusatzgewicht. Beispiel:
-5 Wdh. mit 20 kg bei 73,9 kg ergeben rund 36 kg statt 23 kg. Erkannt werden auch „Pull ups“, „Pull-ups“ und
+5 Wdh. mit 20 kg bei 75 kg ergeben rund 36 kg statt 23 kg. Erkannt werden auch „Pull ups“, „Pull-ups“ und
 „Klimmzüge“. Ein „Latzug“ im Titel zählt weiter als eigene Übung und nicht als Klimmzug (`gym.bodyweight`, `gym.aliases`).
 **Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Weighted Pull-ups
 5–8 Wdh./+2,5 kg, Beinpresse 5–8 Wdh./+10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →

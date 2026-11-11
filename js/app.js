@@ -48,9 +48,11 @@
   const FLEX = FX ? FX.flexState(FCFG, new Date()) : { active: false };
   const inFlex = (d) => !!(FX && FX.flexState(FCFG, d).active);
   // Krafteinheiten: Garmin-Titel (Gym-Tracker) vor Strava-Namen, ±10 min zusammengeführt
-  // Körpergewicht für Übungen mit Körpergewicht (Klimmzüge): letzter Garmin-Wert, sonst Strava-Profil
-  const BODY_KG = (() => { const w = ((window.GARMIN && window.GARMIN.days) || []).filter((d) => d.weight != null).sort((a, b) => a.date.localeCompare(b.date)).pop(); return w ? w.weight : (S.athlete && S.athlete.weightKg) || null; })();
-  const GYM = window.Gym, GCFG = { ...(window.TRAINING.gym || {}), bodyKg: BODY_KG };
+  // Körpergewicht für Übungen mit Körpergewicht (Klimmzüge): neuerer Wert aus Garmin-Waage und gym.bodyWeight, sonst Strava-Profil
+  const GYM = window.Gym, GCFG0 = window.TRAINING.gym || {};
+  const BODY = GYM ? GYM.currentBodyKg((window.GARMIN && window.GARMIN.days) || [], GCFG0.bodyWeight, S.athlete && S.athlete.weightKg) : null;
+  const BODY_KG = BODY ? BODY.kg : null;
+  const GCFG = { ...GCFG0, bodyKg: BODY_KG };
   const isBodyweight = (ex) => (GCFG.bodyweight || []).includes(ex);
   const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG, acts.filter((a) => a.cat !== "strength")) : [];
   // Für den Flex-Modus: Ausdauer aus Strava, Kraft aus den zusammengeführten Einheiten

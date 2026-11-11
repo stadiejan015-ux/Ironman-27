@@ -84,7 +84,7 @@
     key: `1rm-${slug(exercise)}`, name: `${exercise}: 1RM`, cat: "strength", tab: "training", source: "lift", exercise, unit: "kg", decimals: 1, summary: "max", summaryLabel: "Bestes 1RM", per: "entry", chart: "lift", defaultPeriod: "all",
     refs: goal ? [{ v: goal, label: `Ziel ${goal}` }] : [],
     about: bodyKg
-      ? `Geschätztes 1RM als Zusatzgewicht aus den Titeln deiner Krafteinheiten in Garmin Connect, z. B. „Pull 5x20 @Bali“ (5 Wiederholungen mit 20 kg Zusatz). Das Körpergewicht zählt mit: (Körpergewicht + Zusatz) × (1 + Wiederholungen ÷ 30) − Körpergewicht, mit ${String(bodyKg).replace(".", ",")} kg aus Garmin. Ein PR ist ein neues bestes 1RM.${goal ? ` Ziel: ${goal} kg Zusatzgewicht für eine Wiederholung.` : ""}`
+      ? `Geschätztes 1RM als Zusatzgewicht aus den Titeln deiner Krafteinheiten in Garmin Connect, z. B. „Pull 5x20 @Bali“ (5 Wiederholungen mit 20 kg Zusatz). Das Körpergewicht zählt mit: (Körpergewicht + Zusatz) × (1 + Wiederholungen ÷ 30) − Körpergewicht, mit ${String(bodyKg).replace(".", ",")} kg Körpergewicht (Garmin-Waage oder eigener Eintrag in js/data.js, der neuere zählt). Ein PR ist ein neues bestes 1RM.${goal ? ` Ziel: ${goal} kg Zusatzgewicht für eine Wiederholung.` : ""}`
       : `Geschätztes 1RM nach Epley (Gewicht × (1 + Wiederholungen ÷ 30)) aus den Titeln deiner Krafteinheiten in Garmin Connect, z. B. „Push 6x100 @Bali“. Ein PR ist ein neues bestes 1RM.${goal ? ` Ziel: ${goal} kg.` : ""}`,
   });
   // Weitere Kennzahl zur Laufzeit ins Register (z. B. eine 1RM-Übung); gleicher Schlüssel wird ersetzt

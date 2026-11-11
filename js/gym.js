@@ -4,6 +4,7 @@
  *   parseGymTitle(title, desc, cfg)  → { split, exercise, sets, reps, weight, place, entry } | null
  *   epley(weight, reps)              → geschätztes 1RM = Gewicht × (1 + Wdh./30)
  *   oneRepMax(weight, reps, bodyKg)  → wie epley; mit Körpergewicht (Klimmzüge): (KG + Zusatz) × (1 + Wdh./30) − KG
+ *   currentBodyKg(garminDays, manual, fallback) → { kg, date, source }: der neuere von Garmin-Gewicht und eigenem Wert
  *   gymSessions(garminActs, stravaActs, cfg, otherActs) → Krafteinheiten (Garmin vor Strava, ±10 min zusammengeführt;
  *                                    in Strava anders eingetragene Einheiten, z. B. Klettern, fallen raus)
  *   exerciseHistory(sessions, exercise, cfg) → Einträge mit 1RM und PR-Markierung
@@ -96,6 +97,16 @@
   // Mit Körpergewicht: Epley auf die ganze bewegte Last, danach wieder das Zusatzgewicht (z. B. 5 Klimmzüge mit 20 kg
   // bei 73,9 kg → 35,5 kg statt 23,3 kg, wenn man nur das Zusatzgewicht rechnen würde)
   const oneRepMax = (weight, reps, bodyKg) => (bodyKg > 0 ? Math.max(0, (bodyKg + weight) * (1 + reps / 30) - bodyKg) : epley(weight, reps));
+
+  // Aktuelles Körpergewicht: der neuere Wert von Garmin (Waage) und eigenem Eintrag (gym.bodyWeight { kg, date });
+  // bei gleichem Tag gilt der eigene Eintrag; ohne beides der Fallback (z. B. Strava-Profil)
+  function currentBodyKg(garminDays, manual, fallback) {
+    const g = (garminDays || []).filter((d) => d && d.weight != null).sort((a, b) => a.date.localeCompare(b.date)).pop();
+    const m = manual && manual.kg > 0 ? manual : null;
+    if (m && (!g || String(m.date || "") >= g.date.slice(0, 10))) return { kg: m.kg, date: m.date || null, source: "eigener Eintrag" };
+    if (g) return { kg: g.weight, date: g.date.slice(0, 10), source: "Garmin" };
+    return fallback > 0 ? { kg: fallback, date: null, source: "Strava-Profil" } : null;
+  }
 
   /* ---------- Einheiten zusammenführen ---------- */
   // garminActs: [{ id, start: "YYYY-MM-DDTHH:MM", name, desc, sec }]  stravaActs: [{ date: Date|string, name, sec }]
@@ -235,5 +246,5 @@
     return { goal, current, best, place, perPlace, pct: current == null ? 0 : Math.round((current / goal) * 100), reached: current != null && current >= goal };
   }
 
-  return { DEFAULTS, parseGymTitle, epley, oneRepMax, gymSessions, displayName, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf, goalProgress };
+  return { DEFAULTS, parseGymTitle, epley, oneRepMax, currentBodyKg, gymSessions, displayName, exerciseHistory, splitCounts, nextTarget, reachedTarget, currentPlace, targetChecks, liftPlan, progOf, goalProgress };
 });
