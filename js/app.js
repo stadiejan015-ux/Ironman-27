@@ -1589,7 +1589,11 @@
     $("#mdTitle").innerHTML = `<span class="md-ic c-${m.cat}">${icon(m.cat, 20)}</span><span class="md-name c-${m.cat}">${esc(metricName(m))}</span>`;
     const body = $("#mdBody"), about = `<p class="md-about"><b>Über diese Werte</b><br>${esc(m.about + aboutExtra(m))}</p>`;
     const pts = metricPoints(m);
-    if (pts == null) { body.innerHTML = C.empty(Z2FAIL ? "Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite)." : "Zone-2-Daten werden geladen …") + about; return; }
+    if (pts == null) {   // Zone-2-Daten kommen per fetch: Platzhalter statt leerer Fläche
+      body.innerHTML = (Z2FAIL ? C.empty("Zone-2-Daten nicht verfügbar (nur auf der veröffentlichten Seite).")
+        : `<div class="sk-wrap" aria-hidden="true"><div class="sk sk-num sk-w50"></div><div class="sk sk-line sk-w30"></div><div class="sk sk-chart"></div></div><p class="sr-only">Wird geladen …</p>`) + about;
+      return;
+    }
     const today = ymdLocal(new Date()), periods = MX.availablePeriods(pts, today, m.periods || null);
     if (!periods.includes(md.period)) md.period = MX.defaultPeriod(m, periods);
     const filter = m.chart === "zones" ? zoneFilterHtml() : "";
@@ -1977,15 +1981,42 @@
   }
   function showTab(tab) {
     if (tab === curTab) return false;
+    const prev = curTab;
     if (curTab) tabScroll[curTab] = window.scrollY;
     curTab = tab;
     document.querySelectorAll(".tab-panel").forEach((p) => { p.hidden = p.dataset.tab !== tab; });
     document.querySelectorAll(".tabbar .tab").forEach((t) => t.setAttribute("aria-selected", String(t.getAttribute("href") === `#${tab}`)));
     hideTip(); if (selBox) resetSel(selBox);
-    redrawCharts($(`#tab-${tab}`));   // Diagramme in echter Breite (waren versteckt)
+    const panel = $(`#tab-${tab}`);
+    redrawCharts(panel);   // Diagramme in echter Breite (waren versteckt)
     if (tab === "plan") layoutTimeline(true);
+    // kurzes Einblenden beim Wechsel (nicht beim Start, nicht bei „Bewegung reduzieren“)
+    if (prev && panel.animate && !reduceMotion()) panel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: "cubic-bezier(0.23, 1, 0.32, 1)" });
+    const h1 = panel.querySelector("h1");
+    if (navTitle) navTitle.textContent = h1 ? h1.textContent.trim() : "";
+    queueNavbar();
+    if (prev) queueMicrotask(() => countVisible(panel));   // nach dem Wiederherstellen der Scroll-Position, vor dem Zeichnen
     return true;
   }
+
+  /* ---------- Obere Leiste wie in iOS: großer Titel → kleiner Titel (js/native.js) ---------- */
+  // Verschwindet der große Titel beim Scrollen unter der Leiste, wird ihr Hintergrund im selben Maß sichtbar;
+  // ist er fast ganz darunter, blendet der kleine Titel ein (Werte direkt am Element, nicht über CSS-Variablen)
+  const NV = window.Native;
+  const navbar = $("#navbar"), navBg = navbar && navbar.querySelector(".navbar-bg"), navTitle = $("#navbarTitle");
+  let navRaf = 0, navCompact = null;
+  function updateNavbar() {
+    navRaf = 0;
+    const h1 = curTab && document.querySelector(`#tab-${curTab} h1`);
+    if (!navbar || !NV || !h1) return;
+    const r = h1.getBoundingClientRect(), p = NV.titleProgress(r.top, r.height, navbar.offsetHeight);
+    navBg.style.opacity = p ? String(Math.round(p * 100) / 100) : "";
+    const compact = p > 0.85;
+    if (compact !== navCompact) { navCompact = compact; navbar.classList.toggle("compact", compact); }
+  }
+  function queueNavbar() { if (!navRaf) navRaf = requestAnimationFrame(updateNavbar); }
+  window.addEventListener("scroll", queueNavbar, { passive: true });
+  window.addEventListener("resize", queueNavbar);
   function route() {
     const id = decodeURIComponent(location.hash.slice(1));
     // Detailansicht, z. B. #erholung-hrv: passenden Tab zeigen und das Blatt öffnen
@@ -2023,11 +2054,80 @@
     route();
   };
   window.addEventListener("hashchange", route);
-  // Erneutes Tippen auf den aktiven Tab scrollt nach oben
+  // Erneutes Tippen auf den aktiven Tab scrollt weich nach ganz oben – auch wenn gerade ein Abschnitt im Link steht (#gym)
   document.querySelectorAll(".tabbar .tab").forEach((t) => t.addEventListener("click", (e) => {
-    if (t.getAttribute("href") === `#${curTab}` && location.hash === `#${curTab}`) { e.preventDefault(); window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" }); }
+    if (t.getAttribute("href") !== `#${curTab}` || md.key) return;
+    e.preventDefault();
+    if (location.hash !== `#${curTab}`) history.replaceState(null, "", `#${curTab}`);
+    window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" });
   }));
+
+  /* ---------- Zahlen zählen beim ersten Anzeigen kurz hoch (Ringe, große Kachelwerte; js/native.js) ---------- */
+  // Einmal pro Kachel und Sitzung, wenn sie zum ersten Mal sichtbar ist; gleiche Dauer und Kurve wie die Ringe.
+  // Die Zahl steht dabei in fester Breite rechtsbündig, damit die Einheit daneben nicht wandert. Wird die Kachel
+  // währenddessen neu gezeichnet (z. B. wenn Zone 2 nachlädt), läuft das Zählen auf der neuen an derselben Stelle weiter.
+  const COUNT_MS = RING_MS, counted = new Map();   // Schlüssel (Tab + Kachel) → Startzeit
+  const countKey = (el) => {
+    const panel = el.closest(".tab-panel"), tile = el.closest(".kpi, .ring-legend > div"), label = tile && tile.querySelector(".label, .rl-name");
+    return panel && label ? `${panel.id}|${label.textContent.trim()}` : null;
+  };
+  function runCount(el, t0) {
+    if (/:/.test(el.textContent)) return;   // Uhrzeiten und Pace nicht
+    const items = [], walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) { const p = NV.parseNumber(n.data); if (p && p.value) items.push({ n, p }); }
+    items.forEach((it) => {
+      const m = /^(\s*)(\S+)(\s*)$/.exec(it.n.data), span = document.createElement("span");
+      span.textContent = m[2];
+      it.n.replaceWith(...[m[1], span, m[3]].filter((x) => x !== ""));
+      const w = span.getBoundingClientRect().width;
+      Object.assign(span.style, { display: "inline-block", width: `${Math.ceil(w)}px`, textAlign: "right" });
+      it.span = span; it.final = m[2];
+    });
+    if (!items.length) return;
+    const step = () => {
+      const t = Math.min(1, Math.max(0, (performance.now() - t0) / COUNT_MS));   // Uhrzeit statt Bild-Zeitstempel: nie rückwärts
+      items.forEach((it) => { it.span.textContent = t < 1 ? NV.countText(it.p, t) : it.final; });
+      if (t < 1) requestAnimationFrame(step); else items.forEach((it) => it.span.removeAttribute("style"));
+    };
+    items.forEach((it) => { it.span.textContent = NV.countText(it.p, Math.max(0, (performance.now() - t0) / COUNT_MS)); });
+    requestAnimationFrame(step);
+  }
+  const COUNT_SEL = ".tab-panel .kpi .value, .tab-panel .rl-val b";
+  const inView = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight; };
+  const startCount = (el, k) => { const t0 = performance.now(); counted.set(k, t0); runCount(el, t0); };
+  // Erst sichtbar werdende Zahlen (weiter unten): kurz bevor sie ins Bild kommen, damit nie der Endwert aufblitzt
+  const countIO = typeof IntersectionObserver === "function" ? new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    countIO.unobserve(e.target);
+    const k = countKey(e.target);
+    if (k && !counted.has(k) && !reduceMotion()) startCount(e.target, k);
+  }), { rootMargin: "0px 0px 20% 0px" }) : null;
+  // Läuft vor dem nächsten Zeichnen: sichtbare Zahlen beginnen sofort bei 0, die übrigen warten aufs Sichtbarwerden
+  function armCounts() {
+    if (!countIO || !NV || reduceMotion()) return;
+    document.querySelectorAll(COUNT_SEL).forEach((el) => {
+      if (el._counted) return;
+      el._counted = true;
+      const k = countKey(el);
+      if (!k || el.closest("[aria-live]")) return;
+      if (counted.has(k)) { if (performance.now() - counted.get(k) < COUNT_MS) runCount(el, counted.get(k)); return; }   // neu gezeichnet: weiterzählen
+      if (!el.closest(".tab-panel[hidden]") && inView(el)) startCount(el, k); else countIO.observe(el);
+    });
+  }
+  // Tab-Wechsel: Zahlen, die jetzt im Bild sind, beginnen vor dem ersten Zeichnen
+  function countVisible(panel) {
+    if (!countIO || !NV || reduceMotion()) return;
+    panel.querySelectorAll(COUNT_SEL).forEach((el) => {
+      const k = countKey(el);
+      if (!el._counted || !k || counted.has(k) || el.closest("[aria-live]") || !inView(el)) return;
+      countIO.unobserve(el);
+      startCount(el, k);
+    });
+  }
+  // Direkt nach jedem Neuzeichnen (Mikrotask, also vor dem nächsten Bild) – so blitzt nie kurz der Endwert auf
+  if (typeof MutationObserver === "function") new MutationObserver(armCounts).observe($("main"), { childList: true, subtree: true });
   route();
+  armCounts();   // nach dem Routing: dann ist der richtige Tab sichtbar (Direktlink z. B. #erholung)
 
   // Vor Ort (Blatt mit Schaltern): Änderung gilt sofort für den Vorschlag
   setupSheet($("#equipSheet"));

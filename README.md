@@ -28,6 +28,27 @@ zuletzt geladenen Stand mit einem Hinweis „Offline · Daten: …“.
 Technik: `manifest.webmanifest`, Service Worker `sw.js` (immer zuerst das Netz, offline die gespeicherte
 Kopie), `js/pwa.js`; Icons erzeugt `node scripts/make_icons.js` aus einer SVG (braucht Playwright).
 
+**Verhalten wie eine iOS-App** (`js/native.js` mit reinen Funktionen, Tests: `node tests/native.test.js`):
+
+- **Großer Titel:** Oben liegt eine unsichtbare Leiste. Verschwindet der große Tab-Titel beim Scrollen darunter,
+  wird sie im selben Maß durchscheinend und zeigt den kleinen Titel: auf dem iPhone mittig, auf dem iPad links
+  neben der Tab-Kapsel.
+- **Tabs:** Jeder Tab merkt sich seine Scroll-Position. Tippen auf den aktiven Tab scrollt weich nach ganz oben.
+  Das klappt auch, wenn gerade ein Abschnitt wie `#gym` in der Adresse steht.
+- **Runterziehen zum Aktualisieren:** Nur im Home-Bildschirm-Modus auf Touch-Geräten; im Browser macht Safari das
+  selbst. Beim Ziehen erscheint nach und nach ein kleiner iOS-Spinner. Über die Schwelle gezogen und losgelassen,
+  lädt die Seite neu wie mit ↻. Das Scrollen wird dabei nie blockiert.
+- **Start ohne Aufblitzen:** Es gibt Startbilder in Hell und Dunkel für die gängigen iPhones und iPads; sie erzeugt
+  `node scripts/make_startup.js` ohne Abhängigkeiten. Die gewählte Darstellung (Einstellungen) greift schon vor dem
+  ersten Bild. Bis die Inhalte gezeichnet sind, stehen graue Platzhalter in ihrer späteren Größe da, auch für
+  Zone 2 und den Prognose-Verlauf, die nachgeladen werden. Damit ein neues Startbild greift, die App einmal vom
+  Home-Bildschirm entfernen und neu hinzufügen.
+- **Übergänge:** Beim Tab-Wechsel blendet der neue Tab kurz ein (200 ms). Die Zahlen in den Ringen und in den
+  großen Kacheln zählen beim ersten Anzeigen hoch, im selben Tempo wie die Ringe. Das passiert einmal pro Kachel und
+  Sitzung, Uhrzeiten und Pace zählen nicht.
+- **Bewegung reduzieren:** Kein Einblenden, kein Hochzählen, kein Pulsieren der Platzhalter, und der Spinner
+  dreht sich nicht.
+
 ## Automatische Aktualisierung
 
 Die Strava-Daten liegen in [`js/strava-data.js`](js/strava-data.js) und werden mittags und abends
