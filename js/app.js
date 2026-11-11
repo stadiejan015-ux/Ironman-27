@@ -30,17 +30,21 @@
   const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility", TrailRun: "Trailrun", Tennis: "Tennis", Workout: "Workout" };
   const cat = (sport) => sport === "Swim" ? "swim" : (sport === "Ride" || sport === "VirtualRide") ? "bike" : (sport === "Run" || sport === "TrailRun") ? "run" : sport === "WeightTraining" ? "strength" : "other";
 
-  const acts = D.activities.map(([date, sport, name, km, sec, elev, info, desc]) => ({
+  // Flex-Modus (js/flex.js): bei active=false oder nach "until" verhält sich alles wie bisher
+  const FX = window.Flex, FCFG = window.TRAINING.flex || {};
+  // Zwift-Fahrten im Flex-Zeitraum zählen nirgends (flex.ignoreVirtualRides): Liste, Woche, Minimum, Kalender, Zone 2, Belastung
+  const ignored = (a) => !!(FX && FX.isIgnored && FX.isIgnored(a, FCFG));
+  const actsAll = D.activities.map(([date, sport, name, km, sec, elev, info, desc]) => ({
     date: parse(date), sport, name, km, sec, elev, info: info || "", desc: desc || "", cat: cat(sport),
   })).sort((a, b) => b.date - a.date);
+  const acts = actsAll.filter((a) => !ignored(a));
+  const ignoredCount = actsAll.length - acts.length;
 
   const snap = parse(D.snapshotDate);
   const snapEnd = addDays(snap, 1);
   const commit = parse(D.commitDate);
   const race = parse(D.race.date);
   const inRange = (from, to) => acts.filter((a) => a.date >= from && a.date < to);
-  // Flex-Modus (js/flex.js): bei active=false oder nach "until" verhält sich alles wie bisher
-  const FX = window.Flex, FCFG = window.TRAINING.flex || {};
   const FLEX = FX ? FX.flexState(FCFG, new Date()) : { active: false };
   const inFlex = (d) => !!(FX && FX.flexState(FCFG, d).active);
   // Krafteinheiten: Garmin-Titel (Gym-Tracker) vor Strava-Namen, ±10 min zusammengeführt
@@ -798,7 +802,7 @@
   const z2Detail = () => { const m = md.key && MX.byKey[md.key]; if (m && /^z2/.test(m.source || "")) renderMetric(); };
   function renderZone2() {
     const cfg = window.TRAINING.z2, Z = window.Z2, hrZ = D.zones.hr;
-    const all = Z2DATA.activities.filter((r) => r.kind);
+    const all = Z2DATA.activities.filter((r) => r.kind && !ignored(r));   // ohne Zwift im Flex-Zeitraum
     // Pulsmesser je Einheit: #gurt/#uhr-Markierung vor Garmin-Sensorliste (Start ±3 min)
     const srcs = (HRSRC && HRSRC.activities) || [];
     const mins = (iso) => Date.parse(String(iso).slice(0, 16) + ":00Z") / 60000;
@@ -1059,7 +1063,7 @@
     $("#actFilter").innerHTML = filters.map(([k, l]) => `<button type="button" data-f="${k}" aria-pressed="${k === filter}">${l}</button>`).join("");
     $("#actFilter").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { filter = b.dataset.f; showAll = false; activities(); }));
     const list = filter === "all" ? acts : acts.filter((a) => a.cat === filter);
-    $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.`;
+    $("#actSub").textContent = `Alle ${acts.length} Aktivitäten seit ${fmtDate(acts[acts.length - 1].date)}.${ignoredCount ? ` ${ignoredCount} Zwift-${ignoredCount === 1 ? "Fahrt" : "Fahrten"} im Flex-Zeitraum ${ignoredCount === 1 ? "zählt" : "zählen"} nicht (anderer Fahrer).` : ""}`;
     setSum("aktivitaeten", `${acts.length} Einträge`);
     $("#actCount").textContent = list.length > ACT_LIMIT && !showAll ? `${ACT_LIMIT} von ${list.length}` : `${list.length} Einträge`;
     $("#actList").innerHTML = list.slice(0, showAll ? list.length : ACT_LIMIT).map((a) => {
@@ -1112,6 +1116,7 @@
 
   /* ---------- Garmin: Erholung & Form ---------- */
   const G = window.GARMIN || { days: [] };
+  const G_LOADS = G.loads ? G.loads.filter((l) => !ignored({ date: l.start, sport: l.type, name: l.name || "" })) : null;
   const gDays = (G.days || []).slice().sort((a, b) => a.date.localeCompare(b.date));
   const gLast = (key) => { for (let i = gDays.length - 1; i >= 0; i--) if (gDays[i][key] != null) return gDays[i]; return null; };
   const gAvg = (key, n, skipLast = false) => {
@@ -1384,7 +1389,7 @@
     const thisMon = monday(now), maxBack = (WCFG.weeksBack || 8) - 1;
     if (wkOffset == null) wkOffset = Math.round((thisMon - WK.defaultWeekStart(now)) / (7 * DAY));
     const s = WK.weeklySummary({
-      acts, gymSessions: GYM_VIEW, garminDays: gDays, garminLoads: G.loads || null, today: now, weekStart: addDays(thisMon, -7 * wkOffset),
+      acts, gymSessions: GYM_VIEW, garminDays: gDays, garminLoads: G_LOADS, today: now, weekStart: addDays(thisMon, -7 * wkOffset),
       cfg: { weekly: WCFG, flex: FCFG, gym: GCFG, sinceLast: window.TRAINING.sinceLast || {} },
       equipment: FLEX.active ? loadEquipment() : null,
       emphasizeLoad: PHASES.some((p) => p.key === "reentry" && p.start < addDays(thisMon, -7 * wkOffset + 7) && p.end > addDays(thisMon, -7 * wkOffset)),
@@ -1527,9 +1532,9 @@
   const spark7 = (m) => C.sparkline(MX.daily(metricSeries(m), MX.windowOf("7", ymdLocal(new Date()))).map((p) => p.v), { color: CAT_COLOR[m.cat] || "var(--text-2)" });
   // Garmin-Belastung je Woche seit Beginn der Belastungsdaten: abgeschlossene Wochen (Statistik) und die laufende Woche
   function loadWeekPts() {
-    if (!WK || !G.loads || !G.loadsSince) return { done: [], cur: null };
+    if (!WK || !G_LOADS || !G.loadsSince) return { done: [], cur: null };
     const now = new Date(), thisMon = monday(now), n = Math.round((thisMon - monday(parse(G.loadsSince))) / (7 * DAY)) + 1;
-    const all = WK.loadWeeks({ garminLoads: G.loads, acts, gymSessions: GYM_VIEW, today: now, weeks: Math.max(1, n) }).reverse()
+    const all = WK.loadWeeks({ garminLoads: G_LOADS, acts, gymSessions: GYM_VIEW, today: now, weeks: Math.max(1, n) }).reverse()
       .filter((w) => w.monday >= G.loadsSince).map((w) => ({ date: w.monday, v: w.total, w }));   // erste Woche nur, wenn sie ganz erfasst ist
     const cur = ymdLocal(thisMon);
     return { done: all.filter((p) => p.date < cur), cur: all.find((p) => p.date === cur) || null };
