@@ -99,6 +99,21 @@ Startbildschirm „Heute“ wie in Apple Fitness:
 - **Darunter:** „Zuletzt gemacht“ und die Wochenkarte. Auf dem iPad quer stehen Haupt-Karte und Woche nebeneinander.
 - **Renninfos:** Countdown, Distanzen und Fortschritt stehen im Tab Plan unter „Rennvorbereitung“.
 
+**Bewegung und Bedienung** (nach den Design-Skills in `.claude/skills`):
+
+- **Kurven:** Alle Übergänge nutzen kräftige Kurven aus `css/style.css` (`--ease-out`, `--ease-drawer`) statt der
+  CSS-Standards. UI-Übergänge bleiben unter 300 ms; Blätter öffnen in 420 ms mit der iOS-Kurve und schließen in
+  240 ms.
+- **Blätter:** Die Abdunklung ist eine eigene Fläche und wird beim Wischen im selben Maß heller, wie das Blatt nach
+  unten geht. Ein schnelles Schnippen nach unten schließt auch über kurze Strecken. Nach oben gibt das Blatt mit
+  Widerstand nach, statt hart zu stoppen. Ein zweiter Finger wird ignoriert. Auf dem iPad kommt das mittige Blatt
+  vollständig vom unteren Rand herein.
+- **Druck-Feedback:** Knöpfe, Kapseln, Kalendertage, Tabs und Kacheln geben beim Aufsetzen des Fingers leicht nach
+  (`scale(.96)` bzw. `.98`).
+- **Touch:** Hover-Effekte gibt es nur mit Maus oder Trackpad. Es gibt keinen grauen Tipp-Blitz und kein Warten auf
+  Doppeltippen. Langes Drücken auf Bedienelemente markiert keinen Text.
+- **Bewegung reduzieren:** Blätter blenden nur ein und aus, die Ringe erscheinen ohne Animation.
+
 Das App-Icon erzeugt `node scripts/make_icons.js`.
 
 ## Design-Skills für Claude
