@@ -234,4 +234,45 @@ test("Anzeigename: Garmin-Titel bei Krafteinheiten, sonst Strava-Name", () => {
   assert.equal(G.displayName({ date: new Date("2026-11-06T09:51"), name: "Pull" }, []), "Pull");   // ohne Garmin-Daten
 });
 
+test("Weighted Pull-ups: Hauptübung für Pull, 1RM mit Körpergewicht, Ziel 50 kg Zusatz", () => {
+  // Konfiguration wie in js/data.js
+  global.window = {}; delete require.cache[require.resolve("../js/data.js")]; require("../js/data.js");
+  const cfg = { ...global.window.TRAINING.gym, bodyKg: 73.9 };
+  const p = (t) => G.parseGymTitle(t, "", cfg);
+  assert.deepEqual(p("Pull 5x20 @Ubud"), { split: "Pull", exercise: "Weighted Pull-ups", sets: 1, reps: 5, weight: 20, place: "Ubud", entry: true });
+  assert.equal(p("Weighted Pull-ups 3x5x15").exercise, "Weighted Pull-ups");
+  assert.equal(p("Pull ups 8x10").exercise, "Weighted Pull-ups");
+  assert.equal(p("Klimmzüge 6x12,5").weight, 12.5);
+  assert.equal(p("Pull · Latzug 8x90").exercise, "Latzug");   // Latzug bleibt Latzug, zählt nicht als Klimmzug
+  // 1RM: (73,9 + 20) × (1 + 5/30) − 73,9 = 35,65 statt 23,3 (nur Zusatzgewicht)
+  assert.ok(Math.abs(G.oneRepMax(20, 5, 73.9) - 35.65) < 0.01);
+  assert.ok(Math.abs(G.oneRepMax(20, 5, 0) - G.epley(20, 5)) < 1e-9);   // ohne Körpergewicht wie Epley
+  assert.ok(Math.abs(G.oneRepMax(50, 1, 73.9) - 54.13) < 0.01);         // 1 Wdh. mit 50 kg ≈ Ziel erreicht
+  const s = G.gymSessions([
+    { id: "1", start: "2026-11-12T10:00", name: "Pull 5x20 @Ubud", desc: "", sec: 3600 },
+    { id: "2", start: "2026-11-15T10:00", name: "Pull 6x20 @Ubud", desc: "", sec: 3600 },
+    { id: "3", start: "2026-11-16T10:00", name: "Push 6x100", desc: "", sec: 3600 },
+  ], [], cfg);
+  const h = G.exerciseHistory(s, "Weighted Pull-ups", cfg);
+  assert.deepEqual(h.map((e) => e.e1rm), [35.7, 38.8]);
+  assert.equal(h[1].pr, true);
+  assert.equal(G.exerciseHistory(s, "Bankdrücken", cfg)[0].e1rm, 120);   // andere Übungen unverändert (Epley)
+  const gp = G.goalProgress(s, "Weighted Pull-ups", cfg);
+  assert.equal(gp.goal, 50); assert.equal(Math.round(gp.current), 39); assert.equal(gp.reached, false);
+  const plan = G.liftPlan(s, "Weighted Pull-ups", cfg);
+  assert.deepEqual([plan.target.reps, plan.target.weight], [7, 20]);   // 5–8 Wdh., dann +2,5 kg
+});
+
+test("Körpergewicht: der neuere Wert aus Garmin-Waage und eigenem Eintrag", () => {
+  const days = [{ date: "2026-10-02", weight: 74.7 }, { date: "2026-10-10", weight: 73.9 }, { date: "2026-11-01" }];
+  const own = { kg: 75, date: "2026-11-11" };
+  assert.deepEqual(G.currentBodyKg(days, own, 73), { kg: 75, date: "2026-11-11", source: "eigener Eintrag" });
+  assert.deepEqual(G.currentBodyKg(days.concat({ date: "2026-11-20", weight: 74.2 }), own, 73), { kg: 74.2, date: "2026-11-20", source: "Garmin" });   // neuere Waage gewinnt
+  assert.equal(G.currentBodyKg([{ date: "2026-11-11", weight: 76 }], own).source, "eigener Eintrag");   // gleicher Tag: eigener Eintrag
+  assert.deepEqual(G.currentBodyKg(days, null, 73), { kg: 73.9, date: "2026-10-10", source: "Garmin" });
+  assert.deepEqual(G.currentBodyKg([], null, 73), { kg: 73, date: null, source: "Strava-Profil" });
+  assert.equal(G.currentBodyKg([], null, null), null);
+  assert.ok(Math.abs(G.oneRepMax(20, 5, 75) - 35.83) < 0.01);   // 5 × 20 kg bei 75 kg
+});
+
 console.log(`\n${n} Tests bestanden.`);

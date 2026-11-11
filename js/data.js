@@ -37,7 +37,7 @@ window.TRAINING = {
     // Erkennung des Splits im Titel/der Beschreibung (Groß-/Kleinschreibung egal)
     splitKeywords: {
       Push: ["push", "brust", "chest", "bankdrücken", "bench"],
-      Pull: ["pull", "rücken", "back", "latzug", "lat pulldown", "lat"],
+      Pull: ["pull", "rücken", "back", "pullups", "klimmzüge", "klimmzug", "latzug", "lat pulldown", "lat"],
       Legs: ["legs", "leg day", "legday", "leg", "beine", "beinpresse", "leg press"],
     },
   },
@@ -87,26 +87,31 @@ window.TRAINING = {
     normal: { collapsed: [] },
   },
 
-  // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull · Latzug 8x90“,
+  // Gym-Tracker: Titel der Krafteinheit in Garmin Connect, z. B. „Push 6x100“, „Pull 5x20“ (Klimmzüge, 20 kg Zusatz),
   // „Legs 3x10x180“, „Push 6x100 @Bali“. Nur „Push“ = Einheit ohne Eintrag.
   gym: {
-    mainExercise: { Push: "Bankdrücken", Pull: "Latzug", Legs: "Beinpresse" },
+    mainExercise: { Push: "Bankdrücken", Pull: "Weighted Pull-ups", Legs: "Beinpresse" },
     aliases: {
       "Bankdrücken": ["bankdrücken", "bankdruecken", "bench press", "bench"],
-      "Latzug": ["latzug", "lat pulldown", "pulldown", "lat"],
+      "Weighted Pull-ups": ["weighted pull-ups", "weighted pull ups", "weighted pullups", "pull-ups", "pull ups", "pullups", "pull-up", "pull up", "klimmzüge", "klimmzuege", "klimmzug"],
+      "Latzug": ["latzug", "lat pulldown", "pulldown", "lat"],   // keine Hauptübung mehr, aber erkannt: Latzug-Sätze zählen so nicht als Klimmzüge
       "Beinpresse": ["beinpresse", "leg press"],
     },
     splitKeywords: { Push: ["push"], Pull: ["pull"], Legs: ["leg day", "legday", "legs", "leg", "beine"] },
-    perPlace: [],   // Übungen, die nur am selben Gym-Ort verglichen werden, z. B. ["Latzug", "Beinpresse"]; leer = alle ortsübergreifend
+    // Übungen mit Körpergewicht: Im Titel steht das Zusatzgewicht („Pull 5x20“ = 5 Klimmzüge mit 20 kg),
+    // das 1RM rechnet das aktuelle Körpergewicht (Garmin) mit und zeigt wieder das Zusatzgewicht
+    bodyweight: ["Weighted Pull-ups"],
+    bodyWeight: { kg: 75, date: "2026-11-11" },   // eigenes Körpergewicht dafür; ein neuerer Garmin-Wert (Waage) ersetzt es
+    perPlace: [],   // Übungen, die nur am selben Gym-Ort verglichen werden, z. B. ["Beinpresse"]; leer = alle ortsübergreifend
     // Nächstes Ziel nach doppelter Progression: Wiederholungsbereich [unten, oben] und Gewichtsschritt in kg
     progression: {
       "Bankdrücken": { reps: [6, 8], step: 2.5 },
-      "Latzug":      { reps: [5, 8], step: 5 },
+      "Weighted Pull-ups": { reps: [5, 8], step: 2.5 },
       "Beinpresse":  { reps: [5, 8], step: 10 },
       stagnation: 3,   // so viele Einträge ohne neues bestes 1RM → Hinweis „kein Fortschritt“
     },
     // Zielwert je Hauptübung als geschätztes 1RM in kg (Übung weglassen = kein Ziel anzeigen)
-    goals: { "Bankdrücken": 100, "Latzug": 140, "Beinpresse": 300 },
+    goals: { "Bankdrücken": 100, "Weighted Pull-ups": 50, "Beinpresse": 300 },   // Klimmzüge: 1RM-Zusatzgewicht
   },
 
   // Eigene Herzfrequenz-Zonen (ersetzen die Strava-Standardzonen auf der ganzen Seite).

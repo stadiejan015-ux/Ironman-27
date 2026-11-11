@@ -48,7 +48,12 @@
   const FLEX = FX ? FX.flexState(FCFG, new Date()) : { active: false };
   const inFlex = (d) => !!(FX && FX.flexState(FCFG, d).active);
   // Krafteinheiten: Garmin-Titel (Gym-Tracker) vor Strava-Namen, ±10 min zusammengeführt
-  const GYM = window.Gym, GCFG = window.TRAINING.gym || {};
+  // Körpergewicht für Übungen mit Körpergewicht (Klimmzüge): neuerer Wert aus Garmin-Waage und gym.bodyWeight, sonst Strava-Profil
+  const GYM = window.Gym, GCFG0 = window.TRAINING.gym || {};
+  const BODY = GYM ? GYM.currentBodyKg((window.GARMIN && window.GARMIN.days) || [], GCFG0.bodyWeight, S.athlete && S.athlete.weightKg) : null;
+  const BODY_KG = BODY ? BODY.kg : null;
+  const GCFG = { ...GCFG0, bodyKg: BODY_KG };
+  const isBodyweight = (ex) => (GCFG.bodyweight || []).includes(ex);
   const GYM_SESS = GYM ? GYM.gymSessions((window.GARMIN && window.GARMIN.activities) || [], acts.filter((a) => a.cat === "strength"), GCFG, acts.filter((a) => a.cat !== "strength")) : [];
   // Für den Flex-Modus: Ausdauer aus Strava, Kraft aus den zusammengeführten Einheiten
   const flexActs = GYM && FX ? FX.mergeActs(acts, GYM_SESS) : acts;
@@ -889,8 +894,8 @@
     $("#gymLifts").innerHTML = lifts.map(([split, ex]) => {
       const h = GYM.exerciseHistory(GYM_SESS, ex, GCFG);
       const gp = GYM.goalProgress(GYM_SESS, ex, GCFG);
-      const lm = MX ? MX.register(MX.liftMetric(ex, gp ? gp.goal : null)) : null;   // Detailansicht #training-1rm-…
-      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span></h3><p class="muted" style="margin:0;font-size:15px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg (geschätztes 1RM)</p>` : ""}</div>`;
+      const lm = MX ? MX.register(MX.liftMetric(ex, gp ? gp.goal : null, isBodyweight(ex) ? BODY_KG : null)) : null;   // Detailansicht #training-1rm-…
+      if (!h.length) return `<div class="card"><h3>${esc(ex)} <span class="muted" style="font-weight:400">${split}</span></h3><p class="muted" style="margin:0;font-size:15px">Noch keine Einträge. Titel in Garmin Connect z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "5x20" : "6x100"} @Ort“.</p>${gp ? `<p class="muted" style="margin:6px 0 0;font-size:13px">Ziel ${nf(gp.goal)} kg ${isBodyweight(ex) ? "Zusatzgewicht für eine Wiederholung" : "(geschätztes 1RM)"}</p>` : ""}</div>`;
       const last = h[h.length - 1];
       const scope = (GCFG.perPlace || []).includes(ex) ? h.filter((e) => e.place === last.place) : h;
       const best = scope.reduce((m, e) => (e.e1rm > m.e1rm ? e : m), scope[0]);
@@ -903,7 +908,7 @@
         <div class="stats">
           <div class="stat"><small>Letzter Eintrag</small><b>${set(last)}</b><small>${fmtDate(parse(last.date), { day: "2-digit", month: "2-digit" })} @${esc(last.place)}</small></div>
           <div class="stat"><small>Bester Satz${machine ? ` (${esc(last.place)})` : ""}</small><b>${set(best)}</b><small>${fmtDate(parse(best.date), { day: "2-digit", month: "2-digit" })}</small></div>
-          <div class="stat"><small>1RM geschätzt${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>Epley</small></div>
+          <div class="stat"><small>${isBodyweight(ex) ? "1RM Zusatz" : "1RM geschätzt"}${machine ? ` (${esc(last.place)})` : ""}</small><b>${nf(best.e1rm, 1)} kg</b><small>${isBodyweight(ex) ? "mit Körpergewicht" : "Epley"}</small></div>
         </div>
         ${goalBar(gp)}
         ${goalBox(plan)}
@@ -944,7 +949,7 @@
     const p = GYM.liftPlan(GYM_SESS, ex, GCFG);
     const txt = p.target ? `Ziel ${esc(ex)}: <b>${setTxt(p.target)}</b> <span class="muted">(zuletzt ${setTxt(p.last, false)})</span>`
       : p.noEntryAtPlace ? `Ziel ${esc(ex)}: <span class="muted">Noch kein Eintrag in ${esc(p.place)} – Startgewicht frei wählen.</span>`
-        : `<span class="muted">Noch kein Eintrag für ${esc(ex)} – z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "8x90" : "6x100"} @Ort“ als Titel.</span>`;
+        : `<span class="muted">Noch kein Eintrag für ${esc(ex)} – z. B. „${split} ${split === "Legs" ? "3x10x180" : split === "Pull" ? "5x20" : "6x100"} @Ort“ als Titel.</span>`;
     return `<p class="gym-target">${txt}</p>`;
   }
   // Block in der Übungskarte

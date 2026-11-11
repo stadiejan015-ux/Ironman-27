@@ -264,7 +264,7 @@ Saisonplan. Tests: `node tests/phases.test.js`.
 
 ## Gym-Tracker
 
-Titel der Krafteinheit in Garmin Connect: `Push 6x100`, `Pull · Latzug 8x90`, `Legs 3x10x180`,
+Titel der Krafteinheit in Garmin Connect: `Push 6x100`, `Pull 5x20` (Klimmzüge mit 20 kg Zusatz), `Legs 3x10x180`,
 `Push 6x100 @Bali` (mit Gym-Ort) oder nur `Push` (Einheit ohne Eintrag). „kg“ ist optional,
 Komma-Dezimalen (82,5) sind erlaubt, auch die Beschreibung wird geprüft. `scripts/update_garmin.py`
 speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym.js) erkennt Split,
@@ -272,11 +272,17 @@ speichert dafür Titel und Beschreibung der Krafteinheiten; [`js/gym.js`](js/gym
 ortsübergreifend verglichen (PRs, bestes 1RM, Ziele; im Diagramm der Detailansicht eine Linie, Punkte nach Ort gefärbt). Wer einzelne
 Übungen nur am selben Ort vergleichen will (z. B. Maschinen), trägt sie in `gym.perPlace` ein – dann zählen dafür nur
 Einträge vom aktuellen Ort (letzte Einheit mit @Ort). Zuordnung Split → Hauptübung und Aliase: `gym` in `js/data.js`.
-**Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Latzug und
-Beinpresse 5–8 Wdh./+5 bzw. +10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
+**Hauptübungen:** Push = Bankdrücken, Pull = Weighted Pull-ups (Klimmzüge mit Zusatzgewicht), Legs = Beinpresse.
+Für die Klimmzüge steht im Titel das Zusatzgewicht. Das 1RM rechnet das Körpergewicht mit, und zwar den neueren Wert
+aus Garmin-Waage und eigenem Eintrag (`gym.bodyWeight`, zurzeit 75 kg vom 11.11.):
+(Körpergewicht + Zusatz) × (1 + Wdh. ÷ 30) − Körpergewicht. Angezeigt wird wieder das Zusatzgewicht. Beispiel:
+5 Wdh. mit 20 kg bei 75 kg ergeben rund 36 kg statt 23 kg. Erkannt werden auch „Pull ups“, „Pull-ups“ und
+„Klimmzüge“. Ein „Latzug“ im Titel zählt weiter als eigene Übung und nicht als Klimmzug (`gym.bodyweight`, `gym.aliases`).
+**Nächstes Ziel** nach doppelter Progression (`gym.progression`: Bankdrücken 6–8 Wdh./+2,5 kg, Weighted Pull-ups
+5–8 Wdh./+2,5 kg, Beinpresse 5–8 Wdh./+10 kg): oberes Ende erreicht → schwerer und zurück aufs untere Ende, im Bereich →
 1 Wdh. mehr, darunter → unteres Ende; bei Sätzen pro Satz. Badge „Ziel erreicht“ und Hinweis bei Stagnation
 (3 Einträge ohne neues bestes 1RM).
-**1RM-Ziel** je Hauptübung (`gym.goals`, z. B. Bankdrücken 100, Latzug 140, Beinpresse 300 kg): Fortschrittsbalken unter
+**1RM-Ziel** je Hauptübung (`gym.goals`: Bankdrücken 100 kg, Weighted Pull-ups 50 kg Zusatzgewicht, Beinpresse 300 kg): Fortschrittsbalken unter
 dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm. Die Übungskarte öffnet die Detailansicht mit
 dem kompletten 1RM-Verlauf und allen Einträgen.
 **Namen in Listen:** In „Heute schon erledigt“ und in der Aktivitäten-Liste steht bei Krafteinheiten der Garmin-Titel,

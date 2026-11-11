@@ -115,6 +115,9 @@ test("Schritt 2: Zone 2, Woche und 1RM im Register", () => {
   const lm = M.register(M.liftMetric("Beinpresse", 300));
   assert.equal(lm.key, "1rm-beinpresse"); assert.equal(lm.tab, "training"); assert.equal(lm.summary, "max");
   assert.deepEqual(lm.refs, [{ v: 300, label: "Ziel 300" }]);
+  const pu = M.liftMetric("Weighted Pull-ups", 50, 73.9);                 // Körpergewicht → Über-Text erklärt das Zusatzgewicht
+  assert.equal(pu.key, "1rm-weighted-pull-ups");
+  assert.match(pu.about, /Zusatzgewicht/); assert.match(pu.about, /73,9 kg/);
   assert.equal(M.byKey["1rm-beinpresse"], lm);
   M.register(M.liftMetric("Beinpresse", 310));                       // gleicher Schlüssel → ersetzt, nicht doppelt
   assert.equal(M.REGISTRY.filter((m) => m.key === "1rm-beinpresse").length, 1);

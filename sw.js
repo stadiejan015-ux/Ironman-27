@@ -5,7 +5,7 @@
  * (die Seite hängt ?v=<Zeit> an, damit Browser nichts Altes verwenden).
  * Neue Version: CACHE erhöhen – sie übernimmt sofort, die Seite lädt einmal neu (js/pwa.js).
  */
-const CACHE = "ironman27-v8";
+const CACHE = "ironman27-v9";
 const CORE = [
   "./", "index.html", "manifest.webmanifest", "css/style.css",
   "js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js",
