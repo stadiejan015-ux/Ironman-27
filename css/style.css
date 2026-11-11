@@ -6,6 +6,9 @@
    unter 4,5:1 Kontrast lägen; Flächen, Balken und Punkte nutzen die Systemfarben unverändert. */
 :root {
   color-scheme: light;
+  /* Bewegung: kräftige Kurven statt der schwachen CSS-Standards (Emil Kowalski, .claude/skills) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);       /* Erscheinen, Druck-Feedback, Schließen */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);    /* Blätter wie in iOS: sehr schneller Start, weiches Landen */
   --font: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-rounded: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --bg: #f2f2f7;                       /* Hintergrund */
@@ -73,7 +76,11 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }   /* kein grauer Blitz beim Tippen; jedes Bedienelement hat eigenes :active */
+/* Bedienelemente: kein 300-ms-Warten auf Doppeltippen, kein Markieren/Kontextmenü bei langem Drücken (Inhalt bleibt markierbar) */
+button, a, summary, [role="button"], [role="tab"] { touch-action: manipulation; }
+.tab, .chip, .segmented button, .btn-text, .icon-btn, .sec-toggle, .sheet-grabber, .sheet-head, .cal-cell, .switch, .ios-row,
+a.tile-link, .chart { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 17px/22px var(--font);   /* iOS Body */
@@ -86,7 +93,7 @@ body {
   font-family: var(--font-rounded); font-variant-numeric: tabular-nums;
 }
 a { color: var(--accent-ink); text-decoration: none; }
-a:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) { a:hover { text-decoration: underline; } }
 .wrap { max-width: 1100px; margin: 0 auto; padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(49px + 40px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 @media (min-width: 768px) { .wrap { padding: calc(env(safe-area-inset-top) + 76px) max(24px, env(safe-area-inset-right)) calc(48px + env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); } }
 
@@ -118,12 +125,16 @@ a:hover { text-decoration: underline; }
 .title-actions { display: flex; gap: 2px; margin-right: -10px; }
 
 /* Blätter (Sheets): gleiten von unten herein; auf dem iPad mittig. Ohne Animation bei „Bewegung reduzieren“. */
-.sheet-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, 0); transition: background-color .28s ease; }
-.sheet-backdrop.open { background: rgba(0, 0, 0, .32); }
-.sheet { width: 100%; max-width: 560px; max-height: 88vh; overflow: auto; overscroll-behavior: contain; background: var(--sheet-bg); color: var(--text);
-  border-radius: 14px 14px 0 0; padding: 6px 16px calc(24px + env(safe-area-inset-bottom)); transform: translateY(105%); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
-.sheet-backdrop.open .sheet { transform: translateY(0); }
-.sheet.dragging { transition: none; }
+.sheet-backdrop { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+/* Abdunklung als eigene Fläche: nur opacity (läuft auf der GPU) und folgt beim Wischen dem Blatt */
+.sheet-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .32); opacity: 0; transition: opacity 240ms var(--ease-out); }
+.sheet-backdrop.open .sheet-scrim { opacity: 1; transition-duration: 420ms; }
+.sheet { position: relative; z-index: 1; width: 100%; max-width: 560px; max-height: 88vh; max-height: 88dvh; overflow: auto; overscroll-behavior: contain; background: var(--sheet-bg); color: var(--text);
+  border-radius: 14px 14px 0 0; padding: 6px 16px calc(24px + env(safe-area-inset-bottom));
+  box-shadow: 0 48px 0 var(--sheet-bg);   /* füllt die Lücke unten, wenn man das Blatt etwas nach oben zieht */
+  transform: translateY(105%); transition: transform 240ms var(--ease-out); }   /* Schließen: schnell */
+.sheet-backdrop.open .sheet { transform: none; transition: transform 420ms var(--ease-drawer); }   /* Öffnen: iOS-Kurve */
+.sheet-backdrop.dragging .sheet-scrim, .sheet-backdrop.open .sheet.dragging { transition: none; }   /* beim Wischen folgt alles 1:1 dem Finger */
 .sheet-grabber { width: 36px; height: 5px; border-radius: 3px; background: rgba(118, 118, 128, .45); margin: 0 auto 4px; touch-action: none; cursor: grab; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin-bottom: 8px; touch-action: none; }
 .sheet-head h2 { font-size: 17px; line-height: 22px; font-weight: 600; margin: 0; }
@@ -153,11 +164,12 @@ html.sheet-open, html.sheet-open body { overflow: hidden; }
 .md-count { color: var(--text-2); font-weight: 400; margin-left: 4px; }
 .md-entries .row-title .badge { margin-left: 6px; vertical-align: 2px; }
 .md-about b { font-weight: 600; }
-@media (min-width: 768px) { .sheet-detail { width: 700px; height: auto; max-height: 90vh; } }
+@media (min-width: 768px) { .sheet-detail { width: 700px; height: auto; max-height: 90vh; max-height: 90dvh; } }
 /* Kacheln und Listenzeilen, die eine Detailansicht öffnen */
 a.tile-link, a.ios-row { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
 a.tile-link:hover, a.ios-row:hover { text-decoration: none; }
-a.tile-link:active { opacity: .75; }
+a.tile-link { transition: transform 160ms var(--ease-out); }
+a.tile-link:active { transform: scale(.98); }
 a.ios-row:active { background: var(--fill); }
 .tile-link .label .row-chev { margin-left: 6px; }
 .tile-link .ht-time + .row-chev { margin-left: 6px; }
@@ -166,8 +178,14 @@ a.ios-row:active { background: var(--fill); }
 .ht-main { min-width: 0; }
 .spark { flex: none; margin-bottom: 4px; }
 @media (max-width: 600px) { .grid.rec-tiles, .grid.z2-tiles { grid-template-columns: minmax(0, 1fr); gap: 12px; } }   /* iPhone: Kacheln untereinander wie in Health */
-@media (min-width: 768px) { .sheet-backdrop { align-items: center; padding: 24px; } .sheet { border-radius: 14px; padding-bottom: 24px; } }
-@media (prefers-reduced-motion: reduce) { .sheet, .sheet-backdrop { transition: none; } }
+/* iPad: mittiges Blatt, kommt vollständig vom unteren Rand herein (wie ein iPadOS-Formular) */
+@media (min-width: 768px) { .sheet-backdrop { align-items: center; padding: 24px; } .sheet { border-radius: 14px; padding-bottom: 24px; box-shadow: none; transform: translateY(calc(50vh + 50% + 24px)); } }
+/* Bewegung reduzieren: Blätter blenden nur ein und aus, ohne zu gleiten */
+@media (prefers-reduced-motion: reduce) {
+  .sheet-backdrop .sheet { transform: none; opacity: 0; transition: opacity 200ms ease; }
+  .sheet-backdrop.open .sheet { opacity: 1; transition: opacity 200ms ease; }
+  .sheet-scrim, .sheet-backdrop.open .sheet-scrim { transition: opacity 200ms ease; }
+}
 
 /* Symbol-Knöpfe (Aktualisieren, Einstellungen) */
 .icon-btn {
@@ -175,7 +193,7 @@ a.ios-row:active { background: var(--fill); }
   border-radius: 50%; display: grid; place-items: center; cursor: pointer; font: inherit; padding: 0;
 }
 .icon-btn svg { width: 20px; height: 20px; }
-.icon-btn:hover { background: var(--fill); }
+@media (hover: hover) and (pointer: fine) { .icon-btn:hover { background: var(--fill); } }
 
 /* Hero */
 /* Datumszeile über dem großen Titel – einzige Stelle mit Großbuchstaben (wie in Fitness) */
@@ -205,7 +223,7 @@ h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0 0 8px; }   
 .rl-val b { font-size: 30px; font-weight: 600; color: var(--ci); }
 @media (min-width: 768px) { .rings { width: 200px; height: 200px; } .rings-body { gap: 32px; } .ring-legend { gap: 16px; } .rl-val, .rl-val b { font-size: 34px; line-height: 40px; } .rl-val { font-size: 20px; } }
 .ring-note { margin: 12px 0 0; font-size: 13px; line-height: 18px; color: var(--text-2); }
-.rings .ring-arc.anim { animation: ring-in 1s cubic-bezier(.2, .7, .2, 1) both; }
+.rings .ring-arc.anim { animation: ring-in 800ms var(--ease-out) both; }
 @keyframes ring-in { from { stroke-dashoffset: var(--c); } }
 @media (prefers-reduced-motion: reduce) { .rings .ring-arc.anim { animation: none; } }
 /* Tagesvorschlag als zwei Kacheln */
@@ -222,7 +240,7 @@ h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0 0 8px; }   
 /* iOS-Schalter (Vor Ort) */
 .eq-row { cursor: pointer; }
 .switch { position: relative; flex: none; width: 51px; height: 31px; border: 0; padding: 0; border-radius: 999px; background: var(--switch-off); cursor: pointer; transition: background-color .2s ease; }
-.switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: var(--switch-knob); box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 3px 1px rgba(0, 0, 0, .06); transition: transform .2s ease; }
+.switch .knob { position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: var(--switch-knob); box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 3px 1px rgba(0, 0, 0, .06); transition: transform 200ms var(--ease-out); }
 .switch[aria-checked="true"] { background: var(--good); }
 .switch[aria-checked="true"] .knob { transform: translateX(20px); }
 .switch::after { content: ""; position: absolute; inset: -7px -4px; }   /* Tippfläche ≥ 44 px */
@@ -245,12 +263,12 @@ section { margin-top: 40px; scroll-margin-top: 16px; }
 .sec-head h2 { margin: 0; }
 .sec-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 0 6px 0 0; margin: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; text-align: left; border-radius: 6px; min-height: 44px; }
 .sec-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.sec-chev { flex: none; color: var(--text-3); transition: transform .2s ease; }
+.sec-chev { flex: none; color: var(--text-3); transition: transform 200ms var(--ease-out); }
 .sec-toggle[aria-expanded="false"] .sec-chev { transform: rotate(-90deg); }
-.sec-toggle:hover .sec-chev { color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .sec-toggle:hover .sec-chev { color: var(--text); } }
 .sec-sum { font-size: 15px; line-height: 20px; color: var(--text-2); display: inline-flex; flex-wrap: wrap; gap: 0 12px; }
 section.is-collapsed { margin-top: 24px; }
-.sec-body { transition: height .22s ease; }
+.sec-body { transition: height 220ms var(--ease-out); }   /* Höhe bewusst animiert (Akkordeon), nur beim Auf-/Zuklappen */
 .sec-body.animating { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .sec-body, .sec-chev { transition: none; } }
 h2 { font-size: 22px; line-height: 28px; font-weight: 700; margin: 0 0 4px; }   /* Title 2 */
@@ -313,7 +331,7 @@ button.ios-row:active { background: var(--fill); }
 .row-val b { color: var(--text); font-weight: 600; font-family: var(--font-rounded); font-variant-numeric: tabular-nums; }
 .row-val b small { font-family: var(--font); font-size: 13px; font-weight: 400; color: var(--text-2); margin-left: 2px; }
 .row-val > small { font-size: 13px; line-height: 18px; }
-.row-chev { flex: none; color: var(--text-2); transition: transform .2s ease; }
+.row-chev { flex: none; color: var(--text-2); transition: transform 200ms var(--ease-out); }
 [aria-expanded="true"] > .row-chev { transform: rotate(90deg); }
 .row-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--other); }
 .row-dot.cur { background: var(--accent); }
@@ -338,7 +356,11 @@ button.ios-row:active { background: var(--fill); }
 
 /* Knöpfe ohne Rahmen: Text in Akzentfarbe oder graue Kapsel (.chip) */
 .btn-text { border: 0; background: none; color: var(--accent-ink); font: inherit; font-size: 17px; line-height: 22px; min-height: 44px; padding: 0 8px; border-radius: 8px; cursor: pointer; }
-.btn-text:active { opacity: .6; }
+.btn-text { transition: opacity 120ms ease; }
+.btn-text:active { opacity: .55; transition: none; }
+/* Druck-Feedback: Knöpfe geben beim Aufsetzen des Fingers leicht nach (nicht erst beim Loslassen) */
+.chip, .segmented button, .icon-btn, .cal-cell, .tab { transition: transform 160ms var(--ease-out); }
+.chip:active:not(:disabled), .segmented button:active, .icon-btn:active, .cal-cell:active, .tab:active { transform: scale(.96); }
 
 /* Phase timeline */
 .timeline-scroll { overflow-x: auto; overflow-y: hidden; padding: 24px 2px 26px; margin: -16px -2px -18px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
@@ -439,7 +461,7 @@ th, td { text-align: left; padding: 10px 8px; border-bottom: .5px solid var(--se
 th { color: var(--text-2); font-weight: 600; font-size: 13px; }
 td.num, th.num { text-align: right; }
 .table-scroll { overflow-x: auto; }
-tbody tr:hover { background: var(--fill); }
+@media (hover: hover) and (pointer: fine) { tbody tr:hover { background: var(--fill); } }
 
 /* Ziel vs. Prognose */
 .span-2 { grid-column: 1 / -1; }
@@ -497,11 +519,11 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon-btn:active { background: var(--fill); }
 #refreshBtn.spin { color: var(--accent); }
-.week-nav .chip:active:not(:disabled) { background: var(--accent-soft); color: var(--accent-ink); }
+.week-nav .chip:active:not(:disabled) { background: var(--accent-soft); color: var(--accent-ink); transform: scale(.96); }
 
 /* Web-App: Offline-Badge, Aktualisieren */
 .offline-badge { display: inline-block; margin-top: 16px; padding: 6px 14px; border-radius: 999px; background: var(--fill); color: var(--text-2); font-size: 13px; }
-#refreshBtn.spin svg { animation: spin .8s linear infinite; }
+#refreshBtn.spin svg { animation: spin .6s linear infinite; }   /* schneller Spinner wirkt schneller */
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { #refreshBtn.spin svg { animation: none; } }
 

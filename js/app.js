@@ -88,12 +88,13 @@
   }
   function closeSheet(bd) {
     if (!bd || bd.hidden) return;
-    const sheet = bd.querySelector(".sheet");
-    bd.classList.remove("open");
-    sheet.style.transform = "";
+    const sheet = bd.querySelector(".sheet"), scrim = bd.querySelector(".sheet-scrim");
+    bd.classList.remove("open", "dragging");
+    sheet.style.transform = "";   // gleitet von der aktuellen Position (auch mitten im Wischen) nach unten
+    if (scrim) scrim.style.opacity = "";
     document.documentElement.classList.remove("sheet-open");
     const done = () => { if (!bd.classList.contains("open")) bd.hidden = true; };
-    if (reduceMotionNow()) done(); else setTimeout(done, 300);
+    setTimeout(done, reduceMotionNow() ? 220 : 260);   // Schließen: 240 ms (bzw. 200 ms Ausblenden)
     const back = sheetOpener && (sheetOpener.isConnected ? sheetOpener : sheetOpener.id && document.getElementById(sheetOpener.id));
     if (back && back.focus) back.focus({ preventScroll: true });
   }
@@ -103,7 +104,10 @@
     if (!bd || bd._sheet) return;
     bd._sheet = true;
     const sheet = bd.querySelector(".sheet");
-    bd.addEventListener("click", (e) => { if (e.target === bd) requestClose(bd); });
+    const scrim = document.createElement("div");   // Abdunklung als eigene Fläche (nur opacity)
+    scrim.className = "sheet-scrim"; scrim.setAttribute("aria-hidden", "true");
+    bd.prepend(scrim);
+    bd.addEventListener("click", (e) => { if (e.target === bd || e.target === scrim) requestClose(bd); });
     bd.querySelectorAll(".sheet-done").forEach((b) => b.addEventListener("click", () => requestClose(bd)));
     bd.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.preventDefault(); requestClose(bd); return; }
@@ -113,24 +117,34 @@
       if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length - 1].focus(); }
       else if (!e.shiftKey && document.activeElement === f[f.length - 1]) { e.preventDefault(); f[0].focus(); }
     });
-    // Nach unten wischen am Griff oder an der Kopfzeile
-    let y0 = null, dy = 0, t0 = 0;
+    // Nach unten wischen am Griff oder an der Kopfzeile: das Blatt folgt 1:1 dem Finger, die Abdunklung im selben Maß.
+    // Loslassen: weit genug gezogen ODER schnell nach unten geschnippt → schließen, sonst zurück.
+    let y0 = null, pid = null, dy = 0, h = 1, track = [];
     sheet.querySelectorAll(".sheet-grabber, .sheet-head").forEach((el) => el.addEventListener("pointerdown", (e) => {
-      if (e.target.closest("button")) return;
-      y0 = e.clientY; dy = 0; t0 = performance.now();
-      sheet.classList.add("dragging");
+      if (y0 != null || e.target.closest("button")) return;   // zweiter Finger: ignorieren, sonst springt das Blatt
+      y0 = e.clientY; pid = e.pointerId; dy = 0; h = Math.max(1, sheet.offsetHeight);
+      track = [{ y: 0, t: performance.now() }];
+      sheet.classList.add("dragging"); bd.classList.add("dragging");
       try { sheet.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     }));
     sheet.addEventListener("pointermove", (e) => {
-      if (y0 == null) return;
-      dy = Math.max(0, e.clientY - y0);
+      if (y0 == null || e.pointerId !== pid) return;
+      const raw = e.clientY - y0;
+      dy = raw >= 0 ? raw : -Math.min(16, Math.sqrt(-raw) * 1.5);   // nach oben: zunehmender Widerstand statt harter Stopp
       sheet.style.transform = `translateY(${dy}px)`;
+      scrim.style.opacity = String(Math.max(0, 1 - Math.max(0, dy) / h));
+      const now = performance.now();
+      track.push({ y: dy, t: now });
+      while (track.length > 2 && now - track[0].t > 100) track.shift();   // Tempo der letzten ~100 ms
     });
-    const end = () => {
-      if (y0 == null) return;
-      const v = dy / Math.max(1, performance.now() - t0);
-      y0 = null; sheet.classList.remove("dragging");
-      if (dy > 90 || (dy > 24 && v > 0.6)) requestClose(bd); else sheet.style.transform = "";
+    const end = (e) => {
+      if (y0 == null || (e && e.pointerId !== pid)) return;
+      const a = track[0], b = track[track.length - 1];
+      const v = b && a && b.t > a.t ? (b.y - a.y) / (b.t - a.t) : 0;   // px/ms beim Loslassen
+      y0 = null; pid = null;
+      sheet.classList.remove("dragging"); bd.classList.remove("dragging");
+      if (dy > Math.min(140, h * 0.4) || (dy > 8 && v > 0.3)) { requestClose(bd); return; }
+      sheet.style.transform = ""; scrim.style.opacity = "";   // zurückfedern
     };
     sheet.addEventListener("pointerup", end);
     sheet.addEventListener("pointercancel", end);
@@ -1242,7 +1256,7 @@
   // Wochen-Minimum als drei konzentrische Ringe (außen Gym, Mitte Ausdauer, innen Schwimmen), daneben die Werte in Ringfarbe
   // Aufziehen nur in der ersten Sekunde nach dem Laden; wird „Heute“ währenddessen neu gezeichnet
   // (z. B. wenn die Zone-2-Daten eintreffen), läuft die Animation an derselben Stelle weiter.
-  const RING_MS = 1000;
+  const RING_MS = 800;
   let ringsT0 = null;
   function ringsBlock(wk) {
     const by = Object.fromEntries(wk.items.map((x) => [x.key, x]));
