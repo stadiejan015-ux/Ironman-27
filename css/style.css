@@ -88,7 +88,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 /* Große Zahlen (Kennzahlen, kg, bpm, Zeiten): SF Pro Rounded, gleich breite Ziffern */
-.kpi .value, .form-score b, .stat b, .pbar-label b, .rl-val,
+.kpi .value, .stat b, .pbar-label b, .rl-val,
 .lift-goal b, .split-row b, .pred-table .delta, .week-range {
   font-family: var(--font-rounded); font-variant-numeric: tabular-nums;
 }
@@ -499,6 +499,15 @@ button.ios-row:active { background: var(--fill); }
 .stat small { color: var(--text-2); font-size: 13px; line-height: 18px; display: block; }
 .stat b { font-size: 20px; line-height: 25px; font-weight: 600; }
 .mini-title { font-size: 15px; line-height: 20px; color: var(--text-2); margin: 16px 0 8px; font-weight: 600; }
+/* ⓘ neben Überschriften: öffnet ein kurzes Blatt mit dem Hilfetext; Tippfläche 44 px ohne die Zeile zu verschieben */
+.info-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; margin: -12px -10px -12px -8px; padding: 0; border: 0;
+  border-radius: 50%; background: none; color: var(--text-2); cursor: pointer; vertical-align: middle; font: inherit; }
+.info-btn svg { width: 20px; height: 20px; }
+.info-btn:active { opacity: .5; }
+.sec-head .info-btn { align-self: center; margin: -12px -14px -12px -10px; }
+.info-body p { margin: 0 0 12px; font-size: 15px; line-height: 21px; color: var(--text); }
+.info-body p:last-child { margin-bottom: 0; }
+#infoSheet .sheet { max-width: 520px; }
 
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 20px; }
@@ -644,8 +653,6 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 }
 
 /* Heute */
-.form-score { display: flex; align-items: center; gap: 12px; }
-.form-score b { font-size: 48px; line-height: 1; font-weight: 700; }
 .dot { width: 10px; height: 10px; border-radius: 50%; }
 .dot.good { background: var(--good); } .dot.ok { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.na { background: var(--other); }
 
@@ -659,6 +666,21 @@ details.how ul { margin: 8px 0 0; padding-left: 18px; color: var(--text-2); font
 .wk-running { margin-top: 6px; }
 .wk-hl { display: flex; gap: 8px; align-items: baseline; margin: 12px 0 0; font-size: 17px; line-height: 22px; font-weight: 600; }
 .wk-hl > span:first-child { color: var(--text-2); }
+/* Heute: kompakte Wochenkarte (öffnet das Wochenblatt) */
+.week-card { display: block; }
+.wk-cap { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 15px; line-height: 20px; }
+.wk-cap-title { font-weight: 600; }
+.wk-cap-range { margin-left: auto; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.week-card .wk-hl { margin-top: 10px; }
+.wk-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.wk-stats .kpi .label { font-size: 13px; line-height: 18px; color: var(--text-2); }
+.wk-stats .kpi .value { margin-top: 2px; }
+/* Wochenblatt */
+.week-body .week-head { justify-content: center; margin-bottom: 4px; }
+.week-body .wk-running { text-align: center; }
+/* Heute: Bereitschaft als eine Zeile */
+.today-form .ios-row .badge { flex: none; }
+.today-form .row-val { min-width: 2ch; }
 .wk-dl { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 8px 12px; margin: 0; font-size: 15px; line-height: 20px; }
 .wk-dl dt { color: var(--text-2); font-size: 15px; }
 .wk-dl dd { margin: 0; min-width: 0; }

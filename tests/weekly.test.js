@@ -41,6 +41,7 @@ test("Highlight-Priorität: neuer PR vor Wochen-Minimum vor längster Einheit", 
   const pr = W.weeklySummary({ acts, gymSessions: g, today, weekStart, cfg });
   assert.equal(pr.highlight.type, "pr");
   assert.equal(pr.highlight.text, "Neuer PR: Bankdrücken 6×100 kg (1RM 120 kg)");
+  assert.equal(pr.highlight.short, "Neuer PR: Bankdrücken");   // Kurzform für die kompakte Wochenkarte
   assert.equal(pr.minimum.ok, true);
   // ohne PR (gleiches Gewicht wie zuvor) → Minimum erfüllt
   const g2 = gymSess([["2026-10-27T09:00", "Push 6x100", 60], ["2026-11-03T09:00", "Push 6x100", 60], ["2026-11-04T09:00", "Pull", 60], ["2026-11-05T09:00", "Legs", 60], ["2026-11-06T09:00", "Push", 60]]);

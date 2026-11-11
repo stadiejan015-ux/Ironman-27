@@ -83,11 +83,10 @@
 
   /* ---------- Blätter (Sheets) von unten: „Fertig“, Tippen daneben, Esc oder nach unten wischen schließt ---------- */
   const reduceMotionNow = () => !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  let sheetOpener = null;
   function openSheet(id, opener) {
     const bd = document.getElementById(id);
     if (!bd || !bd.hidden) return;
-    sheetOpener = opener || document.activeElement;
+    bd._opener = opener || document.activeElement;   // je Blatt (Blätter können übereinander liegen)
     bd.hidden = false;
     document.documentElement.classList.add("sheet-open");
     void bd.offsetHeight;   // Startzustand rendern, dann animieren
@@ -101,10 +100,10 @@
     bd.classList.remove("open", "dragging");
     sheet.style.transform = "";   // gleitet von der aktuellen Position (auch mitten im Wischen) nach unten
     if (scrim) scrim.style.opacity = "";
-    document.documentElement.classList.remove("sheet-open");
+    if (!document.querySelector(".sheet-backdrop.open")) document.documentElement.classList.remove("sheet-open");
     const done = () => { if (!bd.classList.contains("open")) bd.hidden = true; };
     setTimeout(done, reduceMotionNow() ? 220 : 260);   // Schließen: 240 ms (bzw. 200 ms Ausblenden)
-    const back = sheetOpener && (sheetOpener.isConnected ? sheetOpener : sheetOpener.id && document.getElementById(sheetOpener.id));
+    const op = bd._opener, back = op && (op.isConnected ? op : op.id && document.getElementById(op.id));
     if (back && back.focus) back.focus({ preventScroll: true });
   }
   // Schließen durch den Nutzer; ein Blatt kann das abfangen (Detailansicht: über den Browser-Verlauf)
@@ -751,8 +750,8 @@
     const notes = [];
     if (p.bike.note) notes.push(`⚠️ ${esc(p.bike.note)}`);
     p.warnings.forEach((w) => notes.push(`⚠️ ${esc(w)}`));
-    notes.push("Δ: grün = Prognose schneller als oder gleich dem Ziel, orange = langsamer. Spanne = optimistisch bis konservativ. Parameter anpassbar in <code>js/data.js</code> unter <code>prediction</code>.");
     $("#predNotes").innerHTML = notes.map((n) => `<div>${n}</div>`).join("");
+    $("#predNotes").hidden = !notes.length;
   }
 
   /* ---------- Prognose-Verlauf (data/prediction-history.json) ---------- */
@@ -874,6 +873,50 @@
 
   const DEC_BAR = "color-mix(in srgb, var(--text) 30%, var(--surface))";   // neutral, Ampel nur als Punkt
 
+  /* ---------- Hilfetexte hinter ⓘ: kleiner Knopf neben der Überschrift, öffnet ein kurzes Blatt ---------- */
+  const INFO_ICON = '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="8.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="6.2" r="1.15" fill="currentColor"/><path d="M10 9.1v5.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const infoBtn = (key, title) => `<button type="button" class="info-btn" data-info="${key}" aria-label="Info: ${esc(title)}" aria-haspopup="dialog">${INFO_ICON}</button>`;
+  // Texte für Karten, die per JS gezeichnet werden; Abschnitts-Untertitel holt setupHelp() direkt aus der Seite
+  const HELP = {
+    gymSplit: { title: "Split-Verteilung", html: () => "Gezählt werden die Krafteinheiten der letzten 4 Wochen nach Split. „Ohne Split“: Titel ohne Push, Pull oder Legs, z. B. „Gym Bali“. Quelle: der Titel in Garmin Connect, sonst der Name in Strava." },
+    load: { title: "Belastung (Garmin)", html: () => "Garmin berechnet die Trainingsbelastung jeder Einheit aus dem Puls. Krafttraining wird dabei nur schwach abgebildet. Akut = letzte 7 Tage, chronisch = 28 Tage; liegt akut deutlich über chronisch, steigt das Überlastungsrisiko." },
+  };
+  function setupHelp() {
+    // Untertitel von Abschnitten (auch solche, die das JS später füllt) wandern hinter ein ⓘ neben der Überschrift
+    document.querySelectorAll("main .section-sub").forEach((sub, i) => {
+      const sec = sub.closest("section");
+      const h2 = sec && sec.querySelector("h2");
+      if (!h2 || sub.dataset.helpReady) return;
+      sub.dataset.helpReady = "1";
+      if (!sub.id) sub.id = `help-${sec.id || i}`;
+      sub.hidden = true;
+      if (sub.closest(".card") || sub.dataset.title) return;   // Karten-Hilfen haben ihren eigenen Platz (.info-slot)
+      const title = (h2.querySelector(".sec-title") || h2).textContent.trim();
+      HELP[sub.id] = { title, el: sub };
+      const head = h2.closest(".sec-head");
+      if (head) h2.insertAdjacentHTML("afterend", infoBtn(sub.id, title));
+      else h2.insertAdjacentHTML("beforeend", ` ${infoBtn(sub.id, title)}`);
+    });
+    // Hilfen in Karten: <span class="info-slot" data-info-src="ID"> neben der Kartenüberschrift
+    document.querySelectorAll(".info-slot[data-info-src]").forEach((slot) => {
+      const src = document.getElementById(slot.dataset.infoSrc);
+      if (!src) return;
+      src.hidden = true;
+      HELP[src.id] = { title: src.dataset.title || "Info", el: src };
+      slot.outerHTML = infoBtn(src.id, HELP[src.id].title);
+    });
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target && e.target.closest ? e.target.closest(".info-btn") : null;
+    const h = b && HELP[b.dataset.info];
+    if (!h) return;
+    e.preventDefault(); e.stopPropagation();
+    $("#infoTitle").textContent = h.title;
+    const html = h.el ? h.el.innerHTML : h.html();
+    $("#infoBody").innerHTML = /<(p|div|ul)\b/.test(html) ? html : `<p>${html}</p>`;
+    openSheet("infoSheet", b);
+  });
+
   /* ---------- Gym-Tracker (js/gym.js) ---------- */
   const PLACE_COLORS = ["var(--cat1)", "var(--cat2)", "var(--cat3)", "var(--cat4)", "var(--cat5)", "var(--cat6)"];
   // Orte → feste Farben in Reihenfolge des ersten Auftretens, „unbekannt“ grau
@@ -920,9 +963,9 @@
     const maxN = Math.max(1, c4.Push, c4.Pull, c4.Legs, c4.ohne);
     const avgPP = (c4.Push + c4.Pull) / 2;
     const short = c4.Legs < avgPP * 0.6 && avgPP >= 2;
-    $("#gymSplit").innerHTML = `<h3>Split-Verteilung der letzten 4 Wochen${short ? ` <span class="badge warn">Legs kommen zu kurz</span>` : ""}</h3>
+    $("#gymSplit").innerHTML = `<h3>Split-Verteilung der letzten 4 Wochen ${infoBtn("gymSplit", "Split-Verteilung")}${short ? ` <span class="badge warn">Legs kommen zu kurz</span>` : ""}</h3>
       <div class="split-bars">${[["Push", c4.Push], ["Pull", c4.Pull], ["Legs", c4.Legs], ["ohne Split", c4.ohne]].map(([k, v]) => `<div class="split-row"><span>${k}</span><div class="ready-track"><div class="ready-fill" style="width:${(v / maxN) * 100}%;background:${k === "ohne Split" ? "var(--other)" : "var(--strength)"}"></div></div><b>${v}×</b></div>`).join("")}</div>
-      <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}${c4.ohne ? ` „ohne Split“: Titel ohne Push/Pull/Legs, z. B. „Gym Bali“.` : ""} Quelle: Garmin-Titel, sonst Strava.</p>`;
+      <p class="muted" style="font-size:13px;margin:8px 0 0">${c4.total} Krafteinheiten seit dem ${fmtDate(addDays(now, -27), { day: "2-digit", month: "2-digit" })}</p>`;
   }
   const ymdLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -1089,9 +1132,10 @@
 
   /* ---------- Datenstand: Warnung bei ausgefallenem Sync (js/freshness.js) ---------- */
   const FRESH_KEY = "ironman.freshDismiss";
+  let FRESH = null;   // Datenstand (js/freshness.js) fürs Einstellungen-Blatt „Über die Daten“
   function freshBanner() {
     const el = $("#freshBanner"), FR = window.Freshness;
-    if (!FR) { $("#snap").textContent = fmtDate(snap); return; }
+    if (!FR) return;
     const GD = window.GARMIN;
     // neuester Garmin-Tag mit Schlafwert – zeigt, wann die Uhr zuletzt synchronisiert hat
     const lastSleep = GD && (GD.days || []).filter((d) => d.sleepH != null || d.sleepScore != null).map((d) => d.date).sort().pop();
@@ -1101,7 +1145,7 @@
       garmin: GD ? { updated: GD.updated, lastDay: lastSleep || null } : null,
       cfg: window.TRAINING.freshness || {},
     });
-    $("#snap").textContent = f.footer || fmtDate(snap);
+    FRESH = f;
     let dismissed = null;
     try { dismissed = localStorage.getItem(FRESH_KEY); } catch (e) { /* ignore */ }
     if (!f.messages.length || dismissed === f.stamp) { el.hidden = true; return; }
@@ -1238,8 +1282,6 @@
     { label: "Eingeschränkt", cls: "warn", text: "Nur locker trainieren." },
     { label: "Erholung", cls: "bad", text: "Heute regenerieren." },
   ];
-  // Im Flex-Zeitraum gibt es keinen Plan – Texte passend zum Tagesvorschlag
-  const FLEX_LEVEL_TEXT = ["Bereit fürs Training.", "Training ok – Ausdauer kürzer und locker.", "Nur leicht trainieren: Technik statt Limit.", "Heute regenerieren."];
 
   /* ---------- Flex: Ausstattung & Tagesvorschlag ---------- */
   const EQ_KEY = "ironman.flexEquipment";
@@ -1261,7 +1303,6 @@
     return r ? `ca. ${mmss(r[0])}–${mmss(r[1])} /km` : null;
   }
 
-  const standLine = `<p class="muted" style="font-size:12px;margin:6px 0 0">Strava-Stand ${fmtDate(snap, { day: "2-digit", month: "2-digit" })} – neue Einheiten kommen mit dem nächsten Update (mittags und abends).</p>`;
 
   // Wochen-Minimum als drei konzentrische Ringe (außen Gym, Mitte Ausdauer, innen Schwimmen), daneben die Werte in Ringfarbe
   // Aufziehen nur in der ersten Sekunde nach dem Laden; wird „Heute“ währenddessen neu gezeichnet
@@ -1320,7 +1361,6 @@
   function today() {
     const now = new Date();
     const rd = readiness();
-    const done = acts.filter((a) => a.date.toDateString() === now.toDateString());
     const lv = rd ? LEVELS[rd.level] : null;
     const isOld = rd && (now - rd.date) / DAY > 1.5;
     let main;
@@ -1354,19 +1394,16 @@
         detail: `<p>Ziel ${esc(cp.hours)} pro Woche.</p>${cp.focus && cp.focus.length ? `<ul class="due-focus">${cp.focus.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>` : ""}` });
       main = `<div class="card today-main-card"><div class="mini-title" style="margin-top:0">Heute dran</div><ul class="ios-list ic due-list">${dueRows(rows)}</ul></div>`;
     }
-    const doneHtml = done.length ? `<div class="mini-title" style="margin-top:0">Heute schon erledigt</div><ul class="ios-list ic">${done.map((a) => irow({ lead: rowIcon(a.cat), title: esc(actName(a)), val: `${hm(a.sec)} h` })).join("")}</ul>` : "";
-    const sinceCard = `<div class="card today-since">${doneHtml}<div id="sinceBox"></div>${standLine}</div>`;
-    const formCard = `
-      <div class="card today-form">
-        <div class="mini-title" style="margin-top:0">Form heute</div>
-        ${rd ? `
-          <div class="form-score"><b>${rd.R}</b><span class="badge ${lv.cls}">${lv.label}</span></div>
-          <div class="muted" style="font-size:13px;margin:2px 0 10px">${FLEX.active ? FLEX_LEVEL_TEXT[rd.level] : lv.text}${rd.notes.length ? " Grund: " + esc(rd.notes.join(", ")) + "." : ""}</div>
-          <ul class="ios-list dots">${rd.factors.map((x) => irow({ lead: `<span class="row-dot dot ${x.state}" aria-hidden="true"></span>`, title: `${x.label}<span class="sr-only"> – ${x.state === "good" ? "gut" : x.state === "ok" ? "mittel" : "schlecht"}</span>`, val: `<b>${esc(x.value)}</b>` })).join("")}</ul>
-          <div class="muted" style="font-size:13px;line-height:18px;margin-top:8px">${esc(rd.source)}<br>Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}${isOld ? " – <b>nicht von heute</b>" : ""}</div>`
-        : `<p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p>`}
-      </div>`;
-    $("#today").innerHTML = `<div class="today-col">${main}${sinceCard}</div><div class="today-col"><div class="card week-card" id="weekCard" aria-live="polite"></div>${formCard}</div>`;
+    // Erledigtes steht schon in „Heute dran“ und „Zuletzt gemacht“ – keine eigene Liste mehr (kein Wert doppelt)
+    const sinceCard = `<div class="card today-since"><div id="sinceBox"></div></div>`;
+    // Form heute: eine Zeile „Bereitschaft 88 · Bereit ›“; die Einzelwerte stehen im Erholung-Tab
+    const formSub = rd ? [isOld ? `Garmin-Daten vom ${fmtDate(rd.date, { day: "2-digit", month: "2-digit" })}, nicht von heute` : "", rd.notes.length ? `Grund: ${rd.notes.join(", ")}` : ""].filter(Boolean).join(" · ") : "";
+    const formCard = rd
+      ? `<div class="card list-card today-form"><ul class="ios-list ic"><li><a class="ios-row" href="#erholung-readiness">${rowIcon("activity")}
+          <span class="row-main"><span class="row-title">Bereitschaft</span>${formSub ? `<span class="row-sub">${esc(formSub)}</span>` : ""}</span>
+          <span class="row-val"><b>${rd.R}</b></span><span class="badge ${lv.cls}">${lv.label}</span>${CHEV_R}</a></li></ul></div>`
+      : `<div class="card today-form"><p class="muted" style="margin:0">Noch keine Garmin-Daten. Sobald Garmin verbunden ist, passt sich der Vorschlag täglich an Schlaf, HRV, Body Battery &amp; Co. an.</p></div>`;
+    $("#today").innerHTML = `<div class="today-col">${main}${sinceCard}</div><div class="today-col"><a class="card week-card tile-link" id="weekCard" href="#heute-woche"></a>${formCard}</div>`;
     // Details auf-/zuklappen (ohne neu zu zeichnen)
     $("#today").querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
       const key = b.dataset.open, open = todayOpen !== key;
@@ -1378,7 +1415,8 @@
     const eqBtn = $("#equipBtn");
     if (eqBtn) eqBtn.addEventListener("click", (e) => { renderEquipList(); openSheet("equipSheet", e.currentTarget); });
     renderSince(now);
-    renderWeek(now);
+    renderWeekCompact(now);
+    if (wks.open) renderWeek(now);
   }
 
   /* ---------- Wochenzusammenfassung (js/weekly.js) – feste Regeln, keine KI ---------- */
@@ -1387,19 +1425,41 @@
   const TREND = { up: ["↑", "höher als in der Vorwoche"], down: ["↓", "niedriger als in der Vorwoche"], flat: ["→", "etwa wie in der Vorwoche"] };
   const REC_FMT = { sleepH: (v) => `${hm(v * 3600)}<small>h</small>`, sleepScore: (v) => nf(v), hrv: (v) => `${nf(v)}<small>ms</small>`, rhr: (v) => `${nf(v)}<small>bpm</small>` };
   const REC_CAT = { sleepH: "sleep", sleepScore: "sleep", hrv: "heart", rhr: "heart" };
-  function renderWeek(now) {
+  // Wochenrückblick für die Woche ab weekStart (js/weekly.js)
+  const weekSummary = (now, weekStart) => WK.weeklySummary({
+    acts, gymSessions: GYM_VIEW, garminDays: gDays, garminLoads: G_LOADS, today: now, weekStart,
+    cfg: { weekly: WCFG, flex: FCFG, gym: GCFG, sinceLast: window.TRAINING.sinceLast || {} },
+    equipment: FLEX.active ? loadEquipment() : null,
+    emphasizeLoad: PHASES.some((p) => p.key === "reentry" && p.start < addDays(weekStart, 7) && p.end > weekStart),
+  });
+  const wkDm = (iso) => fmtDate(parse(iso), { day: "2-digit", month: "2-digit" });
+  // Heute: kompakte Karte – Highlight-Zeile und 3 große Werte; Antippen öffnet die ganze Woche (#heute-woche)
+  function renderWeekCompact(now) {
     const box = $("#weekCard");
     if (!box) return;
     if (!WK) { box.hidden = true; return; }
+    const start = WK.defaultWeekStart(now), s = weekSummary(now, start);
+    const sameAsRings = ymdLocal(start) === ymdLocal(monday(now));   // die Ringe zeigen die laufende Woche
+    const hl = s.highlight && !(sameAsRings && s.highlight.type === "minimum") ? s.highlight : null;   // Minimum zeigen schon die Ringe
+    const L = s.load;
+    const stats = [
+      ["Stunden", s.empty ? "–" : `${nf(s.totalSec / 3600, 1)}<small>h</small>`],
+      ["Einheiten", `${s.count}`],
+      ["Belastung", L && L.sum != null ? nf(L.sum) : "–"],
+    ];
+    box.innerHTML = `<div class="wk-cap"><span class="wk-cap-title">Woche</span><span class="wk-cap-range">${wkDm(s.monday)} – ${wkDm(s.sunday)}${s.running ? " · läuft noch" : ""}</span>${CHEV_R}</div>
+      ${hl ? `<p class="wk-hl"><span aria-hidden="true">★</span><span>${esc(hl.short || hl.text)}</span></p>` : ""}
+      <div class="wk-stats">${stats.map(([l, v]) => `<div class="kpi"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("")}</div>
+      <span class="sr-only">, ganze Woche öffnen</span>`;
+  }
+  // Blatt „Woche“: der komplette Rückblick mit Blättern zwischen den Wochen
+  function renderWeek(now) {
+    const box = $("#weekBody");
+    if (!box || !WK) return;
     const thisMon = monday(now), maxBack = (WCFG.weeksBack || 8) - 1;
     if (wkOffset == null) wkOffset = Math.round((thisMon - WK.defaultWeekStart(now)) / (7 * DAY));
-    const s = WK.weeklySummary({
-      acts, gymSessions: GYM_VIEW, garminDays: gDays, garminLoads: G_LOADS, today: now, weekStart: addDays(thisMon, -7 * wkOffset),
-      cfg: { weekly: WCFG, flex: FCFG, gym: GCFG, sinceLast: window.TRAINING.sinceLast || {} },
-      equipment: FLEX.active ? loadEquipment() : null,
-      emphasizeLoad: PHASES.some((p) => p.key === "reentry" && p.start < addDays(thisMon, -7 * wkOffset + 7) && p.end > addDays(thisMon, -7 * wkOffset)),
-    });
-    const dm = (iso) => fmtDate(parse(iso), { day: "2-digit", month: "2-digit" });
+    const s = weekSummary(now, addDays(thisMon, -7 * wkOffset));
+    const dm = wkDm;
     const sp = s.gym.splits;
     const splitTxt = ["Push", "Pull", "Legs"].filter((k) => sp[k]).map((k) => `${sp[k]} ${k}`).concat(sp.ohne ? [`${sp.ohne} ohne Split`] : []).join(", ");
     const sport = (x) => `<span class="wk-sport"><i class="swatch" style="background:${CATS[x.cat].color}"></i>${CATS[x.cat].label} ${x.count}×, ${durTxt(x.sec)}</span>`;
@@ -1412,7 +1472,6 @@
     if (s.minimum) rows.push(["Minimum", s.minimum.ok ? `<span class="wk-ok">✓ erfüllt</span>` : `${s.running ? "fehlt noch" : "gefehlt"}: ${s.minimum.missing.map(esc).join(", ")}`]);
     box.innerHTML = `
       <div class="week-head">
-        <div class="mini-title" style="margin:0">Woche</div>
         <div class="week-nav">
           <button type="button" class="chip" data-wk="1" aria-label="Ältere Woche"${wkOffset >= maxBack ? " disabled" : ""}>←</button>
           <span class="week-range">${dm(s.monday)} – ${dm(s.sunday)}</span>
@@ -1469,12 +1528,12 @@
   const loadLink = () => (MX && MX.byKey.belastung ? `<ul class="ios-list ic wk-link"><li><a class="ios-row" href="#${metricHash(MX.byKey.belastung)}">${rowIcon("activity")}<span class="row-main"><span class="row-title">Trainingsbelastung</span><span class="row-sub">Alle Wochen und akut/chronisch</span></span>${CHEV_R}</a></li></ul>` : "");
   function loadBlock(s) {
     const L = s.load;
-    if (!L) return G.loads ? "" : `<div class="mini-title">Belastung (Garmin)</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
+    if (!L) return G.loads ? "" : `<div class="mini-title">Belastung (Garmin) ${infoBtn("load", "Belastung")}</div><p class="muted wk-note">Belastungswerte kommen mit dem nächsten Garmin-Update.</p>`;
     const pct = L.diffPct;
     const head = L.sum == null ? `<span class="muted">Keine Belastungswerte in dieser Woche.</span>`
       : `Trainingsbelastung: <b>${nf(L.sum)}</b>${L.prevSum != null ? ` <span class="muted" style="white-space:nowrap">(Vorwoche ${nf(L.prevSum)}${pct != null ? `, ${pct > 0 ? "+" : pct < 0 ? "−" : "±"}${Math.abs(pct)} %` : ""})</span>` : ""}`;
     const ac = L.acute != null ? `<p class="wk-load-line">Akut ${nf(L.acute)}, chronisch ${nf(L.chronic)}${L.ratio != null ? `, Verhältnis ${nf(L.ratio, 1)}` : ""}${L.status && LOAD_STATUS[L.status] ? `<br>Garmin: <b>${LOAD_STATUS[L.status]}</b>` : ""} <span class="muted">(Stand ${fmtDate(parse(L.statusDate), { day: "2-digit", month: "2-digit" })})</span></p>` : "";
-    return `<div class="mini-title">Belastung (Garmin)</div>
+    return `<div class="mini-title">Belastung (Garmin) ${infoBtn("load", "Belastung")}</div>
       <div class="chart load-box"></div>
       ${C.legend(LOAD_ORDER.slice().reverse().map((k) => ({ label: LOAD_LABEL[k], color: LOAD_COLORS[k] })))}
       ${ac}
@@ -1824,6 +1883,17 @@
     if (bd.hidden) openSheet("metricSheet", md.opener || document.activeElement);
     renderMetric();
   }
+  const wks = { open: false, pushed: false, opener: null };
+  function openWeek() {
+    wkOffset = null;   // immer mit der Standardwoche beginnen
+    renderWeek(new Date());
+    wks.open = true;
+    openSheet("weekSheet", wks.opener || document.activeElement);
+  }
+  function closeWeek() {
+    wks.open = false; wks.pushed = false; wks.opener = null;
+    closeSheet($("#weekSheet"));
+  }
   function closeMetric() {
     md.key = null; md.pushed = false; md.opener = null;
     closeSheet($("#metricSheet"));
@@ -1965,6 +2035,7 @@
     if (!showAll) $("#aktivitaeten").scrollIntoView({ block: "start" });   // beim Zuklappen nicht im Leeren landen
   });
   setupSections();
+  setupHelp();
   LOPEN = layoutState();
   Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, false));
   today(); recovery(); gymSection(); calendarSection();
@@ -2023,12 +2094,19 @@
     const metric = metricOfHash(id);
     if (metric) {
       if (showTab(metric.tab)) window.scrollTo(0, tabScroll[curTab] || 0);
-      if (!md.key) mdScrollY = window.scrollY;   // Position merken, um sie nach dem Schließen wiederherzustellen
+      if (!md.key && !wks.open) mdScrollY = window.scrollY;   // Position merken, um sie nach dem Schließen wiederherzustellen
       openMetric(metric.key);
       return;
     }
-    const fromMetric = !!md.key;   // „Zurück“ aus einer Detailansicht: Blatt schließen, Scroll-Position behalten
-    if (fromMetric) closeMetric();
+    if (id === "heute-woche") {   // Wochenblatt; „Zurück“ aus einer Detailansicht darüber schließt nur diese
+      if (md.key) closeMetric();
+      if (showTab("heute")) window.scrollTo(0, tabScroll[curTab] || 0);
+      if (!wks.open) { mdScrollY = window.scrollY; openWeek(); }
+      return;
+    }
+    const fromMetric = !!md.key || wks.open;   // „Zurück“ aus einem Blatt: schließen, Scroll-Position behalten
+    if (md.key) closeMetric();
+    if (wks.open) closeWeek();
     const changed = showTab(tabOf(id));
     if (id && !TABS.includes(id) && document.getElementById(id)) {
       revealSection(id, false);
@@ -2040,11 +2118,22 @@
     }
   }
   let mdScrollY = 0;
-  // Detailansicht per Link geöffnet → „Fertig“ geht im Verlauf zurück; per Direktlink geöffnet → Hash ersetzen
+  // Detailansicht oder Wochenblatt per Link geöffnet → „Fertig“ geht im Verlauf zurück; per Direktlink → Hash ersetzen
   document.addEventListener("click", (e) => {
     const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
-    if (a && metricOfHash(decodeURIComponent(a.getAttribute("href").slice(1)))) { md.pushed = true; md.opener = a; }
+    if (!a) return;
+    const h = decodeURIComponent(a.getAttribute("href").slice(1));
+    if (metricOfHash(h)) { md.pushed = true; md.opener = a; }
+    else if (h === "heute-woche") { wks.pushed = true; wks.opener = a; }
   });
+  const wSheet = $("#weekSheet");
+  setupSheet(wSheet);
+  wSheet._onUserClose = () => {
+    if (wks.pushed) { history.back(); return; }
+    history.replaceState(null, "", "#heute");
+    route();
+  };
+  setupSheet($("#infoSheet"));
   const mSheet = $("#metricSheet");
   setupSheet(mSheet);
   mSheet._onUserClose = () => {
@@ -2056,7 +2145,7 @@
   window.addEventListener("hashchange", route);
   // Erneutes Tippen auf den aktiven Tab scrollt weich nach ganz oben – auch wenn gerade ein Abschnitt im Link steht (#gym)
   document.querySelectorAll(".tabbar .tab").forEach((t) => t.addEventListener("click", (e) => {
-    if (t.getAttribute("href") !== `#${curTab}` || md.key) return;
+    if (t.getAttribute("href") !== `#${curTab}` || md.key || wks.open) return;
     e.preventDefault();
     if (location.hash !== `#${curTab}`) history.replaceState(null, "", `#${curTab}`);
     window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" });
@@ -2146,13 +2235,22 @@
   // Einstellungen (Zahnrad neben „Heute“)
   const settings = $("#settingsSheet");
   setupSheet(settings);
-  $("#settingsBtn").addEventListener("click", (e) => { $("#settingsStand").textContent = `Datenstand: ${$("#snap").textContent || "–"}`; openSheet("settingsSheet", e.currentTarget); });
+  // Über die Daten: Stand von Strava und Garmin in Gerätezeit (js/freshness.js)
+  function renderAbout() {
+    const FR = window.Freshness, f = FRESH;
+    const st = (x) => (x && x.at && FR ? FR.stamp(x.at) : null);
+    const rows = [
+      ["Strava", st(f && f.strava) || fmtDate(snap, { day: "2-digit", month: "2-digit" }), f && f.strava && f.strava.level !== "ok" ? "älter als erwartet" : ""],
+      ["Garmin", st(f && f.garmin) || "–", f && f.garmin && f.garmin.level !== "ok" && f.garmin.level !== "unknown" ? "älter als erwartet" : ""],
+    ];
+    $("#aboutStand").innerHTML = rows.map(([title, val, sub]) => irow({ title, sub, val: `<b>${esc(val)}</b>` })).join("");
+  }
+  $("#settingsBtn").addEventListener("click", (e) => { renderAbout(); openSheet("settingsSheet", e.currentTarget); });
   const resetLayout = () => {
     saveLayout(null);
     LOPEN = layoutState();
     Object.keys(UNITS).forEach((id) => applyUnit(id, LOPEN[id] !== false, false, true));
   };
-  $("#resetView").addEventListener("click", (e) => { e.preventDefault(); resetLayout(); });
   $("#resetViewBtn").addEventListener("click", () => { resetLayout(); closeSheet(settings); });
   // Größenänderung (Drehen, Fenster): Diagramme mit neuer Breite zeichnen (zusätzlich zum ResizeObserver)
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { hideTip(); redrawCharts(); layoutTimeline(false); }, 150); });
