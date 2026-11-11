@@ -151,12 +151,13 @@
     const recovery = rec.some((r) => r.value != null) ? rec : null;
     const recOf = (k) => rec.find((r) => r.key === k).value;
 
-    // Highlight: neuer PR > Wochen-Minimum komplett > längste Einheit
+    // Highlight: neuer PR > Wochen-Minimum komplett > längste Einheit (short = Kurzform, sonst gilt text)
     const longest = items.reduce((m, x) => (!m || x.sec > m.sec ? x : m), null);
     let highlight = null;
     if (prs.length) {
       const p = prs[prs.length - 1];
-      highlight = { type: "pr", text: `Neuer PR: ${p.exercise} ${entryText(p)} (1RM ${kg(Math.round(p.e1rm))} kg)${prs.length > 1 ? `, +${prs.length - 1} weitere` : ""}` };
+      highlight = { type: "pr", text: `Neuer PR: ${p.exercise} ${entryText(p)} (1RM ${kg(Math.round(p.e1rm))} kg)${prs.length > 1 ? `, +${prs.length - 1} weitere` : ""}`,
+        short: `Neuer PR: ${[...new Set(prs.map((x) => x.exercise))].join(", ")}` };   // Kurzform für die kompakte Wochenkarte
     } else if (minimum && minimum.ok) {
       highlight = { type: "minimum", text: "Wochen-Minimum komplett erfüllt" };
     } else if (longest) {

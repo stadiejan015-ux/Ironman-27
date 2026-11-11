@@ -72,7 +72,11 @@ Die Seite ist in vier Tabs aufgeteilt, wie eine iOS-App:
   den passenden Tab, klappen den Abschnitt auf und scrollen hin.
 - **Verhalten:** Jeder Tab merkt sich seine Scroll-Position. Erneutes Tippen auf den aktiven Tab scrollt nach oben.
 - **Knöpfe:** Neben „Heute“ stehen Aktualisieren und das Zahnrad. Das Zahnrad öffnet ein Blatt mit dem
-  Erscheinungsbild (Automatisch / Hell / Dunkel) und „Ansicht zurücksetzen“.
+  Erscheinungsbild (Automatisch / Hell / Dunkel) und „Über die Daten“. Dort stehen der Datenstand von Strava und
+  Garmin, wann die nächsten Updates kommen, die Quellen und „Ansicht zurücksetzen“. Eine Fußzeile gibt es nicht mehr.
+- **Hilfetexte:** Erklärungen stehen nicht mehr als Untertitel unter den Überschriften, sondern hinter einem kleinen
+  ⓘ daneben, das ein kurzes Blatt öffnet. Das gilt z. B. für das Titel-Format im Gym, die Quellen der Split-Verteilung
+  und Garmins Belastung.
 - **Blätter:** Sie schließen über „Fertig“, durch Wischen nach unten, Tippen daneben oder Esc.
 
 ## Einklappbare Abschnitte
@@ -81,7 +85,7 @@ Alle Abschnitte außer Heute lassen sich über ihre Überschrift ein- und auskla
 `aria-expanded`); eingeklappt steht eine Kurzfassung daneben. In „Erholung“ bleiben die Kacheln sichtbar, nur die
 Verläufe sind separat einklappbar. Standard: im Flex-Zeitraum Zone 2, Disziplinen, Rennen und die Erholungs-Verläufe
 zu, sonst nur die Verläufe (`layout` in `js/data.js`). Die eigene Wahl wird gemerkt, bis die Phase wechselt;
-„Ansicht zurücksetzen“ in der Fußzeile und im Einstellungen-Blatt. Anker öffnen eingeklappte Abschnitte. Logik:
+„Ansicht zurücksetzen“ im Einstellungen-Blatt. Anker öffnen eingeklappte Abschnitte. Logik:
 [`js/layout.js`](js/layout.js), Tests: `node tests/layout.test.js`.
 
 ## Design
@@ -101,7 +105,7 @@ Variablen am Anfang von [`css/style.css`](css/style.css).
 Wiederkehrende Bausteine:
 
 - **Gruppierte Listen** im Stil der iOS-Einstellungen, z. B. Wochen-Minimum, Zuletzt gemacht, Phasen, Aktivitäten
-  und Form heute.
+  und Bereitschaft.
 - **Health-Kacheln** mit der Kategorie in Farbe, einer großen Zahl und einer grauen Einheit.
 - **Segmented Controls** für Filter.
 - **Kapseln mit Häkchen** für Auswahl.
@@ -117,7 +121,10 @@ Startbildschirm „Heute“ wie in Apple Fitness:
   Ringfarbe, darunter, was tatsächlich noch fehlt.
 - **Heute dran:** zwei kompakte Zeilen für Gym-Split und Ausdauer. Antippen klappt die Details auf.
 - **Vor Ort:** Die Zeile öffnet ein Blatt mit Schaltern für die Ausstattung.
-- **Darunter:** „Zuletzt gemacht“ und die Wochenkarte. Auf dem iPad quer stehen Haupt-Karte und Woche nebeneinander.
+- **Darunter:** „Zuletzt gemacht“, die kompakte Wochenkarte und eine Zeile „Bereitschaft 88 · Bereit ›“, die die
+  Detailansicht öffnet. Die Einzelwerte (Sleep Score, HRV usw.) stehen nur im Erholung-Tab. Kein Wert kommt im
+  Heute-Tab doppelt vor; Erledigtes zeigen „Heute dran“ und „Zuletzt gemacht“. Auf dem iPad quer stehen Haupt-Karte
+  und Woche nebeneinander.
 - **Renninfos:** Countdown, Distanzen und Fortschritt stehen im Tab Plan unter „Rennvorbereitung“.
 
 **Bewegung und Bedienung** (nach den Design-Skills in `.claude/skills`):
@@ -174,7 +181,7 @@ Tests: `node tests/charts.test.js`.
 Ein Banner unter dem Header warnt, wenn ein automatischer Sync ausgefallen ist: Strava gelb ab 20 h, rot ab
 48 h; Garmin gelb ab 8 h, rot ab 24 h – mit Tipp, was zu tun ist, und „Ausblenden“ bis zum nächsten Update.
 Ist der Garmin-Sync frisch, der letzte Schlafwert aber älter als gestern, erscheint ein grauer Hinweis, dass die
-Uhr nicht synchronisiert hat. Die Fußzeile zeigt beide Zeitstempel in Gerätezeit. Grundlage: `snapshotAt` in
+Uhr nicht synchronisiert hat. Das Einstellungen-Blatt („Über die Daten“) zeigt beide Zeitstempel in Gerätezeit. Grundlage: `snapshotAt` in
 `js/strava-data.js` (schreibt `update_strava.py` bei jedem Lauf) und `updated` in `js/garmin-data.js`.
 Berechnung: [`js/freshness.js`](js/freshness.js), Schwellen: `freshness` in `js/data.js`.
 Tests: `node tests/freshness.test.js`.
@@ -306,7 +313,7 @@ aus Garmin-Waage und eigenem Eintrag (`gym.bodyWeight`, zurzeit 75 kg vom 11.11.
 **1RM-Ziel** je Hauptübung (`gym.goals`: Bankdrücken 100 kg, Weighted Pull-ups 50 kg Zusatzgewicht, Beinpresse 300 kg): Fortschrittsbalken unter
 dem 1RM (bestes geschätztes 1RM) und gestrichelte Ziellinie im Diagramm. Die Übungskarte öffnet die Detailansicht mit
 dem kompletten 1RM-Verlauf und allen Einträgen.
-**Namen in Listen:** In „Heute schon erledigt“ und in der Aktivitäten-Liste steht bei Krafteinheiten der Garmin-Titel,
+**Namen in Listen:** In der Aktivitäten-Liste steht bei Krafteinheiten der Garmin-Titel,
 wenn er als Gym-Titel erkannt wird (z. B. „Push 5×70kg @Bali“). Sonst steht dort der Strava-Name, etwa wenn Garmin
 nur „Krafttraining“ heißt (`Gym.displayName`).
 Tests: `node tests/gym.test.js`.
@@ -323,7 +330,10 @@ Einheiten sind dort nur Info. Berechnung: `sinceLast()` in [`js/flex.js`](js/fle
 
 Karte „Woche“ in „Heute“ unter „Zuletzt gemacht“, nur aus festen Regeln (keine KI, keine API), direkt im
 Browser berechnet ([`js/weekly.js`](js/weekly.js)). Mo/Di zeigt sie die abgeschlossene Vorwoche, sonst die
-laufende; mit ← → lassen sich 8 Wochen durchblättern. Inhalt: Highlight (neuer PR > Wochen-Minimum erfüllt >
+laufende. In „Heute“ ist sie kompakt: eine Highlight-Zeile in Kurzform (z. B. „Neuer PR: Bankdrücken“) und drei
+große Werte (Stunden, Einheiten, Belastung). Antippen öffnet das Blatt „Woche“ (`#heute-woche`) mit dem kompletten
+Rückblick; dort lassen sich mit ← → 8 Wochen durchblättern. Ein „Wochen-Minimum erfüllt“ als Highlight entfällt in
+der kompakten Karte, wenn sie dieselbe Woche zeigt wie die Ringe. Inhalt des Blatts: Highlight (neuer PR > Wochen-Minimum erfüllt >
 längste Einheit), Gym mit Splits und Einträgen, Ausdauer je Sportart, Gesamtstunden gegenüber dem Schnitt der
 4 Wochen davor, Wochen-Minimum (Flex), Garmin-Erholung mit Pfeil zur Vorwoche und höchstens 3 Hinweise.
 Wiederverwendet werden Kalender-Raster, Gym-Splits/PRs, Wochen-Minimum und „Zuletzt gemacht“.

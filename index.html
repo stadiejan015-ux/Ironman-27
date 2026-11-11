@@ -261,17 +261,18 @@
           <div class="card span-2 race-card" id="raceCard"></div>
           <div class="card span-2" id="predCard">
             <div class="chart-head">
-              <h3 style="margin:0">Ziel vs. Prognose</h3>
+              <h3 style="margin:0">Ziel vs. Prognose <span class="info-slot" data-info-src="helpPred"></span></h3>
               <span class="muted" style="font-size:13px" id="predAsOf"></span>
             </div>
             <div id="predBars"></div>
             <div class="table-scroll"><table class="pred-table" id="predTable"></table></div>
             <div id="predNotes" class="muted" style="font-size:13px;margin-top:10px"></div>
+            <p class="section-sub" id="helpPred" data-title="Ziel vs. Prognose" hidden>Prognose „Wenn heute Renntag wäre“ aus deinen aktuellen Werten. Δ: grün = Prognose schneller als oder gleich dem Ziel, orange = langsamer. Spanne = optimistisch bis konservativ.</p>
           </div>
           <div class="card">
-            <h3>Längste Einheit vs. Renndistanz</h3>
+            <h3>Längste Einheit vs. Renndistanz <span class="info-slot" data-info-src="helpLongest"></span></h3>
             <div id="readiness"></div>
-            <p class="muted" style="font-size:13px;margin:8px 0 0">Faustregel: lange Einheiten im Training bis ca. 80–100&nbsp;% (Schwimmen/Rad) bzw. 30–35&nbsp;km (Laufen).</p>
+            <p class="section-sub" id="helpLongest" data-title="Längste Einheit" hidden>Faustregel: lange Einheiten im Training bis ca. 80–100&nbsp;% (Schwimmen/Rad) bzw. 30–35&nbsp;km (Laufen). Gezählt wird die längste Einheit seit der Anmeldung.</p>
           </div>
           <div class="card" id="predHistoryCard">
             <h3>Prognose-Verlauf</h3>
@@ -281,10 +282,6 @@
       </section>
     </div>
 
-    <footer>
-      <p style="margin:0 0 8px">Datenstand: <span id="snap"></span>. Rennen, Zielzeiten und Daten lassen sich in <code>js/data.js</code> anpassen.</p>
-      <a href="#" id="resetView">Ansicht zurücksetzen</a>
-    </footer>
   </main>
 
   <!-- Einstellungen (Blatt von unten) -->
@@ -299,12 +296,28 @@
           <button type="button" data-theme-choice="light" aria-pressed="false">Hell</button>
           <button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
         </div>
-        <div class="mini-title">Ansicht</div>
+        <div class="mini-title">Über die Daten</div>
+        <div class="card list-card sheet-list"><ul class="ios-list" id="aboutStand"></ul></div>
+        <p class="sheet-foot">Neue Einheiten von Strava kommen mit dem nächsten Update mittags und abends (Bali-Zeit), Garmin-Werte etwa alle 3 Stunden. Sofort aktualisieren: ↻ neben „Heute“ oder in der App vom Home-Bildschirm nach unten ziehen.</p>
+        <div class="mini-title">Quellen</div>
         <div class="card list-card sheet-list"><ul class="ios-list">
-          <li><button type="button" class="ios-row" id="resetViewBtn"><span class="row-main"><span class="row-title">Ein- und ausgeklappte Abschnitte zurücksetzen</span></span></button></li>
+          <li class="ios-row"><span class="row-main"><span class="row-title">Strava</span><span class="row-sub">Einheiten, Bestzeiten, Zonen und Zone 2 (aus den Streams werden nur Kennzahlen gespeichert)</span></span></li>
+          <li class="ios-row"><span class="row-main"><span class="row-title">Garmin Connect</span><span class="row-sub">Schlaf, HRV, Ruhepuls, Body Battery, Belastung, Gewicht und die Titel der Krafteinheiten</span></span></li>
+          <li class="ios-row"><span class="row-main"><span class="row-title">Berechnet</span><span class="row-sub">Prognose, Wochen-Minimum, Tagesvorschlag und Hinweise – Einschätzungen, keine Messwerte</span></span></li>
         </ul></div>
-        <p class="sheet-foot" id="settingsStand"></p>
+        <div class="card list-card sheet-list" style="margin-top:16px"><ul class="ios-list">
+          <li><button type="button" class="ios-row" id="resetViewBtn"><span class="row-main"><span class="row-title">Ansicht zurücksetzen</span><span class="row-sub">Ein- und ausgeklappte Abschnitte wie am Anfang</span></span></button></li>
+        </ul></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Woche (Blatt): kompletter Wochenrückblick mit Blättern zwischen den Wochen; Hash #heute-woche -->
+  <div class="sheet-backdrop" id="weekSheet" hidden>
+    <div class="sheet sheet-detail" role="dialog" aria-modal="true" aria-labelledby="weekTitle">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-head"><h2 id="weekTitle">Woche</h2><button type="button" class="btn-text sheet-done">Fertig</button></div>
+      <div class="sheet-body week-body" id="weekBody" aria-live="polite"></div>
     </div>
   </div>
 
@@ -314,6 +327,15 @@
       <div class="sheet-grabber" aria-hidden="true"></div>
       <div class="sheet-head"><h2 id="mdTitle" class="md-title"></h2><button type="button" class="btn-text sheet-done">Fertig</button></div>
       <div class="sheet-body" id="mdBody"></div>
+    </div>
+  </div>
+
+  <!-- Kurze Erklärung hinter einem ⓘ neben einer Überschrift -->
+  <div class="sheet-backdrop" id="infoSheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <div class="sheet-head"><h2 id="infoTitle"></h2><button type="button" class="btn-text sheet-done">Fertig</button></div>
+      <div class="sheet-body info-body" id="infoBody"></div>
     </div>
   </div>
 
