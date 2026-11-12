@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-10T23:58Z",
+  "updated": "2026-11-12T04:41Z",
   "zones": [[0,129],[130,152],[153,175],[176,200],[201,null]],
   "activities": [
     {"id":"19134936896","date":"2026-07-01T10:58","sport":"Ride","name":"Aerobars testen","km":33.1,"sec":3659,"elev":163,"kind":"ride","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[0,1935,1468,195,0],"pace":null,"watts":null,"decoupling":null,"status":{"watts":"keine echten Watt (geschätzt)","decoupling":"keine echten Watt (geschätzt)"},"highShare":0.065,"hrMed":153},
@@ -65,6 +65,7 @@
     {"id":"20850950346","date":"2026-11-04T08:52","sport":"Run","name":"Laufband","km":5.2,"sec":1852,"elev":0,"kind":"run","indoor":true,"hasHr":true,"deviceWatts":false,"zoneSec":[143,770,939,0,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"Laufband","decoupling":"Laufband"},"highShare":0,"hrMed":155},
     {"id":"20888627975","date":"2026-11-07T07:15","sport":"Run","name":"Bali 🇮🇩","km":7.8,"sec":2586,"elev":233,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[76,527,1169,790,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"zu hügelig (29,9 Hm/km)","decoupling":"zu hügelig (29,9 Hm/km)"},"highShare":0.402,"hrMed":173},
     {"id":"20919392670","date":"2026-11-09T19:58","sport":"Run","name":"Laufband","km":4.7,"sec":1532,"elev":0,"kind":"run","indoor":true,"hasHr":true,"deviceWatts":false,"zoneSec":[64,1120,348,0,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"Laufband","decoupling":"Laufband"},"highShare":0,"hrMed":151},
-    {"id":"20936061480","date":"2026-11-10T18:18","sport":"VirtualRide","name":"Zwift - Ignite","km":13.7,"sec":1581,"elev":57,"kind":"ride","indoor":true,"hasHr":false,"deviceWatts":true,"zoneSec":null,"pace":null,"watts":null,"decoupling":null,"status":{"all":"keine Herzfrequenz"}}
+    {"id":"20936061480","date":"2026-11-10T18:18","sport":"VirtualRide","name":"Zwift - Ignite","km":13.7,"sec":1581,"elev":57,"kind":"ride","indoor":true,"hasHr":false,"deviceWatts":true,"zoneSec":null,"pace":null,"watts":null,"decoupling":null,"status":{"all":"keine Herzfrequenz"}},
+    {"id":"20953952818","date":"2026-11-12T07:14","sport":"Run","name":"Social Run Ubud","km":7.3,"sec":2729,"elev":83,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[16,196,2426,0,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"nur 0 min im Band","decoupling":"zu kurz (< 60 min)"},"highShare":0,"hrMed":165}
   ]
 }
