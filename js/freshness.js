@@ -19,7 +19,7 @@
   const HOUR = 3600000, DAY = 86400000;
   const DEFAULTS = {
     stravaWarnH: 20, stravaBadH: 48,   // Strava-Update läuft mittags und abends
-    garminWarnH: 8, garminBadH: 24,    // Garmin-Update alle 3 h
+    garminWarnH: 8, garminBadH: 24,    // Garmin-Update stündlich geplant
     fallbackWarnDays: 2,               // ohne snapshotAt: erst ab so vielen Tagen warnen
     watchDays: 2,                      // letzter Tageswert älter als gestern → Uhr nicht synchronisiert
     actionsUrl: "https://github.com/stadiejan015-ux/Ironman-27/actions",

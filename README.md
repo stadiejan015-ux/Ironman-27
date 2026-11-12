@@ -239,7 +239,7 @@ Die Garmin-Daten wachsen auf bis zu 400 Tage (`KEEP_DAYS`). Älteres lässt sich
 
 ## Garmin (Erholung & Form, Tagesvorschlag)
 
-Die GitHub Action [`.github/workflows/garmin.yml`](.github/workflows/garmin.yml) holt alle 3 Stunden
+Die GitHub Action [`.github/workflows/garmin.yml`](.github/workflows/garmin.yml) holt stündlich
 Schlaf, Sleep Score, HRV, Ruhepuls, Stress, Body Battery, Trainingsbereitschaft, Trainingsstatus/-belastung,
 VO2max und Gewicht aus Garmin Connect ([`scripts/update_garmin.py`](scripts/update_garmin.py)) und schreibt
 sie nach `js/garmin-data.js`. Daraus berechnet die Seite die Form des Tages und passt den Trainingsvorschlag an.
