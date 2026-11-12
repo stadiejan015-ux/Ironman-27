@@ -65,7 +65,7 @@ window.TRAINING = {
   // Warnung bei veralteten Daten (Banner oben): Alter in Stunden, ab dem gelb bzw. rot gewarnt wird
   freshness: {
     stravaWarnH: 20, stravaBadH: 48,   // Strava-Update läuft mittags und abends
-    garminWarnH: 8, garminBadH: 24,    // Garmin-Update alle 3 h
+    garminWarnH: 8, garminBadH: 24,    // Garmin-Update stündlich geplant
     fallbackWarnDays: 2,               // alte Strava-Daten ohne Uhrzeit: erst ab 2 Tagen warnen
     watchDays: 2,                      // letzter Garmin-Tageswert älter als gestern → „Uhr nicht synchronisiert“
     actionsUrl: "https://github.com/stadiejan015-ux/Ironman-27/actions",

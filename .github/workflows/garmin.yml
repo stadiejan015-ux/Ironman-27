@@ -2,7 +2,9 @@ name: Garmin-Update
 
 on:
   schedule:
-    - cron: "17 */3 * * *"   # alle 3 Stunden
+    # stündlich: GitHub startet geplante Läufe nicht zuverlässig und lässt viele aus
+    # (bei „alle 3 Stunden“ kamen nur etwa 3 Läufe pro Tag an). Minute 43, weil zur vollen Stunde am meisten los ist.
+    - cron: "43 * * * *"
   workflow_dispatch:
     inputs:
       days:
