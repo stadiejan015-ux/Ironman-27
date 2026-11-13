@@ -1,11 +1,12 @@
 /* Automatisch erzeugt von scripts/update_strava.py – nicht von Hand bearbeiten. */
 window.STRAVA = {
-  "snapshotDate": "2026-11-12",
-  "snapshotAt": "2026-11-12T14:11+00:00",
+  "snapshotDate": "2026-11-13",
+  "snapshotAt": "2026-11-13T04:41+00:00",
   "athlete": {"weightKg": 73, "focus": "Build – Zone 2 verbessern und schneller am berg werden", "streakWeeks": 66},
   "zones": {"ftp": 286, "hr": [[0, 134], [135, 155], [156, 175], [176, 200], [201, null]], "power": [[0, 157], [158, 215], [216, 257], [258, 300], [301, 343], [344, 429], [430, null]], "run": [[0, 2.828], [2.828, 3.286], [3.286, 3.66], [3.66, 3.91], [3.91, 4.159], [4.159, null]]},
   "bests": {"run": [["1 Meile", 380, "2026-04-02"], ["5 km", 1288, "2026-03-27"], ["10 km", 2945, "2026-07-19"], ["Halbmarathon", 9805, "2026-03-07"]], "bike": [["5 s", "646 W", "2024-12-25"], ["1 min", "336 W", "2024-12-25"], ["5 min", "281 W", "2025-07-22"], ["20 min", "240 W", "2026-04-14"], ["1 h", "157 W", "2026-03-31"], ["Längste Fahrt", "206 km", "2023-09-05"], ["Größter Anstieg", "1.861 m", "2025-08-15"]]},
   "activities": [
+    ["2026-11-13T09:35", "WeightTraining", "Legs", 0.0, 4131, 0],
     ["2026-11-12T15:22", "WeightTraining", "Pull", 0.0, 5522, 0],
     ["2026-11-12T07:14", "Run", "Social Run Ubud", 7.3, 2729, 83, "6:14 /km"],
     ["2026-11-11T10:22", "WeightTraining", "Push", 0.0, 4604, 0],
