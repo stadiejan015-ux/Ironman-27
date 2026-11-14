@@ -6,6 +6,8 @@
  * strava.snapshotAt / garmin.updated: ISO-Zeit mit Zeitzone (z. B. "2026-11-05T13:40+00:00").
  * Fehlt snapshotAt (ältere Daten), zählt snapshotDate (nur Datum) – dann erst ab 2 Tagen eine Warnung.
  * garmin.lastDay: neuester Garmin-Tag mit Schlafwert ("YYYY-MM-DD") – für „Uhr nicht synchronisiert“.
+ *   isBeforeToday(dayIso, now) → true, wenn der Tag ("YYYY-MM-DD") vor dem heutigen Kalendertag des Geräts liegt
+ *     (für „Garmin-Daten vom …, nicht von heute“ – gilt ab Mitternacht, nicht erst ab mittags)
  * Alle Zeiten werden in der lokalen Zeit des Geräts angezeigt.
  * Läuft im Browser (window.Freshness) und in Node (require("./js/freshness.js")).
  */
@@ -86,5 +88,11 @@
     return { strava: s, garmin: g, watch, messages, worst, stamp: key, footer };
   }
 
-  return { DEFAULTS, freshness, stamp, daysBetween };
+  // Liegt der Tag vor heute (Kalendertag des Geräts)? Ohne gültiges Datum keine Aussage (false).
+  function isBeforeToday(dayIso, now) {
+    const d = dayIso ? parseDay(dayIso) : null;
+    return !!(d && now && d < dayStart(now));
+  }
+
+  return { DEFAULTS, freshness, stamp, daysBetween, isBeforeToday };
 });

@@ -173,6 +173,7 @@ html.push-open, html.push-open body { overflow: hidden; }
 /* Platzhalter beim Laden (Skeleton): graue Formen in etwa der späteren Größe, damit nichts springt */
 .sk { display: block; background: var(--fill); border-radius: 7px; }
 .sk-wrap { animation: sk-pulse 1.1s ease-in-out infinite alternate; }
+.load-failed .sk-wrap, .load-failed .sk { display: none; }   /* Start fehlgeschlagen (index.html): Meldung statt Platzhalter */
 @keyframes sk-pulse { to { opacity: .45; } }
 .sk-text { display: inline-block; height: 15px; vertical-align: -2px; }
 .sk-line { height: 13px; margin: 6px 0 12px; }

@@ -145,4 +145,10 @@ test("Pulsmesser-Markierung #gurt / #uhr aus Titel oder Beschreibung", () => {
   assert.equal(Z2.analyzeActivity(runMeta(), s, cfg, zones).hrTag, undefined);
 });
 
+test("Sportart → Lauf oder Rad: eine Liste für die ganze Seite (auch Gravel, MTB, E-Bike, virtuelle Läufe)", () => {
+  for (const s of ["Ride", "VirtualRide", "GravelRide", "MountainBikeRide", "EBikeRide"]) assert.equal(Z2.kindOf(s), "ride", s);
+  for (const s of ["Run", "TrailRun", "VirtualRun"]) assert.equal(Z2.kindOf(s), "run", s);
+  for (const s of ["Swim", "WeightTraining", "Hike", "Walk", "RockClimbing", "Yoga", "", undefined]) assert.equal(Z2.kindOf(s), null, String(s));
+});
+
 console.log(`\n${n} Tests bestanden.`);

@@ -29,6 +29,6 @@ Strava-Update der Ironman-Website. Die Aufgabe startet jedes Mal in einer neuen 
 
 ## Prüfen
 
-Nach dem ersten Lauf sollte auf `main` ein Commit „Strava-Update <Datum>“ stehen und in der Fußzeile der
-Website „Strava <Datum> <Uhrzeit>“. Läuft die Aufgabe einmal nicht, kann man das Update auch in einem Chat
+Nach dem ersten Lauf sollte auf `main` ein Commit „Strava-Update <Datum>“ stehen und im Einstellungen-Blatt der
+Website (Zahnrad, „Über die Daten“) „Strava <Datum> <Uhrzeit>“. Läuft die Aufgabe einmal nicht, kann man das Update auch in einem Chat
 anstoßen: „Strava-Update laut scripts/UPDATE.md machen“.

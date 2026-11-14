@@ -160,6 +160,41 @@ def parse_body(b):
     }
 
 
+def _ts(value):
+    """Garmin-Zeitstempel („2026-11-13 15:26:36“ oder mit „T“) → datetime, sonst None."""
+    try:
+        return dt.datetime.fromisoformat(str(value).strip().replace(" ", "T")[:19])
+    except (TypeError, ValueError):
+        return None
+
+
+def tz_offset(acts):
+    """Zeitverschiebung des Nutzers zur Weltzeit (UTC): Ortszeit − Weltzeit der neuesten Garmin-Aktivität.
+
+    Garmin führt die Tageswerte nach dem Kalendertag am Ort des Nutzers. Der Runner von GitHub rechnet in UTC –
+    auf Reisen (z. B. Bali, +8 h) fehlte dadurch morgens stundenlang der neue Tag. Ohne brauchbare Aktivität
+    oder bei unplausiblen Werten: keine Verschiebung (UTC, wie bisher).
+    """
+    best = None
+    for a in acts or []:
+        loc, gmt = _ts(a.get("startTimeLocal")), _ts(a.get("startTimeGMT"))
+        if loc is None or gmt is None:
+            continue
+        if best is None or gmt > best[0]:
+            best = (gmt, loc - gmt)
+    if not best:
+        return dt.timedelta(0)
+    minutes = round(best[1].total_seconds() / 900) * 15   # auf Viertelstunden
+    if not -12 * 60 <= minutes <= 14 * 60:
+        return dt.timedelta(0)
+    return dt.timedelta(minutes=minutes)
+
+
+def local_today(now_utc, offset):
+    """Heutiges Datum am Ort des Nutzers (now_utc ohne Zeitzone, in UTC)."""
+    return (now_utc + offset).date()
+
+
 def merge(*parts):
     out = {}
     for p in parts:
@@ -323,7 +358,26 @@ def main():
 
     g = login()
     byd = {d["date"]: d for d in data["days"]}
-    today = dt.date.today()
+    now_utc = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    utc_today = now_utc.date()
+
+    # Krafteinheiten mit Titel (Gym-Tracker): erster Lauf ab commitDate, danach die letzten 14 Tage neu
+    existing = data.get("activities") or []
+    if existing:
+        start = (utc_today - dt.timedelta(days=TITLE_REFRESH_DAYS)).isoformat()
+    else:
+        m = re.search(r'commitDate:\s*"(\d{4}-\d{2}-\d{2})"', (ROOT / "js" / "data.js").read_text(encoding="utf-8"))
+        start = m.group(1) if m else (utc_today - dt.timedelta(days=120)).isoformat()
+    # Belastung je Einheit (alle Sportarten): einmalig 10 Wochen nachladen, danach die letzten 14 Tage
+    backfill = not data.get("loadsSince")
+    load_start = (utc_today - dt.timedelta(days=LOAD_BACKFILL_DAYS if backfill else TITLE_REFRESH_DAYS)).isoformat()
+    # Bis morgen (UTC) abfragen: am Ort des Nutzers kann schon der nächste Kalendertag sein
+    acts_list = safe(g.get_activities_by_date, min(start, load_start), (utc_today + dt.timedelta(days=1)).isoformat())
+
+    # „Heute“ am Ort des Nutzers (Zeitzone aus der neuesten Aktivität), nicht in UTC
+    today = local_today(now_utc, tz_offset(acts_list))
+    if today != utc_today:
+        print(f"Ortszeit des Nutzers: heute ist der {today.isoformat()} (UTC: {utc_today.isoformat()})")
     got = 0
     for i in range(args.days - 1, -1, -1):
         day = today - dt.timedelta(days=i)
@@ -332,18 +386,6 @@ def main():
             byd[rec["date"]] = {**byd.get(rec["date"], {}), **rec}
             got += 1
     data["days"] = list(byd.values())
-
-    # Krafteinheiten mit Titel (Gym-Tracker): erster Lauf ab commitDate, danach die letzten 14 Tage neu
-    existing = data.get("activities") or []
-    if existing:
-        start = (today - dt.timedelta(days=TITLE_REFRESH_DAYS)).isoformat()
-    else:
-        m = re.search(r'commitDate:\s*"(\d{4}-\d{2}-\d{2})"', (ROOT / "js" / "data.js").read_text(encoding="utf-8"))
-        start = m.group(1) if m else (today - dt.timedelta(days=120)).isoformat()
-    # Belastung je Einheit (alle Sportarten): einmalig 10 Wochen nachladen, danach die letzten 14 Tage
-    backfill = not data.get("loadsSince")
-    load_start = (today - dt.timedelta(days=LOAD_BACKFILL_DAYS if backfill else TITLE_REFRESH_DAYS)).isoformat()
-    acts_list = safe(g.get_activities_by_date, min(start, load_start), today.isoformat())
     try:
         update_loads(g, data, byd, acts_list, load_start, backfill, args.days, today)
     except Exception as e:  # Belastung darf die Tageswerte nicht blockieren
