@@ -21,6 +21,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 15   # hängt ein Lauf, blockiert er sonst bis zu 6 Stunden alle weiteren
     steps:
       - uses: actions/checkout@v4
 
@@ -28,12 +29,31 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Garmin-Login-Cache wiederherstellen
-        uses: actions/cache@v4
+      # Garmin-Anmeldung zwischen den Läufen aufbewahren, damit nicht jeder Lauf neu einloggt.
+      # Das Repo ist öffentlich und der Cache für jeden Workflow-Lauf lesbar – deshalb nur verschlüsselt
+      # (scripts/garmin_tokens.sh). Schlüssel: Secret GARMIN_CACHE_KEY, sonst das Garmin-Passwort.
+      - name: Verschlüsselten Garmin-Login wiederherstellen
+        id: tokens
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.garmin-tokens.enc
+          key: garmin-enc-${{ github.run_id }}
+          restore-keys: garmin-enc-
+
+      # Übergang: gibt es noch keine verschlüsselte Kopie, einmalig die alte unverschlüsselte übernehmen.
+      # Sie wird nicht mehr neu gespeichert; die alten Einträge (garmin-tokens-…) verfallen nach 7 Tagen.
+      - name: Alten Garmin-Login übernehmen (nur beim ersten Lauf)
+        if: steps.tokens.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@v4
         with:
           path: ~/.garminconnect
           key: garmin-tokens-${{ github.run_id }}
           restore-keys: garmin-tokens-
+
+      - name: Garmin-Login entschlüsseln
+        env:
+          GARMIN_CACHE_KEY: ${{ secrets.GARMIN_CACHE_KEY || secrets.GARMIN_PASSWORD }}
+        run: bash scripts/garmin_tokens.sh unpack
 
       - name: Abhängigkeiten installieren
         run: pip install --quiet "garminconnect>=0.3.20,<0.4"
@@ -52,6 +72,20 @@ jobs:
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
         run: python scripts/update_hr_sources.py
+
+      - name: Garmin-Login verschlüsseln
+        id: pack
+        if: always()
+        env:
+          GARMIN_CACHE_KEY: ${{ secrets.GARMIN_CACHE_KEY || secrets.GARMIN_PASSWORD }}
+        run: bash scripts/garmin_tokens.sh pack
+
+      - name: Verschlüsselten Garmin-Login speichern
+        if: always() && steps.pack.outputs.ready == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.garmin-tokens.enc
+          key: garmin-enc-${{ github.run_id }}
 
       - name: Rennprognose speichern
         run: node scripts/save_prediction.js

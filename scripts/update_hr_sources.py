@@ -98,7 +98,7 @@ def main():
         db["activities"] = []
     last = max((a["start"][:10] for a in db["activities"]), default=None)
     start = commit_date() if not last else (dt.date.fromisoformat(last) - dt.timedelta(days=3)).isoformat()
-    end = dt.date.today().isoformat()
+    end = (dt.date.today() + dt.timedelta(days=1)).isoformat()   # bis morgen (UTC): am Ort des Nutzers kann schon der nächste Tag sein
 
     g = ug.login()
     acts = g.get_activities_by_date(start, end) or []

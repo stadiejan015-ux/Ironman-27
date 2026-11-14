@@ -7,11 +7,6 @@
 window.TRAINING = {
   commitDate: "2026-06-27",      // Anmeldung / Start der Vorbereitung
 
-  athlete: {
-    name: "Jan Stadie",
-    location: "Konstanz",
-  },
-
   // >>> Hier dein Rennen eintragen <<<
   race: {
     name: "Ironman Frankfurt 2027",

@@ -27,8 +27,10 @@
     strength: { label: "Kraft", color: "var(--strength)" },
     other: { label: "Sonstiges", color: "var(--other)" },
   };
-  const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility", TrailRun: "Trailrun", Tennis: "Tennis", Workout: "Workout" };
-  const cat = (sport) => sport === "Swim" ? "swim" : (sport === "Ride" || sport === "VirtualRide") ? "bike" : (sport === "Run" || sport === "TrailRun") ? "run" : sport === "WeightTraining" ? "strength" : "other";
+  const SPORT_LABEL = { Swim: "Schwimmen", Ride: "Rad", VirtualRide: "Rad (Zwift)", Run: "Laufen", GravelRide: "Gravel", MountainBikeRide: "Mountainbike", EBikeRide: "E-Bike", VirtualRun: "Laufen (virtuell)", WeightTraining: "Kraft", RockClimbing: "Klettern", Hike: "Wandern", Yoga: "Yoga/Mobility", TrailRun: "Trailrun", Tennis: "Tennis", Workout: "Workout" };
+  // Lauf und Rad: dieselbe Liste wie in der Zone-2-Auswertung (js/z2.js, kindOf) – so zählen auch Gravel, MTB, E-Bike und virtuelle Läufe
+  const kindOf = (sport) => (window.Z2 && window.Z2.kindOf ? window.Z2.kindOf(sport) : (sport === "Ride" || sport === "VirtualRide") ? "ride" : (sport === "Run" || sport === "TrailRun") ? "run" : null);
+  const cat = (sport) => { const k = kindOf(sport); return sport === "Swim" ? "swim" : k === "ride" ? "bike" : k === "run" ? "run" : sport === "WeightTraining" ? "strength" : "other"; };
 
   // Flex-Modus (js/flex.js): bei active=false oder nach "until" verhält sich alles wie bisher
   const FX = window.Flex, FCFG = window.TRAINING.flex || {};
@@ -1230,7 +1232,7 @@
     if (today.sleepScore != null && today.sleepScore < 50 && level < 2) { level = 2; notes.push("sehr schlechter Schlaf"); }
     const ratio = today.loadRatio ?? gLast("loadRatio")?.loadRatio;
     if (ratio != null && ratio > 1.5 && level < 3) { level++; notes.push(`Belastung stark gestiegen (Verhältnis ${nf(ratio, 2)})`); }
-    return { R, level, factors: f, notes, source: today.readiness != null ? "Garmin Trainingsbereitschaft" : "aus Schlaf, HRV, Body Battery, Ruhepuls & Stress berechnet", date: parse(today.date) };
+    return { R, level, factors: f, notes, source: today.readiness != null ? "Garmin Trainingsbereitschaft" : "aus Schlaf, HRV, Body Battery, Ruhepuls & Stress berechnet", date: parse(today.date), day: today.date };
   }
 
   /* ---------- Tagesvorschlag ---------- */
@@ -1380,7 +1382,8 @@
     const now = new Date();
     const rd = readiness();
     const lv = rd ? LEVELS[rd.level] : null;
-    const isOld = rd && (now - rd.date) / DAY > 1.5;
+    // Garmin-Werte nicht von heute (z. B. morgens vor dem ersten Abgleich)? Dann steht es dabei.
+    const isOld = !!rd && (window.Freshness ? window.Freshness.isBeforeToday(rd.day, now) : (now - rd.date) / DAY > 1.5);
     let main;
     if (FLEX.active && FX) {
       const eq = loadEquipment();
@@ -2277,4 +2280,5 @@
     $("#volTable").hidden = !on; $("#volChart").hidden = on;
     if (!on) volumeChart();
   });
+  window.__appReady = true;   // Start vollständig – sonst zeigt index.html eine Fehlermeldung statt grauer Platzhalter
 })();

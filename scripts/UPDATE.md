@@ -46,3 +46,16 @@ sie auch jederzeit von Hand in einer Claude-Session anstoßen.
 
 Das Skript erkennt bereits vorhandene Einheiten (Startzeit + Sportart) und
 ersetzt sie, sodass sich überlappende Zeiträume nicht doppeln.
+
+## Wenn Strava nicht antwortet
+
+Antwortet der Strava-Connector nicht (Verbindungsfehler wie 502, Zeitüberschreitung, oder die Strava-Werkzeuge
+fehlen in der Sitzung):
+
+1. Nichts committen und nichts pushen. Die Seite zeigt weiter den letzten Stand.
+2. **Genau einen** neuen Versuch in etwa 60 Minuten einplanen (Erinnerung an dieselbe Sitzung, sonst eine
+   einmalige geplante Aufgabe mit demselben Auftrag). Im Bericht nennen, dass und wann der zweite Versuch läuft.
+3. Schlägt auch der zweite Versuch fehl, keinen weiteren einplanen und den Fehler klar melden. Das nächste
+   reguläre Update holt die letzten 3 Tage ohnehin mit ab.
+
+Das gilt nur für Verbindungsfehler. Bei einem Fehler im Skript oder beim Push hilft kein Warten: Ursache nennen.

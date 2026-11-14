@@ -6,6 +6,8 @@
  *   streams = { time, heart_rate, velocity_smooth, watts, grade_smooth, altitude, moving } (Strava-Streams)
  *   cfg     = window.TRAINING.z2,  hrZones = window.TRAINING.zones.hr
  * Auswertung:     paceSeries / wattSeries / kpi / rollingMedian / weeklyZones / summary
+ * kindOf(sport) → "run" | "ride" | null: die eine Liste, welche Strava-Sportart als Lauf bzw. Rad zählt
+ *                 (gilt für die ganze Seite, js/app.js nutzt sie für die Kategorien)
  * Läuft im Browser (window.Z2) und in Node (require("./js/z2.js")).
  */
 (function (root, factory) {
@@ -301,7 +303,7 @@
 
   return {
     RUN, RIDE, gapFactor, zoneIndex, zoneMins, weightedMedian, median, prepare, zoneTimes, highShare, atHr, normalizedPower,
-    decoupling, analyzeActivity, paceSeries, wattSeries, decouplingSeries, rollingMedian, kpi, ampel,
+    decoupling, kindOf, analyzeActivity, paceSeries, wattSeries, decouplingSeries, rollingMedian, kpi, ampel,
     mondayIso, weeklyZones, zoneShare, summary,
   };
 });

@@ -1,6 +1,7 @@
 # Ironman 27 – Trainings-Cockpit
 
-Eine statische Website, die einen strukturierten Überblick über mein Ironman-Training gibt:
+Eine statische Website, die einen strukturierten Überblick über mein Ironman-Training gibt.
+Prüfbericht zu Sicherheit, Fehlerfällen, Berechnungen und Struktur: [`AUDIT.md`](AUDIT.md).
 
 - **Countdown & aktuelle Phase** bis zum Renntag
 - **Die letzten 4 Wochen** – Umfang je Disziplin im Vergleich zur Vorperiode, FTP, Streak
@@ -188,6 +189,14 @@ Uhr nicht synchronisiert hat. Das Einstellungen-Blatt („Über die Daten“) ze
 Berechnung: [`js/freshness.js`](js/freshness.js), Schwellen: `freshness` in `js/data.js`.
 Tests: `node tests/freshness.test.js`.
 
+**Garmin-Werte nicht von heute:** Unter „Heute“ steht bei der Bereitschaft „Garmin-Daten vom …, nicht von heute“,
+sobald der neueste Garmin-Tag vor dem heutigen Kalendertag liegt (`Freshness.isBeforeToday`), also schon morgens
+vor dem ersten Abgleich und nicht erst ab mittags.
+
+**Start fehlgeschlagen:** Kommt eine Datei nicht an (z. B. `js/strava-data.js`) oder bricht der Start ab, steht an
+derselben Stelle eine rote Meldung mit dem nächsten Schritt statt dauerhaft grauer Platzhalter. Das prüft
+`index.html` nach dem Laden des letzten Skripts: `js/app.js` setzt am Ende `window.__appReady`.
+
 ## Detailansichten (wie Apple Health)
 
 Tippen auf eine Kennzahl öffnet eine eigene Ansicht. Sie enthält:
@@ -248,6 +257,14 @@ Einrichtung (einmalig): Im Repo unter *Settings → Secrets and variables → Ac
 `GARMIN_EMAIL` und `GARMIN_PASSWORD` anlegen, dann unter *Actions → Garmin-Update → Run workflow* einmal starten.
 Hinweis: Der Zugang nutzt die inoffizielle Bibliothek `garminconnect`; Zwei-Faktor-Anmeldung wird dabei nicht unterstützt.
 
+- **Zeitzone:** Garmin führt die Tageswerte nach dem Kalendertag an deinem Ort. Das Skript liest die Zeitverschiebung
+  aus der neuesten Garmin-Aktivität (Ortszeit minus Weltzeit) und holt damit auch auf Reisen den richtigen „heutigen“
+  Tag, z. B. in Bali schon ab Mitternacht statt erst ab 08:00 Uhr. Tests: `python3 tests/update_garmin_test.py`.
+- **Anmeldung im Zwischenspeicher:** Damit nicht jeder Lauf neu einloggt, bewahrt GitHub die Anmelde-Tokens zwischen
+  den Läufen auf. Weil das Repo öffentlich ist, liegt dort nur eine verschlüsselte Datei
+  ([`scripts/garmin_tokens.sh`](scripts/garmin_tokens.sh), AES-256). Der Schlüssel ist das Secret `GARMIN_CACHE_KEY`,
+  sonst das Garmin-Passwort. Ein eigener, langer Zufallswert als `GARMIN_CACHE_KEY` ist sicherer, aber nicht nötig.
+
 ## Rennprognose
 
 [`js/prediction.js`](js/prediction.js) berechnet „Wenn heute Renntag wäre“ (reine Funktion `predictRace(data, config)`):
@@ -270,6 +287,10 @@ steigungsbereinigter Pace (GAP, Minetti-Modell) gewertet. Ob Brustgurt oder Uhr 
 (`data/hr-sources.json`); `#gurt` / `#uhr` im Strava-Titel oder in der Beschreibung hat Vorrang. Eigene HF-Zonen und alle Grenzen stehen in
 `js/data.js` unter `zones` und `z2`. Die Kacheln öffnen die Detailansichten mit den Diagrammen (siehe
 [Detailansichten](#detailansichten-wie-apple-health)). Tests: `node tests/z2.test.js`.
+
+**Sportarten:** Welche Strava-Sportart als Lauf bzw. Rad zählt, steht an genau einer Stelle (`Z2.kindOf` in
+`js/z2.js`): Rad = Ride, VirtualRide, GravelRide, MountainBikeRide, EBikeRide; Lauf = Run, TrailRun, VirtualRun.
+Die Kategorien der ganzen Seite (Kacheln, Wochenumfang, Wochen-Minimum, Kalender) richten sich danach.
 
 ## Flex-Modus
 

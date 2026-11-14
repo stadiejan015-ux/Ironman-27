@@ -354,12 +354,30 @@
 
   <div class="tooltip" id="tooltip" role="tooltip"></div>
   <script>
-    ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/phases.js", "js/charts.js", "js/metrics.js", "js/native.js", "js/app.js", "js/pwa.js"].forEach(function (f) {
-      var s = document.createElement("script");
-      s.src = f + "?v=" + window.__v;
-      s.async = false; // Reihenfolge beibehalten
-      document.body.appendChild(s);
-    });
+    /* Skripte der Reihe nach laden. Kommt eine Datei nicht an oder bricht der Start ab (js/app.js setzt am Ende
+       window.__appReady), steht oben eine klare Meldung statt dauerhaft grauer Platzhalter. */
+    (function () {
+      var files = ["js/data.js", "js/strava-data.js", "js/garmin-data.js", "js/prediction.js", "js/z2.js", "js/flex.js", "js/gym.js", "js/calendar.js", "js/weekly.js", "js/freshness.js", "js/phases.js", "js/charts.js", "js/metrics.js", "js/native.js", "js/app.js", "js/pwa.js"];
+      var missing = [];
+      function check() {
+        if (window.__appReady) return;
+        var el = document.getElementById("freshBanner");
+        if (!el) return;
+        document.documentElement.classList.add("load-failed");
+        el.className = "fresh-banner bad";
+        el.innerHTML = '<div class="fresh-list"><p class="fresh-item"><span class="dot bad" aria-hidden="true"></span><span><b>Die Seite konnte nicht vollständig geladen werden'
+          + (missing.length ? " (" + missing.join(", ") + (missing.length > 1 ? " fehlen)" : " fehlt)") : "") + '.</b> <span class="fresh-tip">Tipp: Seite neu laden. Hilft das nicht, sind die Daten gerade defekt – dann in Claude Code „Update jetzt“ schreiben.</span></span></p></div>';
+        el.hidden = false;
+      }
+      files.forEach(function (f, i) {
+        var s = document.createElement("script"), last = i === files.length - 1;
+        s.src = f + "?v=" + window.__v;
+        s.async = false; // Reihenfolge beibehalten
+        s.onerror = function () { missing.push(f); if (last) check(); };
+        if (last) s.onload = check;
+        document.body.appendChild(s);
+      });
+    })();
   </script>
 </body>
 </html>

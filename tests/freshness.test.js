@@ -100,4 +100,21 @@ test("Ausblenden-Schlüssel ändert sich mit jedem Update", () => {
   assert.equal(a.stamp, F.freshness({ now: new Date(+NOW + 5 * H), strava: { snapshotAt: ago(30), snapshotDate: "2026-11-04" }, garmin: { updated: ago(2), lastDay: "2026-11-05" } }).stamp);
 });
 
+test("Garmin-Tag ist nicht von heute: schon ab Mitternacht, nicht erst ab mittags", () => {
+  withTZ("Asia/Makassar", () => {
+    // Bali, 14.11. um 07:00 Uhr: letzter Garmin-Tag ist der 13.11. → nicht von heute (früher erst ab 12:00 Uhr erkannt)
+    assert.equal(F.isBeforeToday("2026-11-13", at("2026-11-13T23:00:00Z")), true);
+    assert.equal(F.isBeforeToday("2026-11-14", at("2026-11-13T23:00:00Z")), false);   // Tag von heute
+    assert.equal(F.isBeforeToday("2026-11-14", at("2026-11-14T15:59:00Z")), false);   // 23:59 Uhr, immer noch heute
+    assert.equal(F.isBeforeToday("2026-11-14", at("2026-11-14T16:00:00Z")), true);    // 00:00 Uhr am 15.11.
+    assert.equal(F.isBeforeToday("2026-11-15", at("2026-11-13T23:00:00Z")), false);   // Tag in der Zukunft gilt nicht als alt
+  });
+  withTZ("Europe/Berlin", () => {
+    assert.equal(F.isBeforeToday("2026-11-13", at("2026-11-13T22:59:00Z")), false);   // 23:59 Uhr in Berlin
+    assert.equal(F.isBeforeToday("2026-11-13", at("2026-11-13T23:00:00Z")), true);    // 00:00 Uhr am 14.11.
+  });
+  assert.equal(F.isBeforeToday(null, NOW), false);      // ohne Datum keine Aussage
+  assert.equal(F.isBeforeToday("kaputt", NOW), false);
+});
+
 console.log(`\n${n} Tests bestanden.`);

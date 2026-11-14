@@ -1,2 +1,10 @@
 __pycache__/
 *.pyc
+
+# Zugangsdaten und Tokens gehören nie ins Repo (es ist öffentlich)
+.env
+.env.*
+*.pem
+*.key
+.garminconnect/
+*.enc
