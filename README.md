@@ -2,6 +2,8 @@
 
 Eine statische Website, die einen strukturierten Überblick über mein Ironman-Training gibt.
 Prüfbericht zu Sicherheit, Fehlerfällen, Berechnungen und Struktur: [`AUDIT.md`](AUDIT.md).
+Geplante Weiterentwicklung in einzelnen Schritten: [`ROADMAP.md`](ROADMAP.md). Regeln für die Arbeit mit Claude:
+[`CLAUDE.md`](CLAUDE.md).
 
 - **Countdown & aktuelle Phase** bis zum Renntag
 - **Die letzten 4 Wochen** – Umfang je Disziplin im Vergleich zur Vorperiode, FTP, Streak
