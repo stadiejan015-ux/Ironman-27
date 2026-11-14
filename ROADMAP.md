@@ -44,7 +44,8 @@ macht das im Saisonplan sichtbar, damit du früh entscheiden kannst, wie du den 
 ## Läuft schon
 
 - [x] Audit mit sechs behobenen Funden (PR #58).
-- [ ] Nachprüfung der Zeitzonen-Korrektur im echten Garmin-Lauf (geplant für den Morgen des 15.11.).
+- [x] Zeitzonen-Korrektur im echten Garmin-Lauf bestätigt: Am 15.11. um 07:11 Uhr Bali-Zeit (in Weltzeit noch
+  der 14.11.) kam der neue Tag samt Schlafwerten an. Vor der Korrektur fehlte er bis 08:00 Uhr.
 - [ ] Deine drei Schritte aus `AUDIT.md`: alte Garmin-Kopien löschen, E-Mail-Adresse verbergen (S1), fremde
   Pull Requests nie freigeben.
 
