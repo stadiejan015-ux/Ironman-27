@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-16T13:42Z",
+  "updated": "2026-11-17T13:41Z",
   "zones": [[0,129],[130,152],[153,175],[176,200],[201,null]],
   "activities": [
     {"id":"19134936896","date":"2026-07-01T10:58","sport":"Ride","name":"Aerobars testen","km":33.1,"sec":3659,"elev":163,"kind":"ride","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[0,1935,1468,195,0],"pace":null,"watts":null,"decoupling":null,"status":{"watts":"keine echten Watt (geschätzt)","decoupling":"keine echten Watt (geschätzt)"},"highShare":0.065,"hrMed":153},
@@ -70,6 +70,7 @@
     {"id":"20969017502","date":"2026-11-13T15:26","sport":"Run","name":"Laufband","km":8.4,"sec":2638,"elev":0,"kind":"run","indoor":true,"hasHr":true,"deviceWatts":false,"zoneSec":[315,1143,1053,178,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"Laufband","decoupling":"Laufband"},"highShare":0.085,"hrMed":156},
     {"id":"20973668995","date":"2026-11-13T15:54","sport":"VirtualRide","name":"Zwift - Sugar Cookie in Watopia","km":39.3,"sec":4561,"elev":260,"kind":"ride","indoor":true,"hasHr":false,"deviceWatts":true,"zoneSec":null,"pace":null,"watts":null,"decoupling":null,"status":{"all":"keine Herzfrequenz"}},
     {"id":"21005357400","date":"2026-11-16T14:50","sport":"VirtualRide","name":"Goofy Rad","km":12.6417,"sec":1230,"elev":0,"status":{"all":"keine Streams (manuell erfasst)"}},
-    {"id":"21005371026","date":"2026-11-16T15:03","sport":"Run","name":"Lauf am Nachmittag","km":2.04552,"sec":651,"elev":0,"status":{"all":"Stream zu kurz"}}
+    {"id":"21005371026","date":"2026-11-16T15:03","sport":"Run","name":"Lauf am Nachmittag","km":2.04552,"sec":651,"elev":0,"status":{"all":"Stream zu kurz"}},
+    {"id":"21017534221","date":"2026-11-17T13:42","sport":"Run","name":"Singapur 🇸🇬","km":6.6,"sec":1881,"elev":29,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[56,114,504,1184,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"intensiv/Intervalle (83 % ≥ Z4)","decoupling":"intensiv/Intervalle (83 % ≥ Z4)"},"highShare":0.828,"hrMed":185}
   ]
 }
