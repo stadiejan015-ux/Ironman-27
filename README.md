@@ -303,7 +303,8 @@ Umfangszielen zählt das Wochen-Minimum (4× Gym, 2× Ausdauer ≥ 20 min; Schwi
 `flex.minimum.swim: 0`).
 **Zwift im Flex-Zeitraum:** Zwift-Fahrten in dieser Zeit fährt jemand anderes über den Account. Deshalb zählen sie
 nirgends: nicht in der Aktivitätenliste, Woche, Minimum, Kalender, Umfängen, Zone 2 und der Garmin-Belastung je Woche.
-Erkannt werden Strava „VirtualRide“, Garmin „virtual_ride“ und Radfahrten mit „Zwift“ im Namen; Läufe zählen immer.
+Erkannt werden Radfahrten mit „Zwift“ im Namen (auch Strava „VirtualRide“) und Garmin-Belastungen vom Typ
+„virtual_ride“ (dort gibt es keinen Namen). Eigene Indoor-Fahrten ohne „Zwift“ im Namen zählen; Läufe zählen immer.
 Zwift-Fahrten vor dem Flex-Beginn und nach dem Ende zählen normal. Die Liste nennt, wie viele ausgeblendet sind.
 Schalter: `flex.ignoreVirtualRides`. Garmins eigene Tageswerte (akute Belastung, Trainingsstatus) rechnet Garmin
 selbst und enthalten solche Fahrten, wenn sie in Garmin Connect landen.

@@ -29,7 +29,9 @@ test("Flex-Zeitraum: aktiv bis einschließlich 10.01., danach und bei active=fal
 test("Zwift-Fahrten im Flex-Zeitraum zählen nicht (anderer Fahrer), alles andere schon", () => {
   const c = { ...cfg, from: "2026-10-27", ignoreVirtualRides: true };
   assert.equal(F.isIgnored({ date: "2026-11-10T18:18", sport: "VirtualRide", name: "Zwift - Ignite" }, c), true);
-  assert.equal(F.isIgnored({ date: d("2026-11-10T18:18"), sport: "VirtualRide", name: "Ride" }, c), true);   // auch als Date
+  assert.equal(F.isIgnored({ date: d("2026-11-10T18:18"), sport: "VirtualRide", name: "Zwift Ride" }, c), true);   // auch als Date
+  assert.equal(F.isIgnored({ date: "2026-11-16T14:50", sport: "VirtualRide", name: "Goofy Rad" }, c), false);   // eigene Indoor-Fahrt ohne „Zwift“ zählt
+  assert.equal(F.isIgnored({ date: "2026-11-16T14:50", sport: "VirtualRide", name: "" }, c), false);
   assert.equal(F.isIgnored({ date: "2026-11-07T20:21", sport: "virtual_ride" }, c), true);                  // Garmin-Typ
   assert.equal(F.isIgnored({ date: "2026-11-08T09:00", sport: "Ride", name: "Zwift Ausfahrt" }, c), true);   // Rad mit „Zwift“ im Namen
   assert.equal(F.isIgnored({ date: "2026-10-25T15:11", sport: "VirtualRide", name: "Letzte Fahrt" }, c), false);   // vor dem Flex-Beginn: eigene Fahrt
