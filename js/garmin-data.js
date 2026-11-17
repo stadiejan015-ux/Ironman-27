@@ -1,6 +1,6 @@
 /* Automatisch erzeugt von scripts/update_garmin.py – nicht von Hand bearbeiten. */
 window.GARMIN = {
-  "updated": "2026-11-17T04:48+00:00",
+  "updated": "2026-11-17T14:55+00:00",
   "days": [
     {"date": "2026-08-06", "rhr": 49, "stressAvg": 30, "bbHigh": 87, "bbLow": 20, "bbNow": 22, "bbCharged": 65, "steps": 12074, "sleepScore": 78, "sleepQuality": "FAIR", "sleepH": 9.2, "deepH": 1.07, "remH": 0.7, "lightH": 7.43, "awakeH": 0.05, "sleepHrv": 66.0, "hrv": 66, "hrvWeekly": 64, "hrvStatus": "BALANCED", "hrvLow": 64, "hrvHigh": 90, "readiness": 59, "readinessLevel": "MODERATE", "recoveryH": 2.0, "vo2run": 57.6, "trainingStatus": "RECOVERY_2", "acuteLoad": 47, "chronicLoad": 423, "loadRatio": 0.1, "loadAerobicLow": 948.0, "loadAerobicHigh": 390.0, "loadAnaerobic": 263.0},
     {"date": "2026-08-07", "rhr": 45, "stressAvg": 22, "bbHigh": 100, "bbLow": 22, "bbNow": 39, "bbCharged": 82, "steps": 6204, "sleepScore": 90, "sleepQuality": "EXCELLENT", "sleepH": 9.27, "deepH": 1.12, "remH": 2.02, "lightH": 6.13, "awakeH": 0.28, "sleepHrv": 77.0, "bbChange": 78, "hrv": 77, "hrvWeekly": 66, "hrvStatus": "BALANCED", "hrvLow": 64, "hrvHigh": 90, "readiness": 85, "readinessLevel": "HIGH", "recoveryH": 0.0, "vo2run": 57.6, "trainingStatus": "RECOVERY_2", "acuteLoad": 28, "chronicLoad": 395, "loadRatio": 0.0, "loadAerobicLow": 829.0, "loadAerobicHigh": 390.0, "loadAnaerobic": 235.0},
@@ -105,7 +105,7 @@ window.GARMIN = {
     {"date": "2026-11-14", "rhr": 47, "stressAvg": 25, "bbHigh": 96, "bbLow": 17, "bbNow": 39, "bbCharged": 91, "steps": 11510, "sleepScore": 83, "sleepQuality": "GOOD", "sleepH": 8.65, "deepH": 0.72, "remH": 1.38, "lightH": 6.55, "awakeH": 0.2, "sleepHrv": 68.0, "bbChange": 82, "hrv": 68, "hrvWeekly": 76, "hrvStatus": "BALANCED", "hrvLow": 69, "hrvHigh": 93, "readiness": 69, "readinessLevel": "MODERATE", "recoveryH": 11.0, "vo2run": 57.5, "vo2bike": 61.0, "trainingStatus": "MAINTAINING_2", "acuteLoad": 327, "chronicLoad": 335, "loadRatio": 0.9, "loadStatus": "OPTIMAL", "loadAerobicLow": 832.0, "loadAerobicHigh": 294.0, "loadAnaerobic": 297.0},
     {"date": "2026-11-15", "rhr": 43, "stressAvg": 20, "bbHigh": 98, "bbLow": 36, "bbNow": 36, "bbCharged": 63, "steps": 16759, "sleepScore": 79, "sleepQuality": "FAIR", "sleepH": 7.13, "deepH": 1.63, "remH": 1.13, "lightH": 4.37, "awakeH": 0.23, "sleepHrv": 75.0, "bbChange": 71, "hrv": 75, "hrvWeekly": 76, "hrvStatus": "BALANCED", "hrvLow": 69, "hrvHigh": 93, "readiness": 75, "readinessLevel": "HIGH", "recoveryH": 0.0, "vo2run": 57.5, "vo2bike": 61.0, "trainingStatus": "MAINTAINING_2", "acuteLoad": 271, "chronicLoad": 323, "loadRatio": 0.8, "loadStatus": "OPTIMAL", "loadAerobicLow": 763.0, "loadAerobicHigh": 294.0, "loadAnaerobic": 285.0},
     {"date": "2026-11-16", "rhr": 45, "stressAvg": 22, "bbHigh": 98, "bbLow": 33, "bbNow": 36, "bbCharged": 67, "steps": 11670, "sleepScore": 94, "sleepQuality": "EXCELLENT", "sleepH": 8.4, "deepH": 1.65, "remH": 1.95, "lightH": 4.8, "awakeH": 0.13, "sleepHrv": 75.0, "bbChange": 65, "hrv": 75, "hrvWeekly": 76, "hrvStatus": "BALANCED", "hrvLow": 69, "hrvHigh": 93, "readiness": 81, "readinessLevel": "HIGH", "recoveryH": 0.0, "vo2run": 57.5, "vo2bike": 61.0, "trainingStatus": "MAINTAINING_2", "acuteLoad": 257, "chronicLoad": 320, "loadRatio": 0.8, "loadStatus": "OPTIMAL", "loadAerobicLow": 734.0, "loadAerobicHigh": 294.0, "loadAnaerobic": 273.0},
-    {"date": "2026-11-17", "rhr": 45, "stressAvg": 13, "bbHigh": 100, "bbLow": 36, "bbNow": 90, "bbCharged": 64, "steps": 768, "sleepScore": 92, "sleepQuality": "EXCELLENT", "sleepH": 8.7, "deepH": 1.9, "remH": 1.62, "lightH": 5.18, "awakeH": 0.15, "sleepHrv": 75.0, "bbChange": 66, "hrv": 75, "hrvWeekly": 75, "hrvStatus": "BALANCED", "hrvLow": 69, "hrvHigh": 93, "readiness": 95, "readinessLevel": "PRIME", "recoveryH": 0.0, "vo2run": 57.5, "vo2bike": 61.0, "trainingStatus": "MAINTAINING_2", "acuteLoad": 200, "chronicLoad": 309, "loadRatio": 0.6, "loadStatus": "LOW", "loadAerobicLow": 640.0, "loadAerobicHigh": 294.0, "loadAnaerobic": 273.0}
+    {"date": "2026-11-17", "rhr": 45, "stressAvg": 27, "bbHigh": 100, "bbLow": 24, "bbNow": 24, "bbCharged": 64, "steps": 16099, "sleepScore": 92, "sleepQuality": "EXCELLENT", "sleepH": 8.7, "deepH": 1.9, "remH": 1.62, "lightH": 5.18, "awakeH": 0.15, "sleepHrv": 75.0, "bbChange": 66, "hrv": 75, "hrvWeekly": 75, "hrvStatus": "BALANCED", "hrvLow": 69, "hrvHigh": 93, "readiness": 95, "readinessLevel": "PRIME", "recoveryH": 0.0, "vo2run": 57.4, "vo2bike": 61.0, "trainingStatus": "MAINTAINING_3", "acuteLoad": 384, "chronicLoad": 342, "loadRatio": 1.1, "loadStatus": "OPTIMAL", "loadAerobicLow": 640.0, "loadAerobicHigh": 421.0, "loadAnaerobic": 287.0}
   ],
   "activities": [
     {"id": "23399475012", "start": "2026-06-27T18:55", "type": "strength_training", "name": "Krafttraining", "desc": "", "sec": 4522},
@@ -171,7 +171,8 @@ window.GARMIN = {
     {"id": "25052173471", "start": "2026-11-12T15:22", "type": "strength_training", "name": "Pull 3×30kg @Bali", "desc": "", "sec": 5522},
     {"id": "25060951303", "start": "2026-11-13T09:35", "type": "strength_training", "name": "Krafttraining", "desc": "", "sec": 4132},
     {"id": "25071302007", "start": "2026-11-14T10:06", "type": "strength_training", "name": "Push 7×70kg @Bali", "desc": "", "sec": 5402},
-    {"id": "25093669094", "start": "2026-11-16T13:28", "type": "strength_training", "name": "Pull @Singapur", "desc": "", "sec": 3706}
+    {"id": "25093669094", "start": "2026-11-16T13:28", "type": "strength_training", "name": "Pull @Singapur", "desc": "", "sec": 3706},
+    {"id": "25104440566", "start": "2026-11-17T11:19", "type": "strength_training", "name": "Krafttraining", "desc": "", "sec": 3753}
   ],
   "loadsSince": "2026-08-27",
   "loads": [
@@ -280,6 +281,8 @@ window.GARMIN = {
     {"id": "25066832343", "start": "2026-11-13T21:54", "type": "virtual_ride", "sec": 4557, "load": null},
     {"id": "25071302007", "start": "2026-11-14T10:06", "type": "strength_training", "sec": 5402, "load": 4.1},
     {"id": "25093669094", "start": "2026-11-16T13:28", "type": "strength_training", "sec": 3706, "load": 2.3},
-    {"id": "25093965416", "start": "2026-11-16T15:03", "type": "treadmill_running", "sec": 641, "load": 29.4}
+    {"id": "25093965416", "start": "2026-11-16T15:03", "type": "treadmill_running", "sec": 641, "load": 29.4},
+    {"id": "25104440566", "start": "2026-11-17T11:19", "type": "strength_training", "sec": 3753, "load": 4.0},
+    {"id": "25104814580", "start": "2026-11-17T13:42", "type": "running", "sec": 1873, "load": 141.0}
   ]
 };
