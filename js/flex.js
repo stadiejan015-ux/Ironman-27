@@ -41,11 +41,12 @@
   }
 
   // Zwift-Fahrt im Flex-Zeitraum, die nicht zählt (flex.ignoreVirtualRides). a = { date (Date oder ISO), sport, name }:
-  // Strava „VirtualRide“, Garmin „virtual_ride“ oder eine Radfahrt mit „Zwift“ im Namen. Läufe zählen immer.
+  // Strava-Radfahrt (auch „VirtualRide“) nur mit „Zwift“ im Namen – eigene Indoor-Fahrten ohne „Zwift“ zählen.
+  // Garmin-Belastungen haben keinen Namen: dort zählt der Typ „virtual_ride“ (kommt nur von Zwift). Läufe zählen immer.
   function isIgnored(a, cfg) {
     if (!a || !cfg || !cfg.ignoreVirtualRides) return false;
     const sport = String(a.sport || ""), name = String(a.name || "");
-    const virtual = sport === "VirtualRide" || sport === "virtual_ride" || (/ride|cycling/i.test(sport) && /zwift/i.test(name));
+    const virtual = sport === "virtual_ride" || (/ride|cycling/i.test(sport) && /zwift/i.test(name));
     if (!virtual || !a.date) return false;
     const dt = a.date instanceof Date ? a.date : new Date(String(a.date).length === 10 ? `${a.date}T00:00` : String(a.date).slice(0, 16));
     return flexState(cfg, dt).active;
