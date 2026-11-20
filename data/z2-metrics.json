@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-18T13:41Z",
+  "updated": "2026-11-20T04:41Z",
   "zones": [[0,129],[130,152],[153,175],[176,200],[201,null]],
   "activities": [
     {"id":"19134936896","date":"2026-07-01T10:58","sport":"Ride","name":"Aerobars testen","km":33.1,"sec":3659,"elev":163,"kind":"ride","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[0,1935,1468,195,0],"pace":null,"watts":null,"decoupling":null,"status":{"watts":"keine echten Watt (geschätzt)","decoupling":"keine echten Watt (geschätzt)"},"highShare":0.065,"hrMed":153},
@@ -72,6 +72,8 @@
     {"id":"21005357400","date":"2026-11-16T14:50","sport":"VirtualRide","name":"Goofy Rad","km":12.6417,"sec":1230,"elev":0,"status":{"all":"keine Streams (manuell erfasst)"}},
     {"id":"21005371026","date":"2026-11-16T15:03","sport":"Run","name":"Lauf am Nachmittag","km":2.04552,"sec":651,"elev":0,"status":{"all":"Stream zu kurz"}},
     {"id":"21017534221","date":"2026-11-17T13:42","sport":"Run","name":"Singapur 🇸🇬","km":6.6,"sec":1881,"elev":29,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[56,114,504,1184,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"intensiv/Intervalle (83 % ≥ Z4)","decoupling":"intensiv/Intervalle (83 % ≥ Z4)"},"highShare":0.828,"hrMed":185},
-    {"id":"21031860222","date":"2026-11-18T17:15","sport":"VirtualRide","name":"Indoor","km":11,"sec":1290,"elev":0,"status":{"all":"keine Streams (manuell erfasst)"}}
+    {"id":"21031860222","date":"2026-11-18T17:15","sport":"VirtualRide","name":"Indoor","km":11,"sec":1290,"elev":0,"status":{"all":"keine Streams (manuell erfasst)"}},
+    {"id":"21049476766","date":"2026-11-19T17:17","sport":"VirtualRide","name":"Zwift - The Big Ring in Watopia","km":50.2,"sec":6001,"elev":270,"kind":"ride","indoor":true,"hasHr":false,"deviceWatts":true,"zoneSec":null,"pace":null,"watts":null,"decoupling":null,"status":{"all":"keine Herzfrequenz"}},
+    {"id":"21047032144","date":"2026-11-19T19:46","sport":"Run","name":"Phnom Penh 🇰🇭","km":6.6,"sec":2322,"elev":25,"kind":"run","indoor":false,"hasHr":true,"deviceWatts":false,"zoneSec":[63,775,1480,0,0],"pace":null,"watts":null,"decoupling":null,"status":{"pace":"nur 1 min im Band","decoupling":"zu kurz (< 60 min)"},"highShare":0,"hrMed":158}
   ]
 }
