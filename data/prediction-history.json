@@ -17,5 +17,6 @@
   {"date":"2026-11-18","total":42586,"totalOpt":39556,"totalCons":44412,"swim":4826,"bike":20534,"run":16626,"t1":360,"t2":240,"ftp":286,"weightKg":73.9,"swimMethod":"median","longestRunKm":17.11},
   {"date":"2026-11-19","total":42532,"totalOpt":39528,"totalCons":44330,"swim":4772,"bike":20534,"run":16626,"t1":360,"t2":240,"ftp":286,"weightKg":73.9,"swimMethod":"median","longestRunKm":17.11},
   {"date":"2026-11-20","total":42532,"totalOpt":39528,"totalCons":44330,"swim":4772,"bike":20534,"run":16626,"t1":360,"t2":240,"ftp":286,"weightKg":73.9,"swimMethod":"median","longestRunKm":17.11},
-  {"date":"2026-11-21","total":42532,"totalOpt":39528,"totalCons":44330,"swim":4772,"bike":20534,"run":16626,"t1":360,"t2":240,"ftp":286,"weightKg":73.9,"swimMethod":"median","longestRunKm":17.11}
+  {"date":"2026-11-21","total":42532,"totalOpt":39528,"totalCons":44330,"swim":4772,"bike":20534,"run":16626,"t1":360,"t2":240,"ftp":286,"weightKg":73.9,"swimMethod":"median","longestRunKm":17.11},
+  {"date":"2026-11-22","total":42532,"totalOpt":39528,"totalCons":44330,"swim":4772,"bike":20534,"run":16626,"t1":360,"t2":240,"ftp":286,"weightKg":73.9,"swimMethod":"median","longestRunKm":17.11}
 ]
